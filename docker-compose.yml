@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7
+    container_name: yavasuite_local_redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yavasuite_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app/backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://yavasuite_user:Cf0Nok2j5MNcIs7qjh4xQzNQcZKa5veK@dpg-d18oqd3uibrs73dsf4i0-a.virginia-postgres.render.com/yavasuite_db_l7xm
+      - SECRET_KEY=HxTXfeB52FE7RjbzqEe68WsEa6LgFf5fxkjh464gqDEExZ4m4YgNcAGaMBfFAVym
+
+volumes:
+  postgres_local_data:
