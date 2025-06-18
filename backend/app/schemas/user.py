@@ -28,3 +28,8 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     avatar_url: str | None = None
     password: str | None = None
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
