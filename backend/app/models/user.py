@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
 
@@ -25,3 +25,5 @@ class User(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
     avatar_url = Column(String, nullable=True)
+
+    guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
