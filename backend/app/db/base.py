@@ -1,5 +1,6 @@
-from sqlalchemy.orm import DeclarativeBase
+# backend/app/db/base.py
+from app.db.base_class import Base
 
-
-class Base(DeclarativeBase):
-    pass
+# Import all of the models
+from app.models.user import User
+from app.models.guild import Guild
