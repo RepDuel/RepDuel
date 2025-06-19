@@ -18,3 +18,5 @@ class Guild(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now(), nullable=False)
+
+    channels = relationship("Channel", back_populates="guild", cascade="all, delete-orphan")
