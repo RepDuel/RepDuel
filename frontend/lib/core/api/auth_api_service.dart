@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../models/user.dart';
-import '../services/secure_storage_service.dart';
 import 'api_client.dart';
 
 class AuthApiService {
@@ -28,7 +27,7 @@ class AuthApiService {
     return null;
   }
 
-  Future<bool> login(String email, String password, SecureStorageService secureStorage) async {
+  Future<String?> login(String email, String password) async {
     final response = await _client.post(
       '/users/login',
       {
@@ -40,15 +39,13 @@ class AuthApiService {
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
-      final token = json['access_token'];
-      await secureStorage.writeToken(token);
-      return true;
+      return json['access_token'];
     }
 
-    return false;
+    return null;
   }
 
-  Future<User?> getCurrentUser() async {
+  Future<User?> getMe() async {
     final response = await _client.get('/users/me');
 
     if (response.statusCode == 200) {
