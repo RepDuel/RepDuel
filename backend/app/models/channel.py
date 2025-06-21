@@ -17,3 +17,9 @@ class Channel(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now(), nullable=False)
+
+    messages = relationship(
+        "Message",
+        back_populates="channel",
+        cascade="all, delete-orphan"
+    )
