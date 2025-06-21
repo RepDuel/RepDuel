@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import '../api/auth_api_service.dart';
 import '../api/guild_api_service.dart';
 import '../services/secure_storage_service.dart';
+import '../api/message_api_service.dart';
+import '../utils/http_client.dart';
 
 final secureStorageProvider = Provider<SecureStorageService>((ref) {
   return SecureStorageService();
@@ -22,4 +25,15 @@ final authApiProvider = Provider<AuthApiService>((ref) {
 final guildApiProvider = Provider<GuildApiService>((ref) {
   final client = ref.watch(apiClientProvider);
   return GuildApiService(client);
+});
+
+
+final messageApiProvider = Provider<MessageApiService>((ref) {
+  final httpClient = ref.read(httpClientProvider); // You must define this provider too
+  return MessageApiService(httpClient);
+});
+
+final httpClientProvider = Provider<HttpClient>((ref) {
+  final dio = Dio(); // Optionally configure base URL, interceptors, etc.
+  return HttpClient(dio);
 });
