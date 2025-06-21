@@ -1,3 +1,5 @@
+# backend/app/models/channel.py
+
 import uuid
 from sqlalchemy import Column, String, ForeignKey, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
