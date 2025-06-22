@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../../../core/models/message.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/message_socket_service.dart';
 import '../providers/message_list_provider.dart';
@@ -22,49 +21,55 @@ class ChannelScreen extends ConsumerStatefulWidget {
 }
 
 class _ChannelScreenState extends ConsumerState<ChannelScreen> {
-  late MessageSocketService _socketService;
+  MessageSocketService? _socketService;
   final TextEditingController _controller = TextEditingController();
   final _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
-    _setupSocket();
+    _initializeSocket();
   }
 
-  Future<void> _setupSocket() async {
+  Future<void> _initializeSocket() async {
     final authState = ref.read(authProvider);
     final user = authState.user;
     if (user == null) return;
 
-    final token = await _storage.read(key: 'authToken'); // Replace with authNotifier.getToken() if defined
+    final token = await _storage.read(key: 'authToken');
     if (token == null) return;
 
     const baseUrl = String.fromEnvironment('WS_BASE_URL', defaultValue: 'ws://localhost:8000');
-    _socketService = MessageSocketService(baseUrl: baseUrl, token: token);
-    _socketService.connect(widget.channelId);
+    final socket = MessageSocketService(baseUrl: baseUrl, token: token);
+    socket.connect(widget.channelId);
+    _socketService = socket;
 
-    _socketService.messages.listen((data) {
+    socket.messages.listen((data) {
       try {
-        final decoded = jsonDecode(data);
-        final message = Message.fromJson(decoded);
+        final message = data;
         ref.read(messageListProvider(widget.channelId).notifier).addMessage(message);
-      } catch (_) {
-        // Ignore invalid messages
+      } catch (e) {
+        // Ignore malformed messages
       }
     });
   }
 
   void _sendMessage() {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    _socketService.sendMessage(text);
+    if (text.isEmpty || _socketService == null) return;
+
+    final payload = jsonEncode({
+      'content': text,
+      'channel_id': widget.channelId,
+    });
+
+    _socketService!.sendMessage(payload);
     _controller.clear();
   }
 
   @override
   void dispose() {
-    _socketService.disconnect();
+    _socketService?.disconnect();
     _controller.dispose();
     super.dispose();
   }
@@ -76,9 +81,7 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
     final messageListAsync = ref.watch(messageListProvider(widget.channelId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Channel'),
-      ),
+      appBar: AppBar(title: const Text('Channel')),
       body: Column(
         children: [
           Expanded(
@@ -89,11 +92,8 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final isMe = user != null && user.id == message.authorId;
-                    return ChatBubble(
-                      message: message,
-                      isMe: isMe,
-                    );
+                    final isMe = user?.id == message.authorId;
+                    return ChatBubble(message: message, isMe: isMe);
                   },
                 );
               },
