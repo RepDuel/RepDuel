@@ -1,3 +1,5 @@
+# backend/app/services/user_service.py
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.user import User

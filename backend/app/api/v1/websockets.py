@@ -1,14 +1,17 @@
+# backend/app/api/v1/websockets.py
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from uuid import UUID
-from typing import Dict, List
+import json
 
 from app.core.auth import get_current_user_ws
 from app.services.message_service import create_message
-from app.schemas.message import MessageCreate
+from app.schemas.message import MessageCreate, MessageRead
 from app.db.session import async_session
+from app.services.websocket_manager import WebSocketManager  # import your manager
 
 router = APIRouter()
-active_connections: Dict[UUID, List[WebSocket]] = {}
+ws_manager = WebSocketManager()  # instantiate your manager
 
 @router.websocket("/ws/{channel_id}")
 async def websocket_chat(
@@ -17,28 +20,28 @@ async def websocket_chat(
     token: str = Query(...)
 ):
     user = await get_current_user_ws(websocket, token)
-    await websocket.accept()
+    if not user:
+        await websocket.close(code=1008)
+        return
 
-    if channel_id not in active_connections:
-        active_connections[channel_id] = []
-    active_connections[channel_id].append(websocket)
+    await ws_manager.connect(websocket, channel_id)
 
     try:
         while True:
             text = await websocket.receive_text()
 
             async with async_session() as db:
-                await create_message(
+                message = await create_message(
                     db=db,
                     message_in=MessageCreate(content=text, channel_id=channel_id),
                     author_id=user.id,
                 )
+                message_data = MessageRead.from_orm(message).dict()
 
-            for connection in active_connections[channel_id]:
-                if connection.client_state.name == "CONNECTED":
-                    await connection.send_text(f"{user.username}: {text}")
+            await ws_manager.broadcast(message_data, channel_id)
 
     except WebSocketDisconnect:
-        active_connections[channel_id].remove(websocket)
-        if not active_connections[channel_id]:
-            del active_connections[channel_id]
+        ws_manager.disconnect(websocket, channel_id)
+    except Exception as e:
+        print(f"Unexpected WebSocket error: {e}")
+        await websocket.close(code=1011)

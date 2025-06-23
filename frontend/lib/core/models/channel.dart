@@ -1,3 +1,5 @@
+// frontend/lib/core/models/channel.dart
+
 import 'package:frontend/core/models/message.dart';
 
 class Channel {

@@ -1,5 +1,3 @@
-# backend/app/schemas/message.py
-
 from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -14,12 +12,13 @@ class MessageCreate(MessageBase):
 
 
 class MessageRead(MessageBase):
-    id: UUID
-    author_id: UUID
-    channel_id: UUID
-    created_at: datetime
-    updated_at: datetime
+    id: UUID = Field(..., alias="id")
+    author_id: UUID = Field(..., alias="authorId")
+    channel_id: UUID = Field(..., alias="channelId")
+    created_at: datetime = Field(..., alias="createdAt")
+    updated_at: datetime = Field(..., alias="updatedAt")
 
     model_config = {
-        "from_attributes": True
+        "from_attributes": True,
+        "populate_by_name": True
     }

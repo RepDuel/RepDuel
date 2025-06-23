@@ -1,3 +1,5 @@
+// frontend/lib/core/api/guild_api_service.dart
+
 import 'dart:convert';
 
 import '../models/guild.dart';

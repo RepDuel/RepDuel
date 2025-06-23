@@ -1,3 +1,5 @@
+# backend/app/core/auth.py
+
 from fastapi import WebSocket, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -13,21 +15,25 @@ from app.api.v1.deps import get_db
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
 
 
-async def get_current_user_ws(websocket: WebSocket, token: str) -> UserRead:
+async def get_current_user_ws(websocket: WebSocket, token: str) -> UserRead | None:
+    from jose import JWTError
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid JWT")
+            await websocket.close(code=1008)
+            return None
 
         async with async_session() as db:
             user = await db.get(User, user_id)
             if user is None:
-                raise HTTPException(status_code=401, detail="User not found")
+                await websocket.close(code=1008)
+                return None
             return UserRead.model_validate(user)
 
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        await websocket.close(code=1008)
+        return None
 
 
 async def get_current_user(

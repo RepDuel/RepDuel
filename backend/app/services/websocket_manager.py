@@ -1,3 +1,5 @@
+# backend/app/services/websocket_manager.py
+
 import json
 from typing import Dict, List
 from fastapi import WebSocket
@@ -29,5 +31,14 @@ class WebSocketManager:
 
     async def broadcast(self, message: dict, channel_id: UUID):
         connections = self.active_connections.get(channel_id, [])
+        disconnected = []
         for connection in connections:
-            await connection.send_text(json.dumps(message))
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception as e:
+                print(f"Broadcast error to {channel_id}: {e}")
+                disconnected.append(connection)
+        for dc in disconnected:
+            connections.remove(dc)
+        if not connections:
+            self.active_connections.pop(channel_id, None)

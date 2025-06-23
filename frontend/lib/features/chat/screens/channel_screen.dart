@@ -28,47 +28,67 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
   @override
   void initState() {
     super.initState();
+    print('ChannelScreen.initState() called for channelId: ${widget.channelId}');
     _initializeSocket();
   }
 
   Future<void> _initializeSocket() async {
+    print('Initializing WebSocket connection...');
     final authState = ref.read(authProvider);
     final user = authState.user;
-    if (user == null) return;
+    if (user == null) {
+      print('No authenticated user found, aborting WebSocket initialization.');
+      return;
+    }
 
     final token = await _storage.read(key: 'authToken');
-    if (token == null) return;
+    if (token == null) {
+      print('No auth token found, aborting WebSocket initialization.');
+      return;
+    }
 
     const baseUrl = String.fromEnvironment('WS_BASE_URL', defaultValue: 'ws://localhost:8000');
+    print('Using WebSocket baseUrl: $baseUrl');
     final socket = MessageSocketService(baseUrl: baseUrl, token: token);
+    print('Connecting to WebSocket with channelId: ${widget.channelId}');
     socket.connect(widget.channelId);
     _socketService = socket;
 
     socket.messages.listen((data) {
       try {
+        print('Received message from WebSocket stream: $data');
         final message = data;
         ref.read(messageListProvider(widget.channelId).notifier).addMessage(message);
-      } catch (e) {
-        // Ignore malformed messages
+      } catch (e, stack) {
+        print('Error processing incoming message: $e\n$stack');
       }
+    }, onError: (error) {
+      print('WebSocket stream error: $error');
+    }, onDone: () {
+      print('WebSocket stream closed');
     });
   }
 
   void _sendMessage() {
     final text = _controller.text.trim();
-    if (text.isEmpty || _socketService == null) return;
+    if (text.isEmpty || _socketService == null) {
+      print('Attempted to send empty message or socket not connected.');
+      return;
+    }
 
     final payload = jsonEncode({
       'content': text,
       'channel_id': widget.channelId,
     });
 
+    print('Sending message: $payload');
     _socketService!.sendMessage(payload);
     _controller.clear();
   }
 
   @override
   void dispose() {
+    print('Disposing ChannelScreen and disconnecting WebSocket');
     _socketService?.disconnect();
     _controller.dispose();
     super.dispose();
@@ -87,6 +107,7 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
           Expanded(
             child: messageListAsync.when(
               data: (messages) {
+                print('Rendering ${messages.length} messages');
                 return ListView.builder(
                   padding: const EdgeInsets.all(8),
                   itemCount: messages.length,
@@ -97,8 +118,14 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              loading: () {
+                print('Loading messages...');
+                return const Center(child: CircularProgressIndicator());
+              },
+              error: (e, _) {
+                print('Error loading messages: $e');
+                return Center(child: Text('Error: $e'));
+              },
             ),
           ),
           MessageInputBar(

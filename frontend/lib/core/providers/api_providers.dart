@@ -33,7 +33,14 @@ final messageApiProvider = Provider<MessageApiService>((ref) {
   return MessageApiService(httpClient);
 });
 
+
 final httpClientProvider = Provider<HttpClient>((ref) {
-  final dio = Dio(); // Optionally configure base URL, interceptors, etc.
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: 'http://localhost:8000/api/v1',
+      connectTimeout: Duration(seconds: 5),   // Use Duration here
+      receiveTimeout: Duration(seconds: 3),   // Use Duration here
+    ),
+  );
   return HttpClient(dio);
 });

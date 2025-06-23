@@ -6,7 +6,6 @@ import 'package:logger/logger.dart';
 import '../services/secure_storage_service.dart';
 import 'package:frontend/core/providers/api_providers.dart';
 
-
 final logger = Logger();
 
 final webSocketProvider = Provider.family<WebSocketService, String>((ref, channelId) {
@@ -25,6 +24,7 @@ class WebSocketService {
   });
 
   void connect({required void Function(Map<String, dynamic>) onMessage}) async {
+    logger.i('Starting WebSocket connection for channelId: $channelId');
     final token = await secureStorage.readToken();
     if (token == null) {
       logger.w('No token available for WebSocket connection.');
@@ -33,28 +33,47 @@ class WebSocketService {
 
     final uri = Uri.parse('ws://localhost:8000/ws/messages/$channelId')
         .replace(queryParameters: {'token': token});
+    logger.i('Connecting to WebSocket URL: $uri');
 
-    _channel = WebSocketChannel.connect(uri);
+    try {
+      _channel = WebSocketChannel.connect(uri);
+    } catch (e, stackTrace) {
+      logger.e('Failed to connect to WebSocket', error: e, stackTrace: stackTrace);
+      return;
+    }
 
     _channel!.stream.listen(
       (message) {
-        final data = jsonDecode(message);
-        onMessage(data);
+        logger.i('Received raw message: $message');
+        try {
+          final data = jsonDecode(message);
+          onMessage(data);
+        } catch (e, stackTrace) {
+          logger.e('Failed to decode WebSocket message', error: e, stackTrace: stackTrace);
+        }
       },
-      onError: (error) => logger.e('WebSocket error: $error'),
-      onDone: () => logger.i('WebSocket closed.'),
+      onError: (error, stackTrace) {
+        logger.e('WebSocket error', error: error, stackTrace: stackTrace);
+      },
+      onDone: () {
+        logger.i('WebSocket closed.');
+      },
+      cancelOnError: true,
     );
   }
 
   void sendMessage(Map<String, dynamic> message) {
     if (_channel != null) {
-      _channel!.sink.add(jsonEncode(message));
+      final encoded = jsonEncode(message);
+      logger.i('Sending message: $encoded');
+      _channel!.sink.add(encoded);
     } else {
-      logger.w('WebSocket not connected.');
+      logger.w('WebSocket not connected. Cannot send message.');
     }
   }
 
   void disconnect() {
+    logger.i('Disconnecting WebSocket for channelId: $channelId');
     _channel?.sink.close();
     _channel = null;
   }

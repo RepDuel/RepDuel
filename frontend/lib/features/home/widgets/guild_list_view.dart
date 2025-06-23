@@ -31,7 +31,7 @@ class GuildListView extends StatelessWidget {
               child: CircleAvatar(
                 radius: 28,
                 backgroundColor: isSelected ? Colors.blueAccent : Colors.grey[800],
-                backgroundImage: NetworkImage(guild.iconUrl ?? ''),
+                backgroundImage: NetworkImage(guild.iconUrl ?? 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg'),
                 child: guild.iconUrl == null
                     ? Text(
                         guild.name[0].toUpperCase(),

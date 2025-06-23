@@ -1,3 +1,5 @@
+# backend/app/services/channel_service.py
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.channel import Channel
