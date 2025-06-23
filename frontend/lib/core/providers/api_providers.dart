@@ -43,17 +43,28 @@ final httpClientProvider = Provider<HttpClient>((ref) {
     ),
   );
 
-  // Add an interceptor to attach Authorization header on every request
+  // Watch the token once here so it updates when token changes
+  final token = ref.watch(authProvider).token;
+
   dio.interceptors.add(
     InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        // Get the token from authProvider's current state
-        final authState = ref.read(authProvider);
-        final token = authState.token;
+      onRequest: (options, handler) {
+        print('Adding Authorization header with token: $token');
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
+        } else {
+          print('No valid token found, not adding Authorization header');
         }
+        print('Request headers: ${options.headers}');
         return handler.next(options);
+      },
+      onError: (DioError error, handler) {
+        print('Request error: ${error.response?.statusCode} - ${error.message}');
+        return handler.next(error);
+      },
+      onResponse: (response, handler) {
+        print('Response received: ${response.statusCode} ${response.data}');
+        return handler.next(response);
       },
     ),
   );
