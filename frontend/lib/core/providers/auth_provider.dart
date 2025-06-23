@@ -12,30 +12,30 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(authApi, secureStorage);
 });
 
-final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  final authApi = ref.read(authApiProvider);
-  final secureStorage = ref.read(secureStorageProvider);
-  return AuthNotifier(authApi, secureStorage);
-});
+final authStateProvider = authProvider; // You can reuse the same provider instead of redefining
 
 class AuthState {
   final User? user;
+  final String? token;
   final bool isLoading;
   final String? error;
 
   AuthState({
     this.user,
+    this.token,
     this.isLoading = false,
     this.error,
   });
 
   AuthState copyWith({
     User? user,
+    String? token,
     bool? isLoading,
     String? error,
   }) {
     return AuthState(
       user: user ?? this.user,
+      token: token ?? this.token,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -46,8 +46,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthApiService _authApi;
   final SecureStorageService _secureStorage;
 
-  AuthNotifier(this._authApi, this._secureStorage)
-      : super(AuthState()) {
+  AuthNotifier(this._authApi, this._secureStorage) : super(AuthState()) {
     loadUserFromToken();
   }
 
@@ -59,7 +58,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await _secureStorage.writeToken(token);
         final user = await _authApi.getMe();
         if (user != null) {
-          state = AuthState(user: user, isLoading: false);
+          state = AuthState(user: user, token: token, isLoading: false);
           return true;
         }
       }
@@ -98,10 +97,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       try {
         final user = await _authApi.getMe();
         if (user != null) {
-          state = AuthState(user: user);
+          state = AuthState(user: user, token: token);
         }
       } catch (_) {
-        // silently fail
+        // silently fail on error
       }
     }
   }

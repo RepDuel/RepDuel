@@ -23,9 +23,14 @@ class MyApp extends ConsumerWidget {
     return MaterialApp(
       title: 'YavaSuite',
       theme: ThemeData.dark(),
-      home: authState.user == null
-          ? const LoginScreen()
-          : const HomeScreen(),
+      debugShowCheckedModeBanner: false, // Hide debug banner for cleaner UI
+      home: authState.isLoading
+          ? const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            )
+          : authState.user == null
+              ? const LoginScreen()
+              : const HomeScreen(),
     );
   }
 }
