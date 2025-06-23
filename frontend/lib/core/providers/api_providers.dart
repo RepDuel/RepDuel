@@ -13,7 +13,7 @@ final secureStorageProvider = Provider<SecureStorageService>((ref) {
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final secureStorage = ref.watch(secureStorageProvider);
-  const baseUrl = 'http://localhost:8000/api/v1'; // Replace with your prod URL if needed
+  const baseUrl = 'http://localhost:8000'; // Replace with your prod URL if needed
   return ApiClient(baseUrl: baseUrl, secureStorage: secureStorage);
 });
 
@@ -37,7 +37,7 @@ final messageApiProvider = Provider<MessageApiService>((ref) {
 final httpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: 'http://localhost:8000/api/v1',
+      baseUrl: 'http://localhost:8000/',
       connectTimeout: Duration(seconds: 5),   // Use Duration here
       receiveTimeout: Duration(seconds: 3),   // Use Duration here
     ),
