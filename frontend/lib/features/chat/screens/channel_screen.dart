@@ -41,7 +41,9 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
       return;
     }
 
-    final token = await _storage.read(key: 'authToken');
+    print('Attempting to read auth token from storage...');
+    final token = await _storage.read(key: 'auth_token');
+    print('Token read from storage: $token');
     if (token == null) {
       print('No auth token found, aborting WebSocket initialization.');
       return;

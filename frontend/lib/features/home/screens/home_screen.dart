@@ -60,14 +60,14 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedChannel = null;
       channels = [
         Channel(
-          id: 'general',
+          id: 'a962e33f-51c6-4bc7-89b0-1587dcd82213',
           name: 'general',
           guildId: guild.id,
           createdAt: now,
           updatedAt: now,
         ),
         Channel(
-          id: 'random',
+          id: 'b372f44a-3abc-4e27-96db-7a1a85b0c7f3',
           name: 'random',
           guildId: guild.id,
           createdAt: now,
