@@ -28,53 +28,53 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
   @override
   void initState() {
     super.initState();
-    print('ChannelScreen.initState() called for channelId: ${widget.channelId}');
+    debugPrint('ChannelScreen.initState() called for channelId: ${widget.channelId}'); // Changed to debugPrint
     _initializeSocket();
   }
 
   Future<void> _initializeSocket() async {
-    print('Initializing WebSocket connection...');
+    debugPrint('Initializing WebSocket connection...'); // Changed to debugPrint
     final authState = ref.read(authProvider);
     final user = authState.user;
     if (user == null) {
-      print('No authenticated user found, aborting WebSocket initialization.');
+      debugPrint('No authenticated user found, aborting WebSocket initialization.'); // Changed to debugPrint
       return;
     }
 
-    print('Attempting to read auth token from storage...');
+    debugPrint('Attempting to read auth token from storage...'); // Changed to debugPrint
     final token = await _storage.read(key: 'auth_token');
-    print('Token read from storage: $token');
+    debugPrint('Token read from storage: $token'); // Changed to debugPrint
     if (token == null) {
-      print('No auth token found, aborting WebSocket initialization.');
+      debugPrint('No auth token found, aborting WebSocket initialization.'); // Changed to debugPrint
       return;
     }
 
     const baseUrl = String.fromEnvironment('WS_BASE_URL', defaultValue: 'ws://localhost:8000');
-    print('Using WebSocket baseUrl: $baseUrl');
+    debugPrint('Using WebSocket baseUrl: $baseUrl'); // Changed to debugPrint
     final socket = MessageSocketService(baseUrl: baseUrl, token: token);
-    print('Connecting to WebSocket with channelId: ${widget.channelId}');
+    debugPrint('Connecting to WebSocket with channelId: ${widget.channelId}'); // Changed to debugPrint
     socket.connect(widget.channelId);
     _socketService = socket;
 
     socket.messages.listen((data) {
       try {
-        print('Received message from WebSocket stream: $data');
+        debugPrint('Received message from WebSocket stream: $data'); // Changed to debugPrint
         final message = data;
         ref.read(messageListProvider(widget.channelId).notifier).addMessage(message);
       } catch (e, stack) {
-        print('Error processing incoming message: $e\n$stack');
+        debugPrint('Error processing incoming message: $e\n$stack'); // Changed to debugPrint
       }
     }, onError: (error) {
-      print('WebSocket stream error: $error');
+      debugPrint('WebSocket stream error: $error'); // Changed to debugPrint
     }, onDone: () {
-      print('WebSocket stream closed');
+      debugPrint('WebSocket stream closed'); // Changed to debugPrint
     });
   }
 
   void _sendMessage() {
     final text = _controller.text.trim();
     if (text.isEmpty || _socketService == null) {
-      print('Attempted to send empty message or socket not connected.');
+      debugPrint('Attempted to send empty message or socket not connected.'); // Changed to debugPrint
       return;
     }
 
@@ -83,14 +83,14 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
       'channel_id': widget.channelId,
     });
 
-    print('Sending message: $payload');
+    debugPrint('Sending message: $payload'); // Changed to debugPrint
     _socketService!.sendMessage(payload);
     _controller.clear();
   }
 
   @override
   void dispose() {
-    print('Disposing ChannelScreen and disconnecting WebSocket');
+    debugPrint('Disposing ChannelScreen and disconnecting WebSocket'); // Changed to debugPrint
     _socketService?.disconnect();
     _controller.dispose();
     super.dispose();
@@ -109,7 +109,7 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
           Expanded(
             child: messageListAsync.when(
               data: (messages) {
-                print('Rendering ${messages.length} messages');
+                debugPrint('Rendering ${messages.length} messages'); // Changed to debugPrint
                 return ListView.builder(
                   padding: const EdgeInsets.all(8),
                   itemCount: messages.length,
@@ -121,11 +121,11 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
                 );
               },
               loading: () {
-                print('Loading messages...');
+                debugPrint('Loading messages...'); // Changed to debugPrint
                 return const Center(child: CircularProgressIndicator());
               },
               error: (e, _) {
-                print('Error loading messages: $e');
+                debugPrint('Error loading messages: $e'); // Changed to debugPrint
                 return Center(child: Text('Error: $e'));
               },
             ),

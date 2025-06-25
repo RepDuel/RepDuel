@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 import '../../core/models/message.dart';
 
 class MessageSocketService {
@@ -16,10 +16,10 @@ class MessageSocketService {
   MessageSocketService({required this.baseUrl, required this.token});
 
   void connect(String channelId) {
-    print('MessageSocketService.connect() called with channelId: $channelId');
+    debugPrint('MessageSocketService.connect() called with channelId: $channelId'); // Changed to debugPrint
     final path = '/ws/$channelId?token=$token';
     final url = Uri.parse('$baseUrl$path');
-    print("Connecting to WebSocket: $url");
+    debugPrint("Connecting to WebSocket: $url"); // Changed to debugPrint
 
     try {
       _channel = WebSocketChannel.connect(url);
@@ -31,10 +31,10 @@ class MessageSocketService {
     _channel!.stream.listen(
       (event) {
         try {
-          print('Received raw message: $event');
+          debugPrint('Received raw message: $event'); // Changed to debugPrint
           final data = jsonDecode(event);
           final message = Message.fromJson(data);
-          print('Parsed message: $message');
+          debugPrint('Parsed message: $message'); // Changed to debugPrint
           _controller.add(message);
         } catch (e, stack) {
           debugPrint('WebSocket message parse error: $e\n$stack');
@@ -55,7 +55,7 @@ class MessageSocketService {
       debugPrint('WebSocket channel is not connected. Cannot send message.');
       return;
     }
-    print('Sending message: $message');
+    debugPrint('Sending message: $message'); // Changed to debugPrint
     _channel!.sink.add(message);
   }
 

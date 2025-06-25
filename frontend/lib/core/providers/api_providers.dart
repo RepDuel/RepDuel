@@ -1,5 +1,8 @@
+// lib/core/providers/api_providers.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 
 import '../api/api_client.dart';
 import '../api/auth_api_service.dart';
@@ -7,7 +10,7 @@ import '../api/guild_api_service.dart';
 import '../services/secure_storage_service.dart';
 import '../api/message_api_service.dart';
 import '../utils/http_client.dart';
-import 'auth_provider.dart';  // import to access authProvider
+import 'auth_provider.dart'; // import to access authProvider
 
 final secureStorageProvider = Provider<SecureStorageService>((ref) {
   return SecureStorageService();
@@ -38,8 +41,8 @@ final httpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: 'http://localhost:8000/',
-      connectTimeout: Duration(seconds: 5),
-      receiveTimeout: Duration(seconds: 3),
+      connectTimeout: const Duration(seconds: 5), // Added const
+      receiveTimeout: const Duration(seconds: 3), // Added const
     ),
   );
 
@@ -49,21 +52,21 @@ final httpClientProvider = Provider<HttpClient>((ref) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
-        print('Adding Authorization header with token: $token');
+        debugPrint('Adding Authorization header with token: $token'); // Changed to debugPrint
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         } else {
-          print('No valid token found, not adding Authorization header');
+          debugPrint('No valid token found, not adding Authorization header'); // Changed to debugPrint
         }
-        print('Request headers: ${options.headers}');
+        debugPrint('Request headers: ${options.headers}'); // Changed to debugPrint
         return handler.next(options);
       },
-      onError: (DioError error, handler) {
-        print('Request error: ${error.response?.statusCode} - ${error.message}');
+      onError: (DioException error, handler) { // Changed DioError to DioException
+        debugPrint('Request error: ${error.response?.statusCode} - ${error.message}'); // Changed to debugPrint
         return handler.next(error);
       },
       onResponse: (response, handler) {
-        print('Response received: ${response.statusCode} ${response.data}');
+        debugPrint('Response received: ${response.statusCode} ${response.data}'); // Changed to debugPrint
         return handler.next(response);
       },
     ),
