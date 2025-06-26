@@ -1,12 +1,8 @@
-// frontend/lib/core/api/guild_api_service.dart
-
-import 'dart:convert';
-
 import '../models/guild.dart';
-import 'api_client.dart';
+import '../utils/http_client.dart';
 
 class GuildApiService {
-  final ApiClient _client;
+  final HttpClient _client;
 
   GuildApiService(this._client);
 
@@ -14,7 +10,7 @@ class GuildApiService {
     final response = await _client.get('/guilds/');
 
     if (response.statusCode == 200) {
-      final List<dynamic> jsonList = jsonDecode(response.body);
+      final List<dynamic> jsonList = response.data;
       return jsonList.map((json) => Guild.fromJson(json)).toList();
     }
 
@@ -24,12 +20,11 @@ class GuildApiService {
   Future<Guild?> createGuild(String name) async {
     final response = await _client.post(
       '/guilds/',
-      {'name': name},
+      data: {'name': name},
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      final json = jsonDecode(response.body);
-      return Guild.fromJson(json);
+      return Guild.fromJson(response.data);
     }
 
     return null;

@@ -1,18 +1,24 @@
-// lib/core/providers/auth_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
+
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
-import 'api_providers.dart';
 import '../services/secure_storage_service.dart';
+import 'api_providers.dart';
 
+// Main authentication state provider
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  final authApi = ref.read(authApiProvider);
+  final publicClient = ref.read(publicHttpClientProvider);
+  final privateClient = ref.read(privateHttpClientProvider);
+  final authApi = AuthApiService(
+    publicClient: publicClient,
+    privateClient: privateClient,
+  );
   final secureStorage = ref.read(secureStorageProvider);
   return AuthNotifier(authApi, secureStorage);
 });
 
-final authStateProvider = authProvider; // You can reuse the same provider instead of redefining
+final authStateProvider = authProvider;
 
 class AuthState {
   final User? user;
@@ -47,22 +53,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final SecureStorageService _secureStorage;
 
   AuthNotifier(this._authApi, this._secureStorage) : super(AuthState()) {
-    loadUserFromToken();
+    _initAuth();
+  }
+
+  Future<void> _initAuth() async {
+    await loadUserFromToken();
   }
 
   Future<bool> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final token = await _authApi.login(email, password);
-      if (token != null && token.isNotEmpty) {
-        await _secureStorage.writeToken(token);
-        final user = await _authApi.getMe();
+      final tokenResponse = await _authApi.login(email, password);
+      if (tokenResponse != null && tokenResponse.accessToken.isNotEmpty) {
+        await _secureStorage.writeToken(tokenResponse.accessToken);
+        final user = await _authApi.getMe(token: tokenResponse.accessToken);
         if (user != null) {
-          state = AuthState(user: user, token: token, isLoading: false);
+          state = AuthState(user: user, token: tokenResponse.accessToken, isLoading: false);
           return true;
         }
       }
-      state = state.copyWith(isLoading: false, error: 'Invalid credentials');
+      state = state.copyWith(isLoading: false, error: 'Authentication failed');
       return false;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -75,7 +85,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _authApi.register(username, email, password);
       if (user != null) {
-        state = AuthState(user: user, isLoading: false);
+        state = state.copyWith(isLoading: false, error: null);
         return true;
       }
       state = state.copyWith(isLoading: false, error: 'Registration failed');
@@ -92,15 +102,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> loadUserFromToken() async {
-    final token = await _secureStorage.readToken();
-    if (token != null && token.isNotEmpty) {
+    final tokenString = await _secureStorage.readToken();
+    if (tokenString != null && tokenString.isNotEmpty) {
       try {
-        final user = await _authApi.getMe();
+        final user = await _authApi.getMe(token: tokenString);
         if (user != null) {
-          state = AuthState(user: user, token: token);
+          state = AuthState(user: user, token: tokenString);
+        } else {
+          await _secureStorage.deleteToken();
+          state = AuthState();
         }
-      } catch (_) {
-        // silently fail on error
+      } catch (e) {
+        debugPrint('Error loading user from token: $e');
+        await _secureStorage.deleteToken();
+        state = AuthState();
       }
     }
   }

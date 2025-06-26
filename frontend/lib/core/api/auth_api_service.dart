@@ -1,60 +1,56 @@
-// frontend/lib/core/api/auth_api_service.dart
-
-import 'dart:convert';
+import 'package:dio/dio.dart';
 
 import '../models/user.dart';
-import 'api_client.dart';
+import '../models/token.dart';
+import '../utils/http_client.dart';
 
 class AuthApiService {
-  final ApiClient _client;
+  final HttpClient _publicClient;
+  final HttpClient _privateClient;
 
-  AuthApiService(this._client);
+  AuthApiService({
+    required HttpClient publicClient,
+    required HttpClient privateClient,
+  })  : _publicClient = publicClient,
+        _privateClient = privateClient;
+
+  Future<Token?> login(String email, String password) async {
+    final response = await _publicClient.post(
+      '/users/login',
+      data: {'email': email, 'password': password},
+    );
+
+    if (response.statusCode == 200) {
+      return Token.fromJson(response.data);
+    }
+    return null;
+  }
 
   Future<User?> register(String username, String email, String password) async {
-    final response = await _client.post(
+    final response = await _publicClient.post(
       '/users/',
-      {
-        'username': username,
-        'email': email,
-        'password': password,
-      },
-      auth: false,
+      data: {'username': username, 'email': email, 'password': password},
     );
 
-    if (response.statusCode == 201) {
-      final json = jsonDecode(response.body);
-      return User.fromJson(json);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return User.fromJson(response.data);
     }
-
     return null;
   }
 
-  Future<String?> login(String email, String password) async {
-    final response = await _client.post(
-      '/users/login',
-      {
-        'email': email,
-        'password': password,
-      },
-      auth: false,
-    );
-
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      return json['access_token'];
+  // Update getMe to optionally accept a token for direct use
+  Future<User?> getMe({String? token}) async {
+    Options? options;
+    if (token != null) {
+      options = Options(headers: {'Authorization': 'Bearer $token'});
     }
 
-    return null;
-  }
-
-  Future<User?> getMe() async {
-    final response = await _client.get('/users/me');
+    // Always use the private client, but pass options if token is provided directly
+    final response = await _privateClient.get('/users/me', options: options);
 
     if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      return User.fromJson(json);
+      return User.fromJson(response.data);
     }
-
     return null;
   }
 }

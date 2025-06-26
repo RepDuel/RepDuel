@@ -1,5 +1,3 @@
-// frontend/lib/core/utils/http_client.dart
-
 import 'package:dio/dio.dart';
 
 class HttpClient {
@@ -7,19 +5,12 @@ class HttpClient {
 
   HttpClient(this._dio);
 
-  Future<Response> get(String path, {Map<String, dynamic>? queryParams}) {
-    return _dio.get(path, queryParameters: queryParams);
+  Future<Response> get(String path, {Options? options}) {
+    return _dio.get(path, options: options);
   }
 
-  Future<Response> post(String path, {dynamic data}) {
-    return _dio.post(path, data: data);
-  }
-
-  Future<Response> put(String path, {dynamic data}) {
-    return _dio.put(path, data: data);
-  }
-
-  Future<Response> delete(String path) {
-    return _dio.delete(path);
+  // Add the ability to pass 'Options' to the post method
+  Future<Response> post(String path, {Object? data, Options? options}) {
+    return _dio.post(path, data: data, options: options);
   }
 }
