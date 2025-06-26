@@ -17,7 +17,12 @@ class AuthApiService {
   Future<Token?> login(String email, String password) async {
     final response = await _publicClient.post(
       '/users/login',
-      data: {'email': email, 'password': password},
+      // The form data expects a 'username' key for the email
+      data: {'username': email, 'password': password},
+      // Set the correct content type for the form data
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -38,14 +43,11 @@ class AuthApiService {
     return null;
   }
 
-  // Update getMe to optionally accept a token for direct use
   Future<User?> getMe({String? token}) async {
     Options? options;
     if (token != null) {
       options = Options(headers: {'Authorization': 'Bearer $token'});
     }
-
-    // Always use the private client, but pass options if token is provided directly
     final response = await _privateClient.get('/users/me', options: options);
 
     if (response.statusCode == 200) {

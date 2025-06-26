@@ -7,31 +7,28 @@ import '../services/secure_storage_service.dart';
 import '../api/message_api_service.dart';
 import '../utils/http_client.dart';
 import '../providers/auth_provider.dart';
-import '../api/auth_interceptor.dart'; // Import the new interceptor
+import '../api/auth_interceptor.dart';
+import '../models/guild.dart';
 
 final secureStorageProvider = Provider<SecureStorageService>((ref) {
   return SecureStorageService();
 });
 
-// Base Dio options for both clients
 final dioBaseOptionsProvider = Provider<BaseOptions>((ref) => BaseOptions(
-      baseUrl: 'http://localhost:8000/',
+      baseUrl: 'http://localhost:8000/api/v1',
       connectTimeout: const Duration(seconds: 5),
       receiveTimeout: const Duration(seconds: 3),
     ));
 
-// Client for public endpoints (login, register) - NO interceptor
 final publicHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
   return HttpClient(dio);
 });
 
-// Provider for the custom interceptor
 final authInterceptorProvider = Provider<AuthInterceptor>((ref) {
   return AuthInterceptor(ref);
 });
 
-// Client for private, authenticated endpoints
 final privateHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
   dio.interceptors.add(ref.read(authInterceptorProvider));
@@ -58,4 +55,9 @@ final authTokenProvider = Provider<String?>((ref) {
 final messageApiProvider = Provider<MessageApiService>((ref) {
   final client = ref.read(privateHttpClientProvider);
   return MessageApiService(client);
+});
+
+final myGuildsProvider = FutureProvider<List<Guild>>((ref) async {
+  final guildService = ref.watch(guildApiProvider);
+  return guildService.getMyGuilds();
 });

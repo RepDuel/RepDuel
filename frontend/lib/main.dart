@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'features/auth/screens/login_screen.dart';
-import 'features/home/screens/home_screen.dart';
-import 'core/providers/auth_provider.dart';
+import 'router/app_router.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(
@@ -13,24 +12,21 @@ void main() {
   );
 }
 
+// Convert MyApp to a ConsumerWidget to access the router provider.
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
+    // Watch the router provider to get the GoRouter instance.
+    final router = ref.watch(routerProvider);
 
-    return MaterialApp(
+    // Use MaterialApp.router to integrate GoRouter.
+    return MaterialApp.router(
       title: 'YavaSuite',
-      theme: ThemeData.dark(),
-      debugShowCheckedModeBanner: false, // Hide debug banner for cleaner UI
-      home: authState.isLoading
-          ? const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            )
-          : authState.user == null
-              ? const LoginScreen()
-              : const HomeScreen(),
+      theme: AppTheme.darkTheme,
+      debugShowCheckedModeBanner: false,
+      routerConfig: router,
     );
   }
 }

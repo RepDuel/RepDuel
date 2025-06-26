@@ -1,108 +1,57 @@
-// lib/features/home/screens/home_screen.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/channel.dart';
 import '../../../core/models/guild.dart';
-import '../../chat/screens/channel_screen.dart';
+import '../../chat/screens/channel_screen.dart'; // Keep for now
 import '../widgets/channel_list_view.dart';
 import '../widgets/guild_list_view.dart';
 
-class HomeScreen extends StatefulWidget {
+// Provider to manage the currently selected guild
+final selectedGuildProvider = StateProvider<Guild?>((ref) => null);
+
+// Provider to manage the currently selected channel
+final selectedChannelProvider = StateProvider<Channel?>((ref) => null);
+
+// Convert HomeScreen to a ConsumerWidget
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the state providers for selected guild and channel
+    final selectedGuild = ref.watch(selectedGuildProvider);
+    final selectedChannel = ref.watch(selectedChannelProvider);
 
-class _HomeScreenState extends State<HomeScreen> {
-  List<Guild> guilds = [];
-  List<Channel> channels = [];
-  Guild? selectedGuild;
-  Channel? selectedChannel;
+    // This is a placeholder for channel data, which will be fetched later
+    final List<Channel> channels = []; // Empty for now
 
-  @override
-  void initState() {
-    super.initState();
-    _loadMockData();
-  }
-
-  void _loadMockData() {
-    final now = DateTime.now();
-
-    guilds = [
-      Guild(
-        id: '1',
-        name: 'Guild One',
-        iconUrl: null,
-        ownerId: 'user-123',
-        createdAt: now,
-        updatedAt: now,
-      ),
-      Guild(
-        id: '2',
-        name: 'Guild Two',
-        iconUrl: null,
-        ownerId: 'user-123',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ];
-
-    _onGuildSelected(guilds.first);
-  }
-
-  void _onGuildSelected(Guild guild) {
-    final now = DateTime.now();
-
-    setState(() {
-      selectedGuild = guild;
-      selectedChannel = null;
-      channels = [
-        Channel(
-          id: 'a962e33f-51c6-4bc7-89b0-1587dcd82213',
-          name: 'general',
-          guildId: guild.id,
-          createdAt: now,
-          updatedAt: now,
-        ),
-        Channel(
-          id: 'b372f44a-3abc-4e27-96db-7a1a85b0c7f3',
-          name: 'random',
-          guildId: guild.id,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
-      selectedChannel = channels.first;
-    });
-  }
-
-  void _onChannelSelected(Channel channel) {
-    setState(() {
-      selectedChannel = channel;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       body: Row(
         children: [
           GuildListView(
-            guilds: guilds,
-            onGuildSelected: _onGuildSelected,
             selectedGuild: selectedGuild,
+            onGuildSelected: (guild) {
+              // When a guild is selected, update the provider's state
+              ref.read(selectedGuildProvider.notifier).state = guild;
+              // In the future, this is where you would trigger fetching channels for this guild
+              ref.read(selectedChannelProvider.notifier).state = null; // Reset selected channel
+            },
           ),
-          ChannelListView(
-            channels: channels,
-            onChannelSelected: _onChannelSelected,
-            selectedChannel: selectedChannel,
-          ),
+          if (selectedGuild != null)
+            ChannelListView(
+              channels: channels, // Pass the (currently empty) channel list
+              selectedChannel: selectedChannel,
+              onChannelSelected: (channel) {
+                ref.read(selectedChannelProvider.notifier).state = channel;
+              },
+            ),
           Expanded(
-            child: selectedChannel == null
-                ? const Center(child: Text('Select a channel'))
-                : ChannelScreen(channelId: selectedChannel!.id),
+            child: selectedChannel != null
+                // If a channel is selected, show the ChannelScreen
+                ? ChannelScreen(channelId: selectedChannel.id)
+                // Otherwise, show a placeholder
+                : const Center(child: Text('Select a channel to start chatting')),
           ),
         ],
       ),

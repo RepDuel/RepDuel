@@ -1,9 +1,9 @@
-# backend/app/api/v1/users.py
-
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Annotated
 
-from app.schemas.user import UserCreate, UserRead, UserLogin
+from app.schemas.user import UserCreate, UserRead
 from app.schemas.token import Token
 from app.services.user_service import create_user, get_user_by_email, authenticate_user
 from app.core.security import create_access_token
@@ -25,10 +25,14 @@ async def register_user(user_in: UserCreate, db: AsyncSession = Depends(get_db))
     user = await create_user(db, user_in)
     return user
 
-
+# CORRECTED LOGIN ENDPOINT SIGNATURE
 @router.post("/login", response_model=Token)
-async def login_user(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
-    user = await authenticate_user(db, user_in.email, user_in.password)
+async def login_user(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: AsyncSession = Depends(get_db)
+):
+    # Authenticate using form_data.username (which is the email) and form_data.password
+    user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

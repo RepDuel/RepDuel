@@ -3,7 +3,7 @@ import '../../../core/models/channel.dart';
 
 class ChannelListView extends StatelessWidget {
   final List<Channel> channels;
-  final ValueChanged<Channel> onChannelSelected;
+  final Function(Channel) onChannelSelected;
   final Channel? selectedChannel;
 
   const ChannelListView({
@@ -17,26 +17,15 @@ class ChannelListView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 240,
-      color: Colors.grey[850],
+      color: Theme.of(context).canvasColor,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: channels.length,
         itemBuilder: (context, index) {
           final channel = channels[index];
-          final isSelected = channel.id == selectedChannel?.id;
-
           return ListTile(
-            title: Text(
-              '# ${channel.name}',
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white70,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
+            title: Text('# ${channel.name}'),
             onTap: () => onChannelSelected(channel),
-            selected: isSelected,
-            selectedTileColor: Colors.grey[700],
-            dense: true,
+            selected: selectedChannel?.id == channel.id,
           );
         },
       ),

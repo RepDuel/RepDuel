@@ -8,8 +8,7 @@ from app.models.user import User
 from app.services.user_service import get_user_by_id
 from app.core.config import settings
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
