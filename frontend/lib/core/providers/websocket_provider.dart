@@ -4,7 +4,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:logger/logger.dart';
 
 import '../services/secure_storage_service.dart';
-import 'package:frontend/core/providers/api_providers.dart';
+import 'api_providers.dart';
 
 final logger = Logger();
 
@@ -31,7 +31,7 @@ class WebSocketService {
       return;
     }
 
-    final uri = Uri.parse('ws://localhost:8000/ws/messages/$channelId')
+    final uri = Uri.parse('ws://localhost:8000/api/v1/ws/$channelId')
         .replace(queryParameters: {'token': token});
     logger.i('Connecting to WebSocket URL: $uri');
 

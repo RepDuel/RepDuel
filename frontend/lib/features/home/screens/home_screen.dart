@@ -3,28 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/channel.dart';
 import '../../../core/models/guild.dart';
-import '../../chat/screens/channel_screen.dart'; // Keep for now
+import '../../../core/providers/api_providers.dart';
+import '../../chat/screens/channel_screen.dart';
 import '../widgets/channel_list_view.dart';
 import '../widgets/guild_list_view.dart';
 
-// Provider to manage the currently selected guild
+// Providers to manage the currently selected guild and channel
 final selectedGuildProvider = StateProvider<Guild?>((ref) => null);
-
-// Provider to manage the currently selected channel
 final selectedChannelProvider = StateProvider<Channel?>((ref) => null);
 
-// Convert HomeScreen to a ConsumerWidget
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the state providers for selected guild and channel
     final selectedGuild = ref.watch(selectedGuildProvider);
     final selectedChannel = ref.watch(selectedChannelProvider);
-
-    // This is a placeholder for channel data, which will be fetched later
-    final List<Channel> channels = []; // Empty for now
 
     return Scaffold(
       body: Row(
@@ -32,25 +26,44 @@ class HomeScreen extends ConsumerWidget {
           GuildListView(
             selectedGuild: selectedGuild,
             onGuildSelected: (guild) {
-              // When a guild is selected, update the provider's state
               ref.read(selectedGuildProvider.notifier).state = guild;
-              // In the future, this is where you would trigger fetching channels for this guild
-              ref.read(selectedChannelProvider.notifier).state = null; // Reset selected channel
+              ref.read(selectedChannelProvider.notifier).state = null; // Deselect channel on new guild click
             },
           ),
-          if (selectedGuild != null)
-            ChannelListView(
-              channels: channels, // Pass the (currently empty) channel list
-              selectedChannel: selectedChannel,
-              onChannelSelected: (channel) {
-                ref.read(selectedChannelProvider.notifier).state = channel;
-              },
-            ),
+          // Use a Builder to only try fetching channels if a guild is selected
+          Builder(
+            builder: (context) {
+              if (selectedGuild == null) {
+                // If no guild is selected, show an empty, styled container
+                return Container(width: 240, color: Theme.of(context).canvasColor);
+              }
+
+              // If a guild IS selected, call the provider family with its ID
+              final channelsAsyncValue = ref.watch(guildChannelsProvider(selectedGuild.id));
+
+              // Use .when to handle loading/error states for the channel list
+              return channelsAsyncValue.when(
+                loading: () => const SizedBox(
+                  width: 240,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (err, stack) => SizedBox(
+                  width: 240,
+                  child: Center(child: Text('Error: $err')),
+                ),
+                data: (channels) => ChannelListView(
+                  channels: channels,
+                  selectedChannel: selectedChannel,
+                  onChannelSelected: (channel) {
+                    ref.read(selectedChannelProvider.notifier).state = channel;
+                  },
+                ),
+              );
+            },
+          ),
           Expanded(
             child: selectedChannel != null
-                // If a channel is selected, show the ChannelScreen
                 ? ChannelScreen(channelId: selectedChannel.id)
-                // Otherwise, show a placeholder
                 : const Center(child: Text('Select a channel to start chatting')),
           ),
         ],

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // For date formatting
 import '../../../core/models/message.dart';
 
 class ChatBubble extends StatelessWidget {
   final Message message;
-  final bool isMe; // Pass in from current user context
+  final bool isMe;
 
   const ChatBubble({
     super.key,
@@ -17,9 +18,11 @@ class ChatBubble extends StatelessWidget {
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        margin: const EdgeInsets.symmetric(vertical: 4),
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         decoration: BoxDecoration(
-          color: isMe ? Colors.blue[200] : Colors.grey[300],
+          color: isMe
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -28,12 +31,13 @@ class ChatBubble extends StatelessWidget {
           children: [
             Text(
               message.content,
-              style: const TextStyle(fontSize: 16),
+              style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 4),
             Text(
-              message.createdAt.toLocal().toString(),
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              // Format the date for better readability
+              DateFormat('h:mm a').format(message.createdAt.toLocal()),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
