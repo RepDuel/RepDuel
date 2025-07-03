@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "--- Starting YavaSuite Backend ---"
+echo "--- Starting GymRank Backend ---"
 
 # Change to backend directory
 cd backend || { echo "Backend folder not found!"; exit 1; }
