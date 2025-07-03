@@ -5,15 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/home/screens/home_screen.dart';
-import '../core/providers/auth_provider.dart'; 
+import '../features/ranked/screens/ranked_screen.dart';
+import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
   final isAuthenticated = authState.token != null;
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/',
     routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const RankedScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
@@ -28,15 +33,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (BuildContext context, GoRouterState state) {
-      final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+      final isLoggingIn = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register';
 
-      if (!isAuthenticated && !isLoggingIn) {
-        return '/login';
-      }
+      // if (!isAuthenticated && !isLoggingIn) {
+      //   return '/login';
+      // }
 
-      if (isAuthenticated && isLoggingIn) {
-        return '/home';
-      }
+      // if (isAuthenticated && isLoggingIn) {
+      //   return '/home';
+      // }
 
       return null;
     },
