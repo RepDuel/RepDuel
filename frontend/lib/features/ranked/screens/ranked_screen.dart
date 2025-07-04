@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
+import 'scenario_screen.dart';
 
 class RankedScreen extends StatelessWidget {
   const RankedScreen({super.key});
@@ -108,93 +109,104 @@ class RankedScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+
             // Table rows
-            ...lifts.map((lift) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      // Name
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          lift['name']!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
+            ...lifts.map((lift) => GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ScenarioScreen(liftName: lift['name']!),
                       ),
-                      // Score
-                      Expanded(
-                        flex: 2,
-                        child: Center(
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        // Name
+                        Expanded(
+                          flex: 2,
                           child: Text(
-                            lift['score']!,
+                            lift['name']!,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                             ),
                           ),
                         ),
-                      ),
-                      // Progress
-                      Expanded(
-                        flex: 3,
-                        child: Stack(
-                          children: [
-                            Container(
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[800],
-                                borderRadius: BorderRadius.circular(4),
+                        // Score
+                        Expanded(
+                          flex: 2,
+                          child: Center(
+                            child: Text(
+                              lift['score']!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
                               ),
-                            ),
-                            Center(
-                              child: Text(
-                                lift['progress']!,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Rank
-                      Expanded(
-                        flex: 1,
-                        child: Center(
-                          child: Text(
-                            lift['rank']!,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
                             ),
                           ),
                         ),
-                      ),
-                      // Energy
-                      Expanded(
-                        flex: 1,
-                        child: Center(
-                          child: Text(
-                            lift['energy']!,
-                            style: const TextStyle(
-                              color: Colors.white,
+                        // Progress
+                        Expanded(
+                          flex: 3,
+                          child: Stack(
+                            children: [
+                              Container(
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[800],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              Center(
+                                child: Text(
+                                  lift['progress']!,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Rank
+                        Expanded(
+                          flex: 1,
+                          child: Center(
+                            child: Text(
+                              lift['rank']!,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      // Leaderboard button
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: 40,
-                        child: IconButton(
-                          icon: const Text('📊'),
-                          onPressed: () {
-                            // TODO: Implement leaderboard screen routing
-                          },
+                        // Energy
+                        Expanded(
+                          flex: 1,
+                          child: Center(
+                            child: Text(
+                              lift['energy']!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                        // Leaderboard icon
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 40,
+                          child: IconButton(
+                            icon: const Text('📊'),
+                            onPressed: () {
+                              // TODO: Implement leaderboard screen
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 )),
           ],
@@ -203,7 +215,7 @@ class RankedScreen extends StatelessWidget {
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 0,
         onTap: (index) {
-          // TODO: Implement navigation based on index
+          // TODO: Implement navigation
         },
       ),
     );
