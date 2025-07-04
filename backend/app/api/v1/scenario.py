@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.db import get_db
-from app.models import Scenario  # adjust import path if needed
-from app.schemas import ScenarioCreate, ScenarioOut  # create these in schemas.py
+from app.api.v1.deps import get_db
+from app.models.scenario import Scenario
+from app.schemas.scenario import ScenarioCreate, ScenarioOut
 
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
 

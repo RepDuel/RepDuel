@@ -1,7 +1,12 @@
-from sqlalchemy import Column, Integer, String
+# backend/app/models/scenario.py
+
+from sqlalchemy import Column, String, text
+from sqlalchemy.dialects.postgresql import UUID
 from app.db.base_class import Base
 
 class Scenario(Base):
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
+    __tablename__ = "scenarios"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
