@@ -6,6 +6,8 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
+import '../features/routines/screens/routines_screen.dart';
+import '../features/profile/screens/profile_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -13,11 +15,19 @@ final routerProvider = Provider<GoRouter>((ref) {
   final isAuthenticated = authState.token != null;
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/ranked',
     routes: [
       GoRoute(
-        path: '/',
+        path: '/ranked',
         builder: (context, state) => const RankedScreen(),
+      ),
+      GoRoute(
+        path: '/routines',
+        builder: (context, state) => const RoutinesScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
         path: '/login',
