@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-
+from uuid import UUID
 
 class ScenarioBase(BaseModel):
     name: str
@@ -27,4 +27,9 @@ class Scenario(ScenarioInDBBase):
 
 
 class ScenarioOut(ScenarioInDBBase):
-    pass
+    id: UUID
+    name: str
+    description: str | None = None
+
+    class Config:
+        from_attributes = True

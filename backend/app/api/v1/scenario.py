@@ -1,7 +1,8 @@
 # app/api/v1/scenario.py
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.api.v1.deps import get_db
 from app.models.scenario import Scenario
 from app.schemas.scenario import ScenarioCreate, ScenarioOut
@@ -9,13 +10,15 @@ from app.schemas.scenario import ScenarioCreate, ScenarioOut
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
 
 @router.get("/", response_model=list[ScenarioOut])
-def list_scenarios(db: Session = Depends(get_db)):
-    return db.query(Scenario).all()
+async def list_scenarios(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Scenario))
+    scenarios = result.scalars().all()
+    return scenarios
 
 @router.post("/", response_model=ScenarioOut)
-def create_scenario(scenario: ScenarioCreate, db: Session = Depends(get_db)):
+async def create_scenario(scenario: ScenarioCreate, db: AsyncSession = Depends(get_db)):
     db_scenario = Scenario(**scenario.dict())
     db.add(db_scenario)
-    db.commit()
-    db.refresh(db_scenario)
+    await db.commit()
+    await db.refresh(db_scenario)
     return db_scenario
