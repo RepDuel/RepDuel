@@ -1,12 +1,10 @@
-# backend/app/api/v1/standards.py
-
 from fastapi import APIRouter, HTTPException
 from typing import Optional
 from app.services.dots_service import DotsCalculator
 
-router = APIRouter(prefix="/standards", tags=["DOTs Standards"])
+router = APIRouter()
 
-@router.get("/{bodyweight_kg}")
+@router.get("/standards/{bodyweight_kg}")
 async def get_standards(
     bodyweight_kg: float,
     gender: Optional[str] = "male"

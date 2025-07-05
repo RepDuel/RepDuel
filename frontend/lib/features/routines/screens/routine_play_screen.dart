@@ -15,7 +15,7 @@ class RoutinePlayScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text('Play Routine'),
+        title: const Text('Play Routine'), // const added here
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,

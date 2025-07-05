@@ -49,7 +49,5 @@ DOTS_COEFFICIENTS: Dict[str, float] = {
 
 # Rank metadata (colors, icons, etc.)
 RANK_METADATA: Dict[str, Dict] = {
-    "Iron": {"color": "#a19d94", "description": "Beginner"},
-    "Bronze": {"color": "#cd7f32", "description": "Novice"},
-    # ... add other rank metadata
+
 }

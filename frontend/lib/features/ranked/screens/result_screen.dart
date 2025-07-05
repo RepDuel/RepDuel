@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'ranked_screen.dart';
 
 class ResultScreen extends StatelessWidget {
   final int finalScore;
@@ -48,13 +47,13 @@ class ResultScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.popUntil(context, (route) => route.isFirst);
               },
-              child: const Text('Back to Menu'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
               ),
+              child: const Text('Back to Menu'),
             ),
           ],
         ),
