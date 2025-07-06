@@ -1,3 +1,5 @@
+# backend/app/api/v1/score.py
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
@@ -50,3 +52,20 @@ async def get_user_score_history(user_id: str, scenario_id: str, db: AsyncSessio
     result = await db.execute(stmt)
     scores = result.scalars().all()
     return scores
+
+
+@router.get("/user/{user_id}/scenario/{scenario_id}/highscore", response_model=ScoreOut)
+async def get_user_high_score(user_id: str, scenario_id: str, db: AsyncSession = Depends(get_db)):
+    stmt = (
+        select(Score)
+        .where(Score.user_id == user_id, Score.scenario_id == scenario_id)
+        .order_by(Score.weight_lifted.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    score = result.scalar_one_or_none()
+
+    if score is None:
+        raise HTTPException(status_code=404, detail="No score found for this user and scenario")
+    
+    return score
