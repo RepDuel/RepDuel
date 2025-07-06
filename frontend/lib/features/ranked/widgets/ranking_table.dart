@@ -157,7 +157,6 @@ class _RankingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final lowerLift = lift.toLowerCase();
 
-    // Sort all ranks by lift standard descending
     final sortedRanks = standards.entries.toList()
       ..sort((a, b) => (b.value['lifts'][lowerLift] as num)
           .compareTo(a.value['lifts'][lowerLift] as num));
@@ -171,7 +170,6 @@ class _RankingRow extends StatelessWidget {
       }
     }
 
-    // Determine next rank and benchmark
     final currentIndex = sortedRanks.indexWhere((e) => e.key == currentRank);
     final hasNext = currentIndex > 0;
     final nextRank = hasNext ? sortedRanks[currentIndex - 1].key : null;
@@ -218,7 +216,7 @@ class _RankingRow extends StatelessWidget {
               flex: 2,
               child: Center(
                 child: Text(
-                  score.toStringAsFixed(1),
+                  RankUtils.formatKg(score),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -239,7 +237,7 @@ class _RankingRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     hasNext && nextBenchmark > score
-                        ? '${score.toStringAsFixed(1)} / ${nextBenchmark.toStringAsFixed(1)}'
+                        ? '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextBenchmark)}'
                         : 'MAX RANK',
                     style: const TextStyle(
                       color: Colors.white,

@@ -109,6 +109,10 @@ class RankUtils {
     return value.toString();
   }
 
+  static String formatKg(num value) {
+    return value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
+  }
+
   /// Compute total from user's best lifts
   static double calculateUserTotal(Map<String, double> userHighScores) {
     return userHighScores.values.fold(0.0, (sum, lift) => sum + lift);

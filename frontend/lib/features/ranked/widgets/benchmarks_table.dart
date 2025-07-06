@@ -170,7 +170,7 @@ class _LiftValue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      value != null ? value.toStringAsFixed(1) : '-',
+      value != null ? RankUtils.formatKg(value) : '-',
       textAlign: TextAlign.center,
       style: const TextStyle(
         color: Colors.white,

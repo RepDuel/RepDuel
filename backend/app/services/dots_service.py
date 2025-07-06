@@ -1,7 +1,9 @@
-# backend/app/services/dots_service.py
-
 from typing import Dict, Optional
 from app.core.dots_constants import DOTS_RANKS, LIFT_RATIOS, DOTS_COEFFICIENTS, RANK_METADATA
+
+def round_to_nearest_5(x: float) -> float:
+    """Round value to the nearest 5."""
+    return round(x / 5) * 5
 
 class DotsCalculator:
     @staticmethod
@@ -28,7 +30,7 @@ class DotsCalculator:
             if dots_score >= threshold:
                 rank_name = rank
                 break
-        
+
         return {
             "name": rank_name,
             **RANK_METADATA.get(rank_name, {}),
@@ -58,17 +60,21 @@ class DotsCalculator:
         """Generate comprehensive standards"""
         standards = {}
         coeff = DotsCalculator.get_coefficient(bodyweight_kg, gender)
-        
+
         for rank, dots in DOTS_RANKS.items():
             total_kg = dots / coeff
+            squat = total_kg * LIFT_RATIOS["squat"]
+            bench = total_kg * LIFT_RATIOS["bench"]
+            deadlift = total_kg * LIFT_RATIOS["deadlift"]
+
             standards[rank] = {
-                "total": round(total_kg, 1),
+                "total": round_to_nearest_5(total_kg),
                 "lifts": {
-                    "squat": round(total_kg * LIFT_RATIOS["squat"], 1),
-                    "bench": round(total_kg * LIFT_RATIOS["bench"], 1),
-                    "deadlift": round(total_kg * LIFT_RATIOS["deadlift"], 1)
+                    "squat": round_to_nearest_5(squat),
+                    "bench": round_to_nearest_5(bench),
+                    "deadlift": round_to_nearest_5(deadlift),
                 },
                 "metadata": RANK_METADATA.get(rank, {})
             }
-            
+
         return standards
