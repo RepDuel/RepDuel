@@ -7,7 +7,7 @@ import '../features/auth/screens/register_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
-import '../features/profile/screens/profile_screen.dart';
+import '../features/profile/screens/profile_wrapper.dart';
 import '../features/normal/screens/normal_screen.dart';
 import '../core/providers/auth_provider.dart';
 
@@ -32,7 +32,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile',
-        builder: (context, state) => const ProfileScreen(),
+        builder: (context, state) =>
+            const ProfileWrapper(), // 🔥 key update here
       ),
       GoRoute(
         path: '/login',
@@ -51,14 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
 
-      // Uncomment and customize for auth handling:
-      // if (!isAuthenticated && !isLoggingIn) {
-      //   return '/login';
-      // }
-
-      // if (isAuthenticated && isLoggingIn) {
-      //   return '/home';
-      // }
+      // Optional logic for redirecting unauthenticated users
 
       return null;
     },
