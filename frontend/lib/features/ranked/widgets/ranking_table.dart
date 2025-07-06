@@ -28,16 +28,30 @@ class RankingTable extends StatelessWidget {
     final totalScore = RankUtils.calculateUserTotal(userHighScores);
     final overallRank = RankUtils.calculateRank(totalScore, liftStandards!);
     final energy = RankUtils.rankEnergy[overallRank] ?? 0;
+    final color = RankUtils.getRankColor(overallRank);
 
     return Column(
       children: [
-        Text(
-          'Total: ${totalScore.toStringAsFixed(1)} ($overallRank)',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Rank: ',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '$energy $overallRank',
+              style: TextStyle(
+                color: color,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         const _RankingTableHeader(),

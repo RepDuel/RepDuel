@@ -86,7 +86,7 @@ class _RankedScreenState extends State<RankedScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(showBenchmarks ? 'Benchmark Standards' : 'My Rankings'),
+        title: Text(showBenchmarks ? 'Benchmarks' : 'Ranked'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         centerTitle: true,
