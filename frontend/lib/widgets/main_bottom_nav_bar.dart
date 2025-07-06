@@ -19,18 +19,29 @@ class MainBottomNavBar extends StatelessWidget {
       unselectedItemColor: Colors.grey,
       currentIndex: currentIndex,
       onTap: (index) {
-        onTap(index); // Call the parent function (passed in)
+        onTap(index);
 
         // Handle navigation with GoRouter
-        if (index == 0) {
-          context.go('/ranked'); // Navigate to Ranked Screen
-        } else if (index == 1) {
-          context.go('/routines'); // Navigate to Routines Screen
-        } else if (index == 2) {
-          context.go('/profile'); // Navigate to Profile Screen
+        switch (index) {
+          case 0:
+            context.go('/sandbox');
+            break;
+          case 1:
+            context.go('/ranked');
+            break;
+          case 2:
+            context.go('/routines');
+            break;
+          case 3:
+            context.go('/profile');
+            break;
         }
       },
       items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.science),
+          label: 'Sandbox',
+        ),
         BottomNavigationBarItem(
           icon: Icon(Icons.bar_chart),
           label: 'Ranked',

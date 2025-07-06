@@ -66,7 +66,7 @@ class RoutinesScreen extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 1, // Routines tab
+        currentIndex: 2, // Routines tab
         onTap: (index) {
           if (index == 0) {
             context.go('/ranked');

@@ -8,6 +8,7 @@ import '../features/home/screens/home_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/sandbox/screens/sandbox_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -17,6 +18,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/ranked',
     routes: [
+      GoRoute(
+        path: '/sandbox',
+        builder: (context, state) => const SandboxScreen(),
+      ),
       GoRoute(
         path: '/ranked',
         builder: (context, state) => const RankedScreen(),
@@ -46,6 +51,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
 
+      // Uncomment and customize for auth handling:
       // if (!isAuthenticated && !isLoggingIn) {
       //   return '/login';
       // }

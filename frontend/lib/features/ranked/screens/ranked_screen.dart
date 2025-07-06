@@ -113,7 +113,7 @@ class _RankedScreenState extends State<RankedScreen> {
         ),
       ),
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 0,
+        currentIndex: 1,
         onTap: (index) {
           // Navigation implementation
         },

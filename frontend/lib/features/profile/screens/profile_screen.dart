@@ -87,7 +87,7 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 2,
+        currentIndex: 3,
         onTap: (index) {
           // TODO: Implement navigation
         },
