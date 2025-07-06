@@ -23,13 +23,6 @@ class BenchmarksTable extends StatelessWidget {
 
     return Column(
       children: [
-        Text(
-          'Benchmark Standards',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-        ),
         const SizedBox(height: 16),
         _BenchmarksTableHeader(showLifts: showLifts),
         const SizedBox(height: 8),

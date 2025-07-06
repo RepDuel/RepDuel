@@ -80,23 +80,23 @@ class RankUtils {
       case 'Silver':
         return const Color(0xFFc0c0c0);
       case 'Gold':
-        return const Color(0xFFffd700);
+        return const Color(0xFFefbf04);
       case 'Platinum':
-        return const Color(0xFFe5e4e2);
+        return const Color(0xFF00ced1);
       case 'Diamond':
         return const Color(0xFFb9f2ff);
       case 'Jade':
-        return const Color(0xFF00a86b);
+        return const Color(0xFF62f40c);
       case 'Master':
-        return const Color(0xFF9b59b6);
+        return const Color(0xFFff00ff);
       case 'Grandmaster':
-        return const Color(0xFFe74c3c);
+        return const Color(0xFFffde21);
       case 'Nova':
-        return const Color(0xFF3498db);
+        return const Color(0xFFa45ee5);
       case 'Astra':
-        return const Color(0xFF2ecc71);
+        return const Color(0xFFff4040);
       case 'Celestial':
-        return const Color(0xFFf1c40f);
+        return const Color(0xFF00ffff);
       default:
         return Colors.white;
     }
