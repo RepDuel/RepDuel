@@ -6,6 +6,7 @@ import 'dart:async';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
+import '../screens/scenario_screen.dart';
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
 
@@ -101,10 +102,23 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return (data['score'] as num).toDouble();
+        return (data['weight_lifted'] as num).toDouble();
       }
     } catch (_) {}
     return 0.0;
+  }
+
+  Future<void> _handleScenarioTap(String liftName) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScenarioScreen(liftName: liftName),
+      ),
+    );
+
+    if (result == true && mounted) {
+      await _initializeData(); // Refresh scores
+    }
   }
 
   @override
@@ -137,6 +151,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                     userHighScores: userHighScores,
                     onViewBenchmarks: () =>
                         setState(() => showBenchmarks = true),
+                    onLiftTapped: _handleScenarioTap,
                   ),
           ),
         ),

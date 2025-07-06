@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/features/ranked/screens/scenario_screen.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
 
 class RankingTable extends StatelessWidget {
   final Map<String, dynamic>? liftStandards;
   final Map<String, double> userHighScores;
   final Function() onViewBenchmarks;
+  final Function(String liftName) onLiftTapped; // ✅ NEW FIELD
 
   const RankingTable({
-    super.key,
+    Key? key, // ✅ Add key parameter for best practices
     required this.liftStandards,
     required this.userHighScores,
     required this.onViewBenchmarks,
-  });
+    required this.onLiftTapped, // ✅ Add to constructor
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -68,12 +69,7 @@ class RankingTable extends StatelessWidget {
             lift: entry.key,
             score: entry.value,
             standards: liftStandards!,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ScenarioScreen(liftName: entry.key),
-              ),
-            ),
+            onTap: () => onLiftTapped(entry.key), // ✅ Trigger parent callback
           ),
         ),
         const SizedBox(height: 20),
@@ -91,7 +87,6 @@ class RankingTable extends StatelessWidget {
   }
 
   double _normalizeAndGetScore(String lift, Map<String, double> scores) {
-    // Normalize keys like 'Bench Press' to 'Bench'
     for (var entry in scores.entries) {
       final name = entry.key.toLowerCase();
       if (lift.toLowerCase() == name ||
