@@ -25,25 +25,15 @@ class RankingTable extends StatelessWidget {
       );
     }
 
-    // Calculate ranks and energy
-    int totalRawEnergy = 0;
-    final liftRanks = <String, String>{};
-    final liftEnergies = <String, int>{};
-
-    userHighScores.forEach((lift, score) {
-      final rank = RankUtils.calculateRank(score, liftStandards);
-      liftRanks[lift] = rank;
-      liftEnergies[lift] = RankUtils.rankEnergy[rank]!;
-      totalRawEnergy += RankUtils.rankEnergy[rank]!;
-    });
-
-    final adjustedElo = totalRawEnergy / userHighScores.length;
-    final overallRank = RankUtils.calculateRank(adjustedElo, liftStandards);
+    // Compute total and rank
+    final totalScore = RankUtils.calculateUserTotal(userHighScores);
+    final overallRank = RankUtils.calculateRank(totalScore, liftStandards!);
+    final energy = RankUtils.rankEnergy[overallRank] ?? 0;
 
     return Column(
       children: [
         Text(
-          'Energy: ${adjustedElo.toStringAsFixed(1)} ($overallRank)',
+          'Total: ${totalScore.toStringAsFixed(1)} ($overallRank)',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -53,19 +43,19 @@ class RankingTable extends StatelessWidget {
         const SizedBox(height: 16),
         const _RankingTableHeader(),
         const SizedBox(height: 12),
-        ...userHighScores.entries
-            .map((entry) => _RankingRow(
-                  lift: entry.key,
-                  score: entry.value,
-                  standards: liftStandards!,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ScenarioScreen(liftName: entry.key),
-                    ),
-                  ),
-                ))
-            .toList(),
+        ...userHighScores.entries.map(
+          (entry) => _RankingRow(
+            lift: entry.key,
+            score: entry.value,
+            standards: liftStandards!,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ScenarioScreen(liftName: entry.key),
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 20),
         ElevatedButton(
           onPressed: onViewBenchmarks,
@@ -166,20 +156,35 @@ class _RankingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rank = RankUtils.calculateRank(score, standards);
-    final progress =
-        RankUtils.calculateProgressPercentage(score, rank, standards);
-    final energy = RankUtils.rankEnergy[rank]!;
-    final sortedRanks = RankUtils.rankEnergy.keys.toList()
-      ..sort((a, b) =>
-          RankUtils.rankEnergy[b]!.compareTo(RankUtils.rankEnergy[a]!));
+    // Use lift-specific comparison (e.g. standards[rank]['lifts']['squat'])
+    final sortedRanks = standards.entries.toList()
+      ..sort((a, b) => (b.value['lifts'][lift.toLowerCase()] as num)
+          .compareTo(a.value['lifts'][lift.toLowerCase()] as num));
 
-    final currentIndex = sortedRanks.indexOf(rank);
-    final hasNextRank = currentIndex < sortedRanks.length - 1;
-    final nextRank = hasNextRank ? sortedRanks[currentIndex + 1] : null;
-    final nextBenchmark = hasNextRank && standards.containsKey(nextRank!)
-        ? standards[nextRank]['total']
-        : score;
+    String rank = 'Iron';
+    for (final entry in sortedRanks) {
+      final threshold =
+          (entry.value['lifts'][lift.toLowerCase()] as num).toDouble();
+      if (score >= threshold) {
+        rank = entry.key;
+        break;
+      }
+    }
+
+    final progress = RankUtils.calculateProgressPercentage(
+      score,
+      rank,
+      // Create a mock standards map where total = per-lift value (for progress)
+      Map.fromEntries(
+        standards.entries.map((e) => MapEntry(
+              e.key,
+              {'total': (e.value['lifts'][lift.toLowerCase()] ?? 0)},
+            )),
+      ),
+    );
+
+    final energy = RankUtils.rankEnergy[rank] ?? 0;
+    final color = RankUtils.getRankColor(rank);
 
     return GestureDetector(
       onTap: onTap,
@@ -221,14 +226,12 @@ class _RankingRow extends StatelessWidget {
                   LinearProgressIndicator(
                     value: progress,
                     backgroundColor: Colors.grey[800],
-                    color: RankUtils.getRankColor(rank),
+                    color: color,
                     minHeight: 8,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    hasNextRank
-                        ? '${score.toStringAsFixed(1)} → ${nextBenchmark.toStringAsFixed(1)}'
-                        : 'MAX RANK',
+                    progress < 1.0 ? 'Progressing to next' : 'MAX RANK',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -244,7 +247,7 @@ class _RankingRow extends StatelessWidget {
                   rank,
                   style: TextStyle(
                     fontSize: 16,
-                    color: RankUtils.getRankColor(rank),
+                    color: color,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

@@ -18,29 +18,30 @@ class RankUtils {
     'Celestial': 1200,
   };
 
+  /// Calculate user's rank based on total score and standards
   static String calculateRank(
     double score,
     Map<String, dynamic>? standards,
   ) {
     if (standards == null) return 'Iron';
 
-    // Get ranks sorted from highest to lowest energy
-    final sortedRanks = RankUtils.rankEnergy.keys.toList()
-      ..sort((a, b) {
-        final aTotal = standards[a]?['total'] ?? -1;
-        final bTotal = standards[b]?['total'] ?? -1;
-        return (bTotal as num).compareTo(aTotal as num);
-      });
+    final sortedRanks = standards.entries.toList()
+      ..sort((a, b) =>
+          (b.value['total'] as num).compareTo(a.value['total'] as num));
 
-    // Find the highest rank the score qualifies for
-    for (var rank in sortedRanks) {
-      if (standards.containsKey(rank) && score >= standards[rank]['total']) {
-        return rank;
+    for (final entry in sortedRanks) {
+      final rankName = entry.key;
+      final rankTotal = (entry.value['total'] as num).toDouble();
+
+      if (score >= rankTotal) {
+        return rankName;
       }
     }
-    return 'Iron'; // Default if no rank matches
+
+    return 'Iron'; // fallback if score is below all ranks
   }
 
+  /// Calculate progress toward next rank (0.0 to 1.0)
   static double calculateProgressPercentage(
     double score,
     String currentRank,
@@ -50,27 +51,26 @@ class RankUtils {
       return 0.0;
     }
 
-    final sortedRanks = rankEnergy.keys.toList()
-      ..sort((a, b) => rankEnergy[b]!.compareTo(rankEnergy[a]!));
-    final currentIndex = sortedRanks.indexOf(currentRank);
+    final sortedRanks = standards.entries.toList()
+      ..sort((a, b) =>
+          (b.value['total'] as num).compareTo(a.value['total'] as num));
+    final rankNames = sortedRanks.map((e) => e.key).toList();
+    final currentIndex = rankNames.indexOf(currentRank);
 
-    if (currentIndex >= sortedRanks.length - 1) {
-      return 1.0; // Already at highest rank
-    }
+    if (currentIndex <= 0) return 1.0; // Already top rank or not found
 
-    final nextRank = sortedRanks[currentIndex + 1];
-    if (!standards.containsKey(nextRank)) return 1.0;
+    final nextRank = rankNames[currentIndex - 1];
+    final currentBenchmark =
+        (standards[currentRank]['total'] as num).toDouble();
+    final nextBenchmark = (standards[nextRank]['total'] as num).toDouble();
 
-    final currentBenchmark = standards[currentRank]['total'];
-    final nextBenchmark = standards[nextRank]['total'];
-
-    // Prevent division by zero and ensure valid progress value
     if (nextBenchmark == currentBenchmark) return 1.0;
 
     return ((score - currentBenchmark) / (nextBenchmark - currentBenchmark))
         .clamp(0.0, 1.0);
   }
 
+  /// Determine color of rank
   static Color getRankColor(String rank) {
     switch (rank) {
       case 'Iron':
@@ -88,23 +88,38 @@ class RankUtils {
       case 'Jade':
         return const Color(0xFF62f40c);
       case 'Master':
-        return const Color(0xFFff00ff);
+        return const Color(0xFFff00ff); // pink
       case 'Grandmaster':
-        return const Color(0xFFffde21);
+        return const Color(0xFFffde21); // yellow
       case 'Nova':
-        return const Color(0xFFa45ee5);
+        return const Color(0xFFa45ee5); // purple
       case 'Astra':
-        return const Color(0xFFff4040);
+        return const Color(0xFFff4040); // red
       case 'Celestial':
-        return const Color(0xFF00ffff);
+        return const Color(0xFF00ffff); // cyan
       default:
         return Colors.white;
     }
   }
 
+  /// Format values like double to 1 decimal place or fallback
   static String formatValue(dynamic value) {
     if (value == null) return 'N/A';
     if (value is num) return value.toStringAsFixed(1);
     return value.toString();
+  }
+
+  /// Compute total from user's best lifts
+  static double calculateUserTotal(Map<String, double> userHighScores) {
+    return userHighScores.values.fold(0.0, (sum, lift) => sum + lift);
+  }
+
+  /// Compute user's full rank from their lift scores + standards
+  static String getUserRankFromStandards(
+    Map<String, dynamic> standards,
+    Map<String, double> userHighScores,
+  ) {
+    final userTotal = calculateUserTotal(userHighScores);
+    return calculateRank(userTotal, standards);
   }
 }
