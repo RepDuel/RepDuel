@@ -39,7 +39,7 @@ class MainBottomNavBar extends StatelessWidget {
       },
       items: const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.science),
+          icon: Icon(Icons.list),
           label: 'Sandbox',
         ),
         BottomNavigationBarItem(
