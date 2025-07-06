@@ -24,7 +24,7 @@ class MainBottomNavBar extends StatelessWidget {
         // Handle navigation with GoRouter
         switch (index) {
           case 0:
-            context.go('/sandbox');
+            context.go('/normal');
             break;
           case 1:
             context.go('/ranked');
@@ -40,7 +40,7 @@ class MainBottomNavBar extends StatelessWidget {
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.list),
-          label: 'Sandbox',
+          label: 'Normal',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.bar_chart),

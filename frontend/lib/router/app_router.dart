@@ -8,7 +8,7 @@ import '../features/home/screens/home_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
-import '../features/sandbox/screens/sandbox_screen.dart';
+import '../features/normal/screens/normal_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -19,8 +19,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/ranked',
     routes: [
       GoRoute(
-        path: '/sandbox',
-        builder: (context, state) => const SandboxScreen(),
+        path: '/normal',
+        builder: (context, state) => const NormalScreen(),
       ),
       GoRoute(
         path: '/ranked',

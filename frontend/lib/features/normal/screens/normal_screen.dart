@@ -3,14 +3,14 @@ import 'package:frontend/widgets/main_bottom_nav_bar.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class SandboxScreen extends StatefulWidget {
-  const SandboxScreen({super.key});
+class NormalScreen extends StatefulWidget {
+  const NormalScreen({super.key});
 
   @override
-  State<SandboxScreen> createState() => _SandboxScreenState();
+  State<NormalScreen> createState() => _NormalScreenState();
 }
 
-class _SandboxScreenState extends State<SandboxScreen> {
+class _NormalScreenState extends State<NormalScreen> {
   List<dynamic> scenarios = [];
   bool isLoading = true;
   String? error;
@@ -51,7 +51,7 @@ class _SandboxScreenState extends State<SandboxScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Sandbox'),
+        title: const Text('Normal'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         centerTitle: true,
