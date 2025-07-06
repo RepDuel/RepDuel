@@ -28,7 +28,7 @@ final publicHttpClientProvider = Provider<HttpClient>((ref) {
 });
 
 final authInterceptorProvider = Provider<AuthInterceptor>((ref) {
-  return AuthInterceptor(ref);
+  return AuthInterceptor();
 });
 
 final privateHttpClientProvider = Provider<HttpClient>((ref) {
@@ -70,7 +70,8 @@ final channelApiProvider = Provider<ChannelApiService>((ref) {
   return ChannelApiService(client);
 });
 
-final guildChannelsProvider = FutureProvider.autoDispose.family<List<Channel>, String>((ref, guildId) async {
+final guildChannelsProvider = FutureProvider.autoDispose
+    .family<List<Channel>, String>((ref, guildId) async {
   final channelService = ref.watch(channelApiProvider);
   return channelService.getGuildChannels(guildId);
 });

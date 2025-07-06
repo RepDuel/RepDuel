@@ -23,6 +23,7 @@ dependencies:
   web_socket_channel: ^2.4.0
   flutter_dotenv: ^5.1.0
   json_annotation: ^4.8.1
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

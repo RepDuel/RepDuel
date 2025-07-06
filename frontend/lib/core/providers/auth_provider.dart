@@ -1,6 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
-
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
 import '../services/secure_storage_service.dart';
@@ -68,7 +66,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await _secureStorage.writeToken(tokenResponse.accessToken);
         final user = await _authApi.getMe(token: tokenResponse.accessToken);
         if (user != null) {
-          state = AuthState(user: user, token: tokenResponse.accessToken, isLoading: false);
+          state = AuthState(
+            user: user,
+            token: tokenResponse.accessToken,
+            isLoading: false,
+          );
           return true;
         }
       }
@@ -113,7 +115,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
           state = AuthState();
         }
       } catch (e) {
-        debugPrint('Error loading user from token: $e');
         await _secureStorage.deleteToken();
         state = AuthState();
       }
