@@ -30,6 +30,13 @@ class RankingTable extends StatelessWidget {
     final energy = RankUtils.rankEnergy[overallRank] ?? 0;
     final color = RankUtils.getRankColor(overallRank);
 
+    final defaultLifts = ['Squat', 'Bench', 'Deadlift'];
+
+    final allLifts = {
+      for (var lift in defaultLifts)
+        lift: _normalizeAndGetScore(lift, userHighScores),
+    };
+
     return Column(
       children: [
         Row(
@@ -56,7 +63,7 @@ class RankingTable extends StatelessWidget {
         const SizedBox(height: 16),
         const _RankingTableHeader(),
         const SizedBox(height: 12),
-        ...userHighScores.entries.map(
+        ...allLifts.entries.map(
           (entry) => _RankingRow(
             lift: entry.key,
             score: entry.value,
@@ -82,6 +89,18 @@ class RankingTable extends StatelessWidget {
       ],
     );
   }
+
+  double _normalizeAndGetScore(String lift, Map<String, double> scores) {
+    // Normalize keys like 'Bench Press' to 'Bench'
+    for (var entry in scores.entries) {
+      final name = entry.key.toLowerCase();
+      if (lift.toLowerCase() == name ||
+          (lift == 'Bench' && name.contains('bench'))) {
+        return entry.value;
+      }
+    }
+    return 0.0;
+  }
 }
 
 class _RankingTableHeader extends StatelessWidget {
@@ -95,10 +114,7 @@ class _RankingTableHeader extends StatelessWidget {
           flex: 2,
           child: Text(
             'Lift',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
         Expanded(
@@ -106,10 +122,8 @@ class _RankingTableHeader extends StatelessWidget {
           child: Center(
             child: Text(
               'Score',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -118,10 +132,8 @@ class _RankingTableHeader extends StatelessWidget {
           child: Center(
             child: Text(
               'Progress',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -130,10 +142,8 @@ class _RankingTableHeader extends StatelessWidget {
           child: Center(
             child: Text(
               'Rank',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -142,10 +152,8 @@ class _RankingTableHeader extends StatelessWidget {
           child: Center(
             child: Text(
               'Energy',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -172,12 +180,12 @@ class _RankingRow extends StatelessWidget {
     final lowerLift = lift.toLowerCase();
 
     final sortedRanks = standards.entries.toList()
-      ..sort((a, b) => (b.value['lifts'][lowerLift] as num)
-          .compareTo(a.value['lifts'][lowerLift] as num));
+      ..sort((a, b) => ((b.value['lifts'][lowerLift] ?? 0) as num)
+          .compareTo((a.value['lifts'][lowerLift] ?? 0) as num));
 
     String currentRank = 'Iron';
     for (final entry in sortedRanks) {
-      final threshold = (entry.value['lifts'][lowerLift] as num).toDouble();
+      final threshold = (entry.value['lifts'][lowerLift] ?? 0) as num;
       if (score >= threshold) {
         currentRank = entry.key;
         break;
@@ -188,7 +196,7 @@ class _RankingRow extends StatelessWidget {
     final hasNext = currentIndex > 0;
     final nextRank = hasNext ? sortedRanks[currentIndex - 1].key : null;
     final nextBenchmark = hasNext
-        ? (standards[nextRank]!['lifts'][lowerLift] as num).toDouble()
+        ? (standards[nextRank]!['lifts'][lowerLift] ?? score) as num
         : score;
 
     final progress = RankUtils.calculateProgressPercentage(
@@ -220,10 +228,7 @@ class _RankingRow extends StatelessWidget {
               flex: 2,
               child: Text(
                 lift,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
             Expanded(
@@ -231,10 +236,7 @@ class _RankingRow extends StatelessWidget {
               child: Center(
                 child: Text(
                   RankUtils.formatKg(score),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ),
@@ -251,12 +253,9 @@ class _RankingRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     hasNext && nextBenchmark > score
-                        ? '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextBenchmark)}'
+                        ? '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextBenchmark.toDouble())}'
                         : 'MAX RANK',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
               ),
@@ -267,7 +266,6 @@ class _RankingRow extends StatelessWidget {
                 child: Text(
                   currentRank,
                   style: TextStyle(
-                    fontSize: 16,
                     color: color,
                     fontWeight: FontWeight.bold,
                   ),
@@ -279,10 +277,7 @@ class _RankingRow extends StatelessWidget {
               child: Center(
                 child: Text(
                   energy.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ),
