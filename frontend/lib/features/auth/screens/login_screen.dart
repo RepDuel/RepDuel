@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:frontend/core/providers/auth_provider.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../../../widgets/error_display.dart';
+import '../../../widgets/main_bottom_nav_bar.dart';
 import '../widgets/auth_form_field.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -40,7 +42,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authStateProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Login'),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: authState.isLoading
@@ -58,16 +66,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           label: 'Email',
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
-                          validator: (value) =>
-                              value == null || value.isEmpty ? 'Please enter your email' : null,
+                          validator: (value) => value == null || value.isEmpty
+                              ? 'Please enter your email'
+                              : null,
                         ),
                         const SizedBox(height: 16),
                         AuthFormField(
                           label: 'Password',
                           controller: _passwordController,
                           obscureText: true,
-                          validator: (value) =>
-                              value == null || value.isEmpty ? 'Please enter your password' : null,
+                          validator: (value) => value == null || value.isEmpty
+                              ? 'Please enter your password'
+                              : null,
                         ),
                         const SizedBox(height: 24),
                         ElevatedButton(
@@ -79,6 +89,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
               ),
+      ),
+      bottomNavigationBar: MainBottomNavBar(
+        currentIndex: 3,
+        onTap: (_) {},
       ),
     );
   }

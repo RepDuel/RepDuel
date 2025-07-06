@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../widgets/main_bottom_nav_bar.dart';
 
 class RegisterScreen extends ConsumerWidget {
   const RegisterScreen({super.key});
@@ -100,6 +101,10 @@ class RegisterScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: MainBottomNavBar(
+        currentIndex: 3,
+        onTap: (_) {},
       ),
     );
   }
