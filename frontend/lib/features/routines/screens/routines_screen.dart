@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../widgets/routine_card.dart';
 import 'routine_play_screen.dart';
-import '../../../core/models/routine.dart'; // Make sure this file exists
+import '../../../core/models/routine.dart';
 
 class RoutinesScreen extends StatelessWidget {
   const RoutinesScreen({super.key});
@@ -64,10 +64,10 @@ class RoutinesScreen extends StatelessWidget {
                   },
                   child: RoutineCard(
                     name: routine.name,
-                    imageUrl: routine.imageUrl ??
-                        'https://via.placeholder.com/150', // Fallback image
-                    duration: '${routine.scenarios.length * 1} min',
-                    difficultyLevel: routine.scenarios.length,
+                    imageUrl:
+                        routine.imageUrl ?? 'https://via.placeholder.com/150',
+                    duration: '${routine.totalDurationMinutes} min',
+                    difficultyLevel: 2,
                   ),
                 );
               },

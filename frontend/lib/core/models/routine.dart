@@ -43,4 +43,14 @@ class Routine {
           .toList(),
     );
   }
+
+  /// Total number of sets across all scenarios
+  int get totalSets {
+    return scenarios.fold<int>(0, (sum, s) => sum + s.sets);
+  }
+
+  /// Estimated duration in minutes (3 min per set)
+  int get totalDurationMinutes {
+    return totalSets * 3;
+  }
 }
