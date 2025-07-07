@@ -1,3 +1,5 @@
+# backend/app/schemas/routine.py
+
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
@@ -22,14 +24,11 @@ class RoutineUpdate(RoutineBase):
     scenarios: Optional[List[ScenarioSet]] = None
 
 
-class RoutineInDBBase(RoutineBase):
+class RoutineRead(RoutineBase):
     id: UUID
-    user_id: UUID
+    user_id: Optional[UUID] = None
     created_at: datetime
+    scenarios: List[ScenarioSet]
 
     class Config:
         from_attributes = True
-
-
-class RoutineRead(RoutineInDBBase):
-    scenarios: List[ScenarioSet]

@@ -1,3 +1,5 @@
+# backend/app/api/v1/routines.py
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -6,7 +8,7 @@ from app.api.v1.deps import get_db
 from app.schemas.routine import RoutineCreate, RoutineRead, RoutineUpdate
 from app.services import routine_service
 
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(prefix="/routines", tags=["Routines"])
 
@@ -14,15 +16,15 @@ router = APIRouter(prefix="/routines", tags=["Routines"])
 @router.post("/", response_model=RoutineRead)
 async def create_routine(
     routine: RoutineCreate,
-    user_id: UUID = Query(...),
+    user_id: Optional[UUID] = Query(None),  # Optional query param
     db: AsyncSession = Depends(get_db),
 ):
-    return await routine_service.create_routine(db, user_id, routine)
+    return await routine_service.create_routine(db, routine, user_id)
 
 
 @router.get("/", response_model=List[RoutineRead])
 async def list_user_routines(
-    user_id: UUID = Query(...),
+    user_id: Optional[UUID] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     return await routine_service.get_user_routines(db, user_id)
