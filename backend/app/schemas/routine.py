@@ -14,6 +14,7 @@ class ScenarioSet(BaseModel):
 
 class RoutineBase(BaseModel):
     name: str
+    image_url: Optional[str] = None
 
 
 class RoutineCreate(RoutineBase):

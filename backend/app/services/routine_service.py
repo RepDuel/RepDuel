@@ -36,6 +36,7 @@ async def get_routine_read(db: AsyncSession, routine_id: UUID) -> Optional[Routi
     return RoutineRead(
         id=routine.id,
         name=routine.name,
+        image_url=routine.image_url,
         user_id=routine.user_id,
         created_at=routine.created_at,
         scenarios=scenarios
@@ -69,6 +70,7 @@ async def get_user_routines(db: AsyncSession, user_id: Optional[UUID]) -> List[R
             RoutineRead(
                 id=routine.id,
                 name=routine.name,
+                image_url=routine.image_url,
                 user_id=routine.user_id,
                 created_at=routine.created_at,
                 scenarios=scenarios
@@ -79,7 +81,11 @@ async def get_user_routines(db: AsyncSession, user_id: Optional[UUID]) -> List[R
 
 
 async def create_routine(db: AsyncSession, routine_in: RoutineCreate, user_id: Optional[UUID] = None) -> RoutineRead:
-    routine = Routine(name=routine_in.name, user_id=user_id)
+    routine = Routine(
+        name=routine_in.name,
+        image_url=routine_in.image_url,
+        user_id=user_id
+    )
     db.add(routine)
     await db.flush()
 
@@ -100,6 +106,7 @@ async def update_routine(
     db: AsyncSession, routine: Routine, routine_in: RoutineUpdate
 ) -> RoutineRead:
     routine.name = routine_in.name
+    routine.image_url = routine_in.image_url
 
     if routine_in.scenarios is not None:
         await db.execute(

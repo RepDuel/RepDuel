@@ -37,7 +37,7 @@ class Routine {
     return Routine(
       id: json['id'],
       name: json['name'],
-      imageUrl: null, // Customize if backend returns images
+      imageUrl: json['image_url'],
       scenarios: (json['scenarios'] as List)
           .map((e) => ScenarioSet.fromJson(e))
           .toList(),
