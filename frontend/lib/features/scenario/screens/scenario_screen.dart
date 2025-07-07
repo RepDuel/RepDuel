@@ -1,10 +1,12 @@
+// frontend/lib/features/ranked/screens/scenario_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../../../core/providers/auth_provider.dart';
-import 'result_screen.dart';
+import '../../ranked/screens/result_screen.dart';
 
 class ScenarioScreen extends ConsumerStatefulWidget {
   final String liftName;

@@ -6,7 +6,7 @@ import 'dart:async';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
-import '../screens/scenario_screen.dart';
+import '../../scenario/screens/scenario_screen.dart';
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
 
