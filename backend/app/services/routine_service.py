@@ -1,5 +1,3 @@
-# backend/app/services/routine_service.py
-
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +5,8 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 
 from app.models.routine import Routine
-from app.schemas.routine import RoutineCreate, RoutineUpdate
+from app.models.routine_scenario import RoutineScenario
+from app.schemas.routine import RoutineCreate, RoutineUpdate, ScenarioSet
 
 
 async def get_routine(db: AsyncSession, routine_id: UUID) -> Optional[Routine]:
@@ -26,16 +25,17 @@ async def get_user_routines(db: AsyncSession, user_id: UUID) -> List[Routine]:
 
 async def create_routine(db: AsyncSession, user_id: UUID, routine_in: RoutineCreate) -> Routine:
     routine = Routine(name=routine_in.name, user_id=user_id)
-    await db.flush()  # So the routine gets an ID
-
-    if routine_in.scenario_ids:
-        from app.models.scenario import Scenario
-        scenarios = await db.execute(
-            select(Scenario).where(Scenario.id.in_(routine_in.scenario_ids))
-        )
-        routine.scenarios = scenarios.scalars().all()
-
     db.add(routine)
+    await db.flush()  # Assign ID before adding associations
+
+    for item in routine_in.scenarios:
+        db.add(RoutineScenario(
+            routine_id=routine.id,
+            scenario_id=item.scenario_id,
+            sets=item.sets,
+            reps=item.reps,
+        ))
+
     await db.commit()
     await db.refresh(routine)
     return routine
@@ -46,12 +46,20 @@ async def update_routine(
 ) -> Routine:
     routine.name = routine_in.name
 
-    if routine_in.scenario_ids is not None:
-        from app.models.scenario import Scenario
-        scenarios = await db.execute(
-            select(Scenario).where(Scenario.id.in_(routine_in.scenario_ids))
+    if routine_in.scenarios is not None:
+        # Remove old scenario associations
+        await db.execute(
+            RoutineScenario.__table__.delete().where(RoutineScenario.routine_id == routine.id)
         )
-        routine.scenarios = scenarios.scalars().all()
+
+        # Add new scenario associations
+        for item in routine_in.scenarios:
+            db.add(RoutineScenario(
+                routine_id=routine.id,
+                scenario_id=item.scenario_id,
+                sets=item.sets,
+                reps=item.reps,
+            ))
 
     await db.commit()
     await db.refresh(routine)
@@ -59,5 +67,8 @@ async def update_routine(
 
 
 async def delete_routine(db: AsyncSession, routine: Routine) -> None:
+    await db.execute(
+        RoutineScenario.__table__.delete().where(RoutineScenario.routine_id == routine.id)
+    )
     await db.delete(routine)
     await db.commit()

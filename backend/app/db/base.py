@@ -11,3 +11,4 @@ from app.models.scenario import Scenario
 from app.models.leaderboard import LeaderboardEntry
 from app.models.score import Score
 from app.models.routine import Routine
+from app.models.routine_scenario import RoutineScenario

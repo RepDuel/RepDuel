@@ -1,7 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class ScenarioSet(BaseModel):
+    scenario_id: UUID
+    sets: int = Field(..., ge=0)
+    reps: int = Field(..., ge=0)
 
 
 class RoutineBase(BaseModel):
@@ -9,11 +15,11 @@ class RoutineBase(BaseModel):
 
 
 class RoutineCreate(RoutineBase):
-    scenario_ids: List[UUID]
+    scenarios: List[ScenarioSet]
 
 
 class RoutineUpdate(RoutineBase):
-    scenario_ids: Optional[List[UUID]] = None
+    scenarios: Optional[List[ScenarioSet]] = None
 
 
 class RoutineInDBBase(RoutineBase):
@@ -22,8 +28,8 @@ class RoutineInDBBase(RoutineBase):
     created_at: datetime
 
     class Config:
-        from_attributes = True  # Use for Pydantic v2 compatibility
+        from_attributes = True
 
 
 class RoutineRead(RoutineInDBBase):
-    scenario_ids: List[UUID]
+    scenarios: List[ScenarioSet]
