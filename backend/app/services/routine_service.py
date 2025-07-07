@@ -1,3 +1,5 @@
+# backend/app/services/routine_service.py
+
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,9 +10,13 @@ from app.models.routine_scenario import RoutineScenario
 from app.schemas.routine import RoutineCreate, RoutineUpdate, ScenarioSet, RoutineRead
 
 
-async def get_routine(db: AsyncSession, routine_id: UUID) -> Optional[RoutineRead]:
+async def get_routine(db: AsyncSession, routine_id: UUID) -> Optional[Routine]:
     result = await db.execute(select(Routine).where(Routine.id == routine_id))
-    routine = result.scalar_one_or_none()
+    return result.scalar_one_or_none()
+
+
+async def get_routine_read(db: AsyncSession, routine_id: UUID) -> Optional[RoutineRead]:
+    routine = await get_routine(db, routine_id)
     if not routine:
         return None
 
@@ -87,7 +93,7 @@ async def create_routine(db: AsyncSession, routine_in: RoutineCreate, user_id: O
         db.add(assoc)
 
     await db.commit()
-    return await get_routine(db, routine.id)
+    return await get_routine_read(db, routine.id)
 
 
 async def update_routine(
@@ -110,9 +116,12 @@ async def update_routine(
             db.add(assoc)
 
     await db.commit()
-    return await get_routine(db, routine.id)
+    return await get_routine_read(db, routine.id)
 
 
 async def delete_routine(db: AsyncSession, routine: Routine) -> None:
+    await db.execute(
+        RoutineScenario.__table__.delete().where(RoutineScenario.routine_id == routine.id)
+    )
     await db.delete(routine)
     await db.commit()

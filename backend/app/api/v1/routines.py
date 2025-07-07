@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.api.v1.deps import get_db
+from app.models.user import User
 from app.schemas.routine import RoutineCreate, RoutineRead, RoutineUpdate
 from app.services import routine_service
 
@@ -54,7 +55,7 @@ async def update_routine_by_id(
     return await routine_service.update_routine(db, routine, updated_data)
 
 
-@router.delete("/{routine_id}")
+@router.delete("/{routine_id}", response_model=dict)
 async def delete_routine_by_id(
     routine_id: UUID,
     db: AsyncSession = Depends(get_db),

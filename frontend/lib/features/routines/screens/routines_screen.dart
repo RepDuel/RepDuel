@@ -1,11 +1,26 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:go_router/go_router.dart';
+
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../widgets/routine_card.dart';
 import 'routine_play_screen.dart';
-import 'package:go_router/go_router.dart'; // For go() navigation
+import '../../../core/models/routine.dart'; // Make sure this file exists
 
 class RoutinesScreen extends StatelessWidget {
   const RoutinesScreen({super.key});
+
+  Future<List<Routine>> fetchRoutines() async {
+    final response =
+        await http.get(Uri.parse('http://localhost:8000/api/v1/routines/'));
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((json) => Routine.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load routines');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,55 +33,51 @@ class RoutinesScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: GridView.count(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.7,
-          children: [
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const RoutinePlayScreen(routineName: 'Chest Blast'),
+      body: FutureBuilder<List<Routine>>(
+        future: fetchRoutines(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else {
+            final routines = snapshot.data!;
+            return GridView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: routines.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.7,
+              ),
+              itemBuilder: (context, index) {
+                final routine = routines[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            RoutinePlayScreen(routineName: routine.name),
+                      ),
+                    );
+                  },
+                  child: RoutineCard(
+                    name: routine.name,
+                    imageUrl: routine.imageUrl ??
+                        'https://via.placeholder.com/150', // Fallback image
+                    duration: '${routine.scenarios.length * 1} min',
+                    difficultyLevel: routine.scenarios.length,
                   ),
                 );
               },
-              child: const RoutineCard(
-                name: 'Chest Blast',
-                imageUrl:
-                    'https://i5.walmartimages.com/seo/Webkinz-Blue-Googles-Plush_7367aa52-ea06-4a5b-b942-fe76e5ac4677.6d3adc84ac039233aee92a9f8c5b2876.jpeg?odnHeight=768&odnWidth=768&odnBg=FFFFFF',
-                duration: '3 min',
-                difficultyLevel: 2,
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const RoutinePlayScreen(routineName: 'Leg Day'),
-                  ),
-                );
-              },
-              child: const RoutineCard(
-                name: 'Leg Day',
-                imageUrl:
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ1HnmfvOFeauYDd6yX0QF7B-ztjhP5zoljCg&s',
-                duration: '4 min',
-                difficultyLevel: 3,
-              ),
-            ),
-          ],
-        ),
+            );
+          }
+        },
       ),
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 2, // Routines tab
+        currentIndex: 2,
         onTap: (index) {
           if (index == 0) {
             context.go('/ranked');
