@@ -8,7 +8,7 @@ class RankingTable extends StatelessWidget {
   final Function(String liftName) onLiftTapped;
 
   const RankingTable({
-    super.key, // ✅ use super parameter here
+    super.key,
     required this.liftStandards,
     required this.userHighScores,
     required this.onViewBenchmarks,
@@ -26,17 +26,23 @@ class RankingTable extends StatelessWidget {
       );
     }
 
-    final totalScore = RankUtils.calculateUserTotal(userHighScores);
-    final overallRank = RankUtils.calculateRank(totalScore, liftStandards!);
-    final energy = RankUtils.rankEnergy[overallRank] ?? 0;
-    final color = RankUtils.getRankColor(overallRank);
-
     final defaultLifts = ['Squat', 'Bench', 'Deadlift'];
-
     final allLifts = {
       for (var lift in defaultLifts)
         lift: _normalizeAndGetScore(lift, userHighScores),
     };
+
+    final energies = allLifts.entries.map((entry) {
+      final rank = _getLiftRank(entry.key, entry.value, liftStandards!);
+      return RankUtils.rankEnergy[rank] ?? 0;
+    }).toList();
+
+    final averageEnergy = energies.isNotEmpty
+        ? energies.reduce((a, b) => a + b) / energies.length
+        : 0.0;
+
+    final overallRank = _getRankFromEnergy(averageEnergy);
+    final color = RankUtils.getRankColor(overallRank);
 
     return Column(
       children: [
@@ -52,7 +58,7 @@ class RankingTable extends StatelessWidget {
               ),
             ),
             Text(
-              '$energy $overallRank',
+              '${averageEnergy.round()} $overallRank',
               style: TextStyle(
                 color: color,
                 fontSize: 18,
@@ -95,6 +101,34 @@ class RankingTable extends StatelessWidget {
       }
     }
     return 0.0;
+  }
+
+  String _getLiftRank(
+      String lift, double score, Map<String, dynamic> standards) {
+    final lowerLift = lift.toLowerCase();
+    final sortedRanks = standards.entries.toList()
+      ..sort((a, b) => ((b.value['lifts'][lowerLift] ?? 0) as num)
+          .compareTo((a.value['lifts'][lowerLift] ?? 0) as num));
+
+    for (final entry in sortedRanks) {
+      final threshold = (entry.value['lifts'][lowerLift] ?? 0) as num;
+      if (score >= threshold.toDouble()) {
+        return entry.key;
+      }
+    }
+
+    return 'Iron';
+  }
+
+  String _getRankFromEnergy(double energy) {
+    final entries = RankUtils.rankEnergy.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    for (final entry in entries) {
+      if (energy >= entry.value) return entry.key;
+    }
+
+    return 'Iron';
   }
 }
 
@@ -181,7 +215,7 @@ class _RankingRow extends StatelessWidget {
     String currentRank = 'Iron';
     for (final entry in sortedRanks) {
       final threshold = (entry.value['lifts'][lowerLift] ?? 0) as num;
-      if (score >= threshold) {
+      if (score >= threshold.toDouble()) {
         currentRank = entry.key;
         break;
       }
@@ -247,7 +281,7 @@ class _RankingRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    hasNext && nextBenchmark > score
+                    hasNext && nextBenchmark.toDouble() > score
                         ? '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextBenchmark.toDouble())}'
                         : 'MAX RANK',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
