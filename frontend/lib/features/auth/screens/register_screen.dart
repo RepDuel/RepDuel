@@ -4,16 +4,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 
-class RegisterScreen extends ConsumerWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final formKey = GlobalKey<FormState>();
-    final emailController = TextEditingController();
-    final usernameController = TextEditingController();
-    final passwordController = TextEditingController();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
+}
 
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  final formKey = GlobalKey<FormState>();
+  final emailController = TextEditingController();
+  final usernameController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -65,6 +78,9 @@ class RegisterScreen extends ConsumerWidget {
               ElevatedButton(
                 onPressed: () async {
                   if (formKey.currentState!.validate()) {
+                    final navigator = Navigator.of(context);
+                    final messenger = ScaffoldMessenger.of(context);
+
                     final success =
                         await ref.read(authProvider.notifier).register(
                               usernameController.text.trim(),
@@ -72,10 +88,12 @@ class RegisterScreen extends ConsumerWidget {
                               passwordController.text.trim(),
                             );
 
-                    if (success && context.mounted) {
-                      context.go('/login');
+                    if (!mounted) return;
+
+                    if (success) {
+                      navigator.pushReplacementNamed('/login');
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(
                           content: Text('Registration failed.'),
                           backgroundColor: Colors.red,

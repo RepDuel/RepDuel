@@ -12,8 +12,7 @@ import '../features/normal/screens/normal_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
-  final isAuthenticated = authState.token != null;
+  ref.watch(authProvider);
 
   return GoRouter(
     initialLocation: '/ranked',
@@ -32,8 +31,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile',
-        builder: (context, state) =>
-            const ProfileWrapper(), // 🔥 key update here
+        builder: (context, state) => const ProfileWrapper(),
       ),
       GoRoute(
         path: '/login',
@@ -49,11 +47,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (BuildContext context, GoRouterState state) {
-      final isLoggingIn = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
-
-      // Optional logic for redirecting unauthenticated users
-
       return null;
     },
   );
