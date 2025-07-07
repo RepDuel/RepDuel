@@ -10,3 +10,4 @@ from app.models.message import Message
 from app.models.scenario import Scenario
 from app.models.leaderboard import LeaderboardEntry
 from app.models.score import Score
+from app.models.routine import Routine
