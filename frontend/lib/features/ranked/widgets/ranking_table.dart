@@ -5,15 +5,15 @@ class RankingTable extends StatelessWidget {
   final Map<String, dynamic>? liftStandards;
   final Map<String, double> userHighScores;
   final Function() onViewBenchmarks;
-  final Function(String liftName) onLiftTapped; // ✅ NEW FIELD
+  final Function(String liftName) onLiftTapped;
 
   const RankingTable({
-    Key? key, // ✅ Add key parameter for best practices
+    super.key, // ✅ use super parameter here
     required this.liftStandards,
     required this.userHighScores,
     required this.onViewBenchmarks,
-    required this.onLiftTapped, // ✅ Add to constructor
-  }) : super(key: key);
+    required this.onLiftTapped,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +69,7 @@ class RankingTable extends StatelessWidget {
             lift: entry.key,
             score: entry.value,
             standards: liftStandards!,
-            onTap: () => onLiftTapped(entry.key), // ✅ Trigger parent callback
+            onTap: () => onLiftTapped(entry.key),
           ),
         ),
         const SizedBox(height: 20),

@@ -18,6 +18,7 @@ class ScenarioScreen extends ConsumerStatefulWidget {
 class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _repsController = TextEditingController();
+  bool _isSubmitting = false;
 
   static const scenarioIds = {
     'Squat': 'a9b52e3a-248d-4a89-82ab-555be989de5b',
@@ -35,22 +36,60 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
     if (user == null || scenarioId == null) return;
 
-    final url = Uri.parse('http://localhost:8000/api/v1/scores/');
-    final body = {
-      'user_id': user.id,
-      'scenario_id': scenarioId,
-      'weight_lifted': score,
-    };
+    setState(() {
+      _isSubmitting = true;
+    });
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(body),
+    try {
+      final url = Uri.parse('http://localhost:8000/api/v1/scores/');
+      final body = {
+        'user_id': user.id,
+        'scenario_id': scenarioId,
+        'weight_lifted': score,
+      };
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      );
+
+      if (response.statusCode >= 400) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to submit score')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleSubmit() async {
+    final weight = double.tryParse(_weightController.text) ?? 0;
+    final reps = int.tryParse(_repsController.text) ?? 0;
+    final oneRepMax = _calculateOneRepMax(weight, reps);
+
+    await _submitScore(oneRepMax);
+
+    if (!mounted) return;
+
+    final shouldRefresh = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ResultScreen(
+          finalScore: oneRepMax.round(),
+          previousBest: 100, // Replace with actual previous best
+        ),
+      ),
     );
 
-    if (response.statusCode >= 400) {
-      // You could show a snackbar or dialog here
-      debugPrint('Failed to submit score: ${response.body}');
+    if (shouldRefresh == true && mounted) {
+      Navigator.of(context).pop(true);
     }
   }
 
@@ -133,29 +172,11 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton.icon(
-          onPressed: () async {
-            final weight = double.tryParse(_weightController.text) ?? 0;
-            final reps = int.tryParse(_repsController.text) ?? 0;
-            final oneRepMax = _calculateOneRepMax(weight, reps);
-
-            await _submitScore(oneRepMax);
-
-            final shouldRefresh = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ResultScreen(
-                  finalScore: oneRepMax.round(),
-                  previousBest: 100, // Placeholder
-                ),
-              ),
-            );
-
-            if (shouldRefresh == true) {
-              Navigator.pop(context, true); // Trigger RankedScreen refresh
-            }
-          },
-          icon: const Icon(Icons.check),
-          label: const Text('Confirm'),
+          onPressed: _isSubmitting ? null : _handleSubmit,
+          icon: _isSubmitting
+              ? const CircularProgressIndicator(color: Colors.white)
+              : const Icon(Icons.check),
+          label: Text(_isSubmitting ? 'Submitting...' : 'Confirm'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
             foregroundColor: Colors.white,
