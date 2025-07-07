@@ -58,8 +58,7 @@ class RoutinesScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            RoutinePlayScreen(routineName: routine.name),
+                        builder: (_) => RoutinePlayScreen(routine: routine),
                       ),
                     );
                   },
