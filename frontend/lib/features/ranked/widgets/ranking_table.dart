@@ -1,3 +1,5 @@
+// frontend/lib/features/ranked/widgets/ranking_table.dart
+
 import 'package:flutter/material.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
 
@@ -6,6 +8,7 @@ class RankingTable extends StatelessWidget {
   final Map<String, double> userHighScores;
   final Function() onViewBenchmarks;
   final Function(String liftName) onLiftTapped;
+  final Function(String liftName) onLeaderboardTapped;
 
   const RankingTable({
     super.key,
@@ -13,6 +16,7 @@ class RankingTable extends StatelessWidget {
     required this.userHighScores,
     required this.onViewBenchmarks,
     required this.onLiftTapped,
+    required this.onLeaderboardTapped,
   });
 
   @override
@@ -76,6 +80,7 @@ class RankingTable extends StatelessWidget {
             score: entry.value,
             standards: liftStandards!,
             onTap: () => onLiftTapped(entry.key),
+            onLeaderboardTap: () => onLeaderboardTapped(entry.key),
           ),
         ),
         const SizedBox(height: 20),
@@ -139,56 +144,26 @@ class _RankingTableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Row(
       children: [
+        Expanded(flex: 2, child: Text('Lift', style: _headerStyle)),
         Expanded(
-          flex: 2,
-          child: Text(
-            'Lift',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-        ),
+            flex: 2, child: Center(child: Text('Score', style: _headerStyle))),
         Expanded(
-          flex: 2,
-          child: Center(
-            child: Text(
-              'Score',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
+            flex: 2,
+            child: Center(child: Text('Progress', style: _headerStyle))),
         Expanded(
-          flex: 3,
-          child: Center(
-            child: Text(
-              'Progress',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
+            flex: 2, child: Center(child: Text('Rank', style: _headerStyle))),
         Expanded(
-          flex: 2,
-          child: Center(
-            child: Text(
-              'Rank',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
+            flex: 1, child: Center(child: Text('Energy', style: _headerStyle))),
         Expanded(
-          flex: 2,
-          child: Center(
-            child: Text(
-              'Energy',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
+            flex: 1, child: Center(child: Text('Lb', style: _headerStyle))),
       ],
     );
   }
+
+  static const _headerStyle = TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.bold,
+  );
 }
 
 class _RankingRow extends StatelessWidget {
@@ -196,12 +171,14 @@ class _RankingRow extends StatelessWidget {
   final double score;
   final Map<String, dynamic> standards;
   final VoidCallback onTap;
+  final VoidCallback onLeaderboardTap;
 
   const _RankingRow({
     required this.lift,
     required this.score,
     required this.standards,
     required this.onTap,
+    required this.onLeaderboardTap,
   });
 
   @override
@@ -232,10 +209,9 @@ class _RankingRow extends StatelessWidget {
       score,
       currentRank,
       Map.fromEntries(
-        standards.entries.map((e) => MapEntry(
-              e.key,
-              {'total': (e.value['lifts'][lowerLift] ?? 0)},
-            )),
+        standards.entries.map(
+          (e) => MapEntry(e.key, {'total': (e.value['lifts'][lowerLift] ?? 0)}),
+        ),
       ),
     );
 
@@ -246,7 +222,7 @@ class _RankingRow extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: Colors.grey[900],
           borderRadius: BorderRadius.circular(8),
@@ -254,30 +230,25 @@ class _RankingRow extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              flex: 2,
-              child: Text(
-                lift,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
+                flex: 2,
+                child: Text(lift,
+                    style: const TextStyle(color: Colors.white, fontSize: 16))),
+            Expanded(
+                flex: 2,
+                child: Center(
+                    child: Text(RankUtils.formatKg(score),
+                        style: const TextStyle(color: Colors.white)))),
             Expanded(
               flex: 2,
-              child: Center(
-                child: Text(
-                  RankUtils.formatKg(score),
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 3,
               child: Column(
                 children: [
-                  LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey[800],
-                    color: color,
-                    minHeight: 8,
+                  SizedBox(
+                    height: 6,
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.grey[800],
+                      color: color,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -290,24 +261,21 @@ class _RankingRow extends StatelessWidget {
               ),
             ),
             Expanded(
-              flex: 2,
-              child: Center(
-                child: Text(
-                  currentRank,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
+                flex: 2,
+                child: Center(
+                    child: Text(currentRank,
+                        style: TextStyle(
+                            color: color, fontWeight: FontWeight.bold)))),
             Expanded(
-              flex: 2,
-              child: Center(
-                child: Text(
-                  energy.toString(),
-                  style: const TextStyle(color: Colors.white),
-                ),
+                flex: 1,
+                child: Center(
+                    child: Text('$energy',
+                        style: const TextStyle(color: Colors.white)))),
+            Expanded(
+              flex: 1,
+              child: IconButton(
+                icon: const Icon(Icons.leaderboard, color: Colors.blue),
+                onPressed: onLeaderboardTap,
               ),
             ),
           ],

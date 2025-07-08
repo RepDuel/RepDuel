@@ -30,7 +30,6 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     'Deadlift': 0.0,
   };
 
-  // Scenario IDs (always the same)
   final squatId = 'a9b52e3a-248d-4a89-82ab-555be989de5b';
   final benchId = 'bf610e59-fb34-4e21-bc36-bdf0f6f7be4f';
   final deadliftId = '9b6cf826-e243-4d3e-81bd-dfe4a8a0c05e';
@@ -117,8 +116,15 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     );
 
     if (result == true && mounted) {
-      await _initializeData(); // Refresh scores
+      await _initializeData();
     }
+  }
+
+  Future<void> _handleLeaderboardTap(String liftName) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Show leaderboard for $liftName')),
+    );
+    // TODO: Replace this with actual navigation logic
   }
 
   @override
@@ -152,6 +158,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                     onViewBenchmarks: () =>
                         setState(() => showBenchmarks = true),
                     onLiftTapped: _handleScenarioTap,
+                    onLeaderboardTapped: _handleLeaderboardTap,
                   ),
           ),
         ),
