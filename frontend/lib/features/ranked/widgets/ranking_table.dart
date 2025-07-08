@@ -8,7 +8,7 @@ class RankingTable extends StatelessWidget {
   final Map<String, double> userHighScores;
   final Function() onViewBenchmarks;
   final Function(String liftName) onLiftTapped;
-  final Function(String liftName) onLeaderboardTapped;
+  final Function(String scenarioId) onLeaderboardTapped;
 
   const RankingTable({
     super.key,
@@ -18,6 +18,12 @@ class RankingTable extends StatelessWidget {
     required this.onLiftTapped,
     required this.onLeaderboardTapped,
   });
+
+  static const scenarioIds = {
+    'Squat': 'a9b52e3a-248d-4a89-82ab-555be989de5b',
+    'Bench': 'bf610e59-fb34-4e21-bc36-bdf0f6f7be4f',
+    'Deadlift': '9b6cf826-e243-4d3e-81bd-dfe4a8a0c05e',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -261,11 +267,13 @@ class _RankingRow extends StatelessWidget {
               ),
             ),
             Expanded(
-                flex: 2,
-                child: Center(
-                    child: Text(currentRank,
-                        style: TextStyle(
-                            color: color, fontWeight: FontWeight.bold)))),
+              flex: 2,
+              child: Center(
+                child: Text(currentRank,
+                    style:
+                        TextStyle(color: color, fontWeight: FontWeight.bold)),
+              ),
+            ),
             Expanded(
                 flex: 1,
                 child: Center(

@@ -1,3 +1,5 @@
+// frontend/lib/features/ranked/screens/ranked_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +9,7 @@ import 'dart:async';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../../scenario/screens/scenario_screen.dart';
+import '../../leaderboard/screens/leaderboard_screen.dart';
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
 
@@ -26,13 +29,19 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
   String? error;
   Map<String, double> userHighScores = {
     'Squat': 0.0,
-    'Bench Press': 0.0,
+    'Bench': 0.0,
     'Deadlift': 0.0,
   };
 
   final squatId = 'a9b52e3a-248d-4a89-82ab-555be989de5b';
   final benchId = 'bf610e59-fb34-4e21-bc36-bdf0f6f7be4f';
   final deadliftId = '9b6cf826-e243-4d3e-81bd-dfe4a8a0c05e';
+
+  final Map<String, String> liftToScenarioId = {
+    'Squat': 'a9b52e3a-248d-4a89-82ab-555be989de5b',
+    'Bench': 'bf610e59-fb34-4e21-bc36-bdf0f6f7be4f',
+    'Deadlift': '9b6cf826-e243-4d3e-81bd-dfe4a8a0c05e'
+  };
 
   @override
   void initState() {
@@ -87,7 +96,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
 
     userHighScores = {
       'Squat': results[0],
-      'Bench Press': results[1],
+      'Bench': results[1],
       'Deadlift': results[2],
     };
   }
@@ -121,10 +130,24 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
   }
 
   Future<void> _handleLeaderboardTap(String liftName) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Show leaderboard for $liftName')),
+    // Ensure the full name is used, not shortened/partial
+    final scenarioId = liftToScenarioId[liftName];
+    if (scenarioId == null) {
+      print("❌ No scenario ID found for '$liftName'");
+      return;
+    }
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LeaderboardScreen(
+          scenarioId: scenarioId,
+          liftName: liftName,
+        ),
+      ),
     );
-    // TODO: Replace this with actual navigation logic
   }
 
   @override
@@ -166,7 +189,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 1,
         onTap: (index) {
-          // TODO: Implement navigation
+          // TODO: Handle navigation
         },
       ),
     );

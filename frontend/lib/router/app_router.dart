@@ -9,7 +9,8 @@ import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/profile/screens/profile_wrapper.dart';
 import '../features/normal/screens/normal_screen.dart';
-import '../features/routines/screens/exercise_list_screen.dart'; // Importing the ExerciseListScreen
+import '../features/leaderboard/screens/leaderboard_screen.dart';
+import '../features/routines/screens/exercise_list_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -53,6 +54,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final routineId = state.pathParameters['routineId']!;
           return ExerciseListScreen(routineId: routineId);
+        },
+      ),
+      GoRoute(
+        path: '/leaderboard/:scenarioId',
+        builder: (context, state) {
+          final scenarioId = state.pathParameters['scenarioId']!;
+          final liftName = state.uri.queryParameters['liftName'] ?? 'Unknown';
+          return LeaderboardScreen(
+            scenarioId: scenarioId,
+            liftName: liftName,
+          );
         },
       ),
     ],
