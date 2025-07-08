@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy import Boolean, Column, DateTime, String, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -27,6 +27,9 @@ class User(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
     avatar_url = Column(String, nullable=True)
+
+    weight = Column(Float, nullable=True)  # Weight field
+    gender = Column(String, nullable=True)  # Gender field
 
     guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
 

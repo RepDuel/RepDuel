@@ -8,6 +8,8 @@ class User {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? avatarUrl;
+  final double? weight;
+  final String? gender;
 
   User({
     required this.id,
@@ -17,6 +19,8 @@ class User {
     required this.createdAt,
     required this.updatedAt,
     this.avatarUrl,
+    this.weight,
+    this.gender,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -28,6 +32,9 @@ class User {
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       avatarUrl: json['avatar_url'] as String?,
+      weight:
+          json['weight'] != null ? (json['weight'] as num).toDouble() : null,
+      gender: json['gender'] as String?,
     );
   }
 
@@ -40,6 +47,8 @@ class User {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'avatar_url': avatarUrl,
+      'weight': weight,
+      'gender': gender,
     };
   }
 }
