@@ -36,7 +36,7 @@ async def get_routine_by_id(
     routine_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    routine = await routine_service.get_routine(db, routine_id)
+    routine = await routine_service.get_routine_read(db, routine_id)  # Changed to use get_routine_read
     if not routine:
         raise HTTPException(status_code=404, detail="Routine not found")
     return routine

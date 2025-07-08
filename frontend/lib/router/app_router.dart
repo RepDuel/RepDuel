@@ -9,6 +9,7 @@ import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/profile/screens/profile_wrapper.dart';
 import '../features/normal/screens/normal_screen.dart';
+import '../features/routines/screens/exercise_list_screen.dart'; // Importing the ExerciseListScreen
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -44,6 +45,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/home',
         builder: (context, state) => const HomeScreen(),
+      ),
+      // New Route for Exercise List
+      GoRoute(
+        path:
+            '/exercise_list/:routineId', // Route with dynamic ID for the routine
+        builder: (context, state) {
+          final routineId = state.pathParameters['routineId']!;
+          return ExerciseListScreen(routineId: routineId);
+        },
       ),
     ],
     redirect: (BuildContext context, GoRouterState state) {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:go_router/go_router.dart';
 
 import '../../../core/models/routine.dart';
 
@@ -117,7 +118,8 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
           onPressed: () {
-            // TODO: Start the routine logic
+            // Navigate to ExerciseListScreen and pass the routineId
+            context.push('/exercise_list/${routine.id}');
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
