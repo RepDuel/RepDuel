@@ -4,13 +4,13 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 
-from app.db.base import Base
+from app.db.base_class import Base
 
 class EnergyHistory(Base):
     __tablename__ = "energy_history"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     energy = Column(Float, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

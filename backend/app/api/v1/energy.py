@@ -8,10 +8,13 @@ from app.models.energy_history import EnergyHistory
 from app.models.user import User
 from app.schemas.energy import EnergyEntry, EnergyLeaderboardEntry
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/energy",
+    tags=["Energy"],
+)
 
 
-@router.get("/energy/history/{user_id}", response_model=list[EnergyEntry])
+@router.get("/history/{user_id}", response_model=list[EnergyEntry])
 async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
     stmt = (
         select(EnergyHistory)
@@ -22,7 +25,7 @@ async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
-@router.get("/energy/leaderboard", response_model=list[EnergyLeaderboardEntry])
+@router.get("/leaderboard", response_model=list[EnergyLeaderboardEntry])
 async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
     stmt = (
         select(
@@ -35,4 +38,16 @@ async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
         .order_by(func.sum(EnergyHistory.energy).desc())
     )
     result = await db.execute(stmt)
-    return result.all()
+    rows = result.all()
+
+    # Add ranks
+    leaderboard = []
+    for index, row in enumerate(rows, start=1):
+        leaderboard.append({
+            "rank": index,
+            "user_id": row.user_id,
+            "username": row.username,
+            "total_energy": row.total_energy
+        })
+
+    return leaderboard
