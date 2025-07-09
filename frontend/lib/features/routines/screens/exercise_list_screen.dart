@@ -22,7 +22,7 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return List.from(data['scenarios']); // Each should include `name`
+      return List.from(data['scenarios']);
     } else {
       throw Exception('Failed to load exercises');
     }
@@ -54,45 +54,68 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
 
             return Padding(
               padding: const EdgeInsets.all(16.0),
-              child: ListView.builder(
-                itemCount: exercisesData.length,
-                itemBuilder: (context, index) {
-                  final exercise = exercisesData[index];
-                  final scenarioName = exercise['name'] ?? 'Unnamed Exercise';
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: exercisesData.length,
+                      itemBuilder: (context, index) {
+                        final exercise = exercisesData[index];
+                        final scenarioName =
+                            exercise['name'] ?? 'Unnamed Exercise';
 
-                  return Card(
-                    color: Colors.white12,
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: ListTile(
-                      title: Text(
-                        scenarioName,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 18),
-                      ),
-                      subtitle: Text(
-                        'Sets: ${exercise['sets']} | Reps: ${exercise['reps']}',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 14),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.play_arrow, color: Colors.green),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ExercisePlayScreen(
-                                exerciseId: exercise['scenario_id'],
-                                exerciseName: scenarioName, // ✅ Pass name
-                                sets: exercise['sets'],
-                                reps: exercise['reps'],
-                              ),
+                        return Card(
+                          color: Colors.white12,
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          child: ListTile(
+                            title: Text(
+                              scenarioName,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 18),
                             ),
-                          );
-                        },
-                      ),
+                            subtitle: Text(
+                              'Sets: ${exercise['sets']} | Reps: ${exercise['reps']}',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 14),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.play_arrow,
+                                  color: Colors.green),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ExercisePlayScreen(
+                                      exerciseId: exercise['scenario_id'],
+                                      exerciseName: scenarioName,
+                                      sets: exercise['sets'],
+                                      reps: exercise['reps'],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      int count = 0;
+                      Navigator.of(context).popUntil((_) => count++ >= 2);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 24),
+                      textStyle: const TextStyle(fontSize: 16),
+                    ),
+                    child: const Text('Submit Routine'),
+                  ),
+                ],
               ),
             );
           }
