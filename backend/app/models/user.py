@@ -36,3 +36,6 @@ class User(Base):
     messages = relationship("Message", back_populates="author", cascade="all, delete-orphan")
 
     scores = relationship("Score", back_populates="user")
+
+    energy_history = relationship("EnergyHistory", back_populates="user", cascade="all, delete")
+
