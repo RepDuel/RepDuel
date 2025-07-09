@@ -10,3 +10,8 @@ class EnergyEntry(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class EnergyLeaderboardEntry(BaseModel):
+    user_id: UUID
+    username: str
+    total_energy: float
