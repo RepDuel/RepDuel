@@ -13,7 +13,6 @@ router = APIRouter(
     tags=["Energy"],
 )
 
-
 @router.get("/history/{user_id}", response_model=list[EnergyEntry])
 async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
     stmt = (
@@ -37,17 +36,18 @@ async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
         .group_by(User.id, User.username)
         .order_by(func.sum(EnergyHistory.energy).desc())
     )
+
     result = await db.execute(stmt)
     rows = result.all()
 
-    # Add ranks
-    leaderboard = []
-    for index, row in enumerate(rows, start=1):
-        leaderboard.append({
-            "rank": index,
-            "user_id": row.user_id,
-            "username": row.username,
-            "total_energy": row.total_energy
-        })
+    leaderboard = [
+        EnergyLeaderboardEntry(
+            rank=index,
+            user_id=row.user_id,
+            username=row.username,
+            total_energy=row.total_energy
+        )
+        for index, row in enumerate(rows, start=1)
+    ]
 
     return leaderboard
