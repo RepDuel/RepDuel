@@ -9,8 +9,10 @@ class EnergyEntry(BaseModel):
     energy: float
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
+
 
 
 class EnergyLeaderboardEntry(BaseModel):
@@ -19,5 +21,6 @@ class EnergyLeaderboardEntry(BaseModel):
     username: str
     total_energy: float
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }

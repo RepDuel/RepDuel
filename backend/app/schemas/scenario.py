@@ -18,8 +18,10 @@ class ScenarioUpdate(ScenarioBase):
 class ScenarioInDBBase(ScenarioBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
+
 
 
 class Scenario(ScenarioInDBBase):
@@ -31,5 +33,7 @@ class ScenarioOut(ScenarioInDBBase):
     name: str
     description: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
+

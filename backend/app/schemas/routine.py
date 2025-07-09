@@ -31,5 +31,7 @@ class RoutineRead(RoutineBase):
     created_at: datetime
     scenarios: List[ScenarioSet]
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
+

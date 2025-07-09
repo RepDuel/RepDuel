@@ -1,5 +1,3 @@
-// frontend/lib/features/ranked/screens/ranked_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -10,6 +8,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../../scenario/screens/scenario_screen.dart';
 import '../../leaderboard/screens/leaderboard_screen.dart';
+import '../../leaderboard/screens/energy_leaderboard_screen.dart';
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
 
@@ -130,10 +129,9 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
   }
 
   Future<void> _handleLeaderboardTap(String liftName) async {
-    // Ensure the full name is used, not shortened/partial
     final scenarioId = liftToScenarioId[liftName];
     if (scenarioId == null) {
-      print("❌ No scenario ID found for '$liftName'");
+      debugPrint("❌ No scenario ID found for '$liftName'");
       return;
     }
 
@@ -146,6 +144,16 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
           scenarioId: scenarioId,
           liftName: liftName,
         ),
+      ),
+    );
+  }
+
+  Future<void> _handleEnergyLeaderboardTap() async {
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const EnergyLeaderboardScreen(),
       ),
     );
   }
@@ -182,6 +190,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                         setState(() => showBenchmarks = true),
                     onLiftTapped: _handleScenarioTap,
                     onLeaderboardTapped: _handleLeaderboardTap,
+                    onEnergyLeaderboardTapped: _handleEnergyLeaderboardTap,
                   ),
           ),
         ),

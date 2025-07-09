@@ -16,5 +16,6 @@ class ScoreOut(BaseModel):
     weight_lifted: float
     created_at: datetime
 
-    class Config:
-        from_attributes = True  # Enables conversion from ORM models
+    model_config = {
+        "from_attributes": True
+    }
