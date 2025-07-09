@@ -9,20 +9,20 @@ class ExerciseListScreen extends StatefulWidget {
   const ExerciseListScreen({super.key, required this.routineId});
 
   @override
-  _ExerciseListScreenState createState() => _ExerciseListScreenState();
+  ExerciseListScreenState createState() => ExerciseListScreenState();
 }
 
-class _ExerciseListScreenState extends State<ExerciseListScreen> {
+class ExerciseListScreenState extends State<ExerciseListScreen> {
   late Future<List<dynamic>> exercises;
 
-  // Fetch exercises for the selected routine
   Future<List<dynamic>> fetchExercises() async {
     final response = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/routines/${widget.routineId}'));
+      Uri.parse('http://localhost:8000/api/v1/routines/${widget.routineId}'),
+    );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return List.from(data['scenarios']);
+      return List.from(data['scenarios']); // Each should include `name`
     } else {
       throw Exception('Failed to load exercises');
     }
@@ -31,7 +31,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   @override
   void initState() {
     super.initState();
-    exercises = fetchExercises(); // Fetch exercises for the selected routine
+    exercises = fetchExercises();
   }
 
   @override
@@ -58,13 +58,14 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                 itemCount: exercisesData.length,
                 itemBuilder: (context, index) {
                   final exercise = exercisesData[index];
+                  final scenarioName = exercise['name'] ?? 'Unnamed Exercise';
 
                   return Card(
                     color: Colors.white12,
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
                       title: Text(
-                        exercise['scenario_id'],
+                        scenarioName,
                         style:
                             const TextStyle(color: Colors.white, fontSize: 18),
                       ),
@@ -76,12 +77,12 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       trailing: IconButton(
                         icon: const Icon(Icons.play_arrow, color: Colors.green),
                         onPressed: () {
-                          // Navigate to the exercise play screen
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ExercisePlayScreen(
                                 exerciseId: exercise['scenario_id'],
+                                exerciseName: scenarioName, // ✅ Pass name
                                 sets: exercise['sets'],
                                 reps: exercise['reps'],
                               ),

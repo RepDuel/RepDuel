@@ -1,5 +1,3 @@
-# backend/app/schemas/routine.py
-
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
@@ -8,8 +6,13 @@ from pydantic import BaseModel, Field
 
 class ScenarioSet(BaseModel):
     scenario_id: UUID
+    name: str
     sets: int = Field(..., ge=0)
     reps: int = Field(..., ge=0)
+
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class RoutineBase(BaseModel):
@@ -34,4 +37,3 @@ class RoutineRead(RoutineBase):
     model_config = {
         "from_attributes": True
     }
-

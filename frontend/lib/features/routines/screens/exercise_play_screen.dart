@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 class ExercisePlayScreen extends StatelessWidget {
   final String exerciseId;
+  final String exerciseName;
   final int sets;
   final int reps;
 
   const ExercisePlayScreen({
     super.key,
     required this.exerciseId,
+    required this.exerciseName,
     required this.sets,
     required this.reps,
   });
@@ -19,7 +21,7 @@ class ExercisePlayScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Exercise: $exerciseId'),
+        title: Text('Exercise: $exerciseName'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
@@ -55,7 +57,7 @@ class ExercisePlayScreen extends StatelessWidget {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Logic for saving the results (e.g., send data to the backend)
+                // Logic for saving the results
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
