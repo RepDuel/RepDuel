@@ -128,10 +128,14 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     }
   }
 
-  Future<void> _handleLeaderboardTap(String liftName) async {
-    final scenarioId = liftToScenarioId[liftName];
-    if (scenarioId == null) {
-      debugPrint("❌ No scenario ID found for '$liftName'");
+  Future<void> _handleLeaderboardTap(String scenarioId) async {
+    final liftName = liftToScenarioId.entries
+        .firstWhere((e) => e.value == scenarioId,
+            orElse: () => const MapEntry('', ''))
+        .key;
+
+    if (liftName.isEmpty) {
+      debugPrint("❌ No lift name found for scenarioId '$scenarioId'");
       return;
     }
 

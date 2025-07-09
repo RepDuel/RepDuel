@@ -241,8 +241,10 @@ class _RankingRow extends StatelessWidget {
           children: [
             Expanded(
               flex: 2,
-              child: Text(lift,
-                  style: const TextStyle(color: Colors.white, fontSize: 16)),
+              child: Text(
+                lift,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
             Expanded(
               flex: 2,

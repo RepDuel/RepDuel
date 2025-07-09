@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy import func, select
 from uuid import UUID
 
 from app.api.v1.deps import get_db
 from app.models.score import Score
 from app.models.scenario import Scenario
-from app.schemas.score import ScoreCreate, ScoreOut
+from app.schemas.score import ScoreCreate, ScoreOut, ScoreReadWithUser
 
 router = APIRouter(prefix="/scores", tags=["Scores"])
 
@@ -39,7 +40,7 @@ async def create_score_for_scenario(
     return db_score
 
 
-@router.get("/scenario/{scenario_id}/leaderboard", response_model=list[ScoreOut])
+@router.get("/scenario/{scenario_id}/leaderboard", response_model=list[ScoreReadWithUser])
 async def get_leaderboard(
     scenario_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -56,6 +57,7 @@ async def get_leaderboard(
 
     stmt = (
         select(Score)
+        .options(selectinload(Score.user))  # Load user info
         .join(
             subquery,
             (Score.user_id == subquery.c.user_id) &
