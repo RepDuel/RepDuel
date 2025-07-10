@@ -97,8 +97,9 @@ class _NormalScreenState extends State<NormalScreen> {
 
                     return Container(
                       margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      padding: const EdgeInsets.all(16),
+                          horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 0),
                       decoration: BoxDecoration(
                         color: Colors.grey[900],
                         borderRadius: BorderRadius.circular(8),
