@@ -43,8 +43,13 @@ class RankingTable extends StatelessWidget {
     };
 
     final energies = allLifts.entries.map((entry) {
-      final rank = _getLiftRank(entry.key, entry.value, liftStandards!);
-      return RankUtils.rankEnergy[rank] ?? 0;
+      final liftKey = entry.key.toLowerCase();
+      final score = entry.value;
+      return RankUtils.getInterpolatedEnergy(
+        score: score,
+        thresholds: liftStandards!,
+        liftKey: liftKey,
+      );
     }).toList();
 
     final averageEnergy = energies.isNotEmpty
