@@ -133,7 +133,7 @@ class RankingTable extends StatelessWidget {
       }
     }
 
-    return 'Iron';
+    return 'Unranked';
   }
 
   String _getRankFromEnergy(double energy) {
@@ -144,7 +144,7 @@ class RankingTable extends StatelessWidget {
       if (energy >= entry.value) return entry.key;
     }
 
-    return 'Iron';
+    return 'Unranked';
   }
 }
 
@@ -200,30 +200,29 @@ class _RankingRow extends StatelessWidget {
       ..sort((a, b) => ((b.value['lifts'][lowerLift] ?? 0) as num)
           .compareTo((a.value['lifts'][lowerLift] ?? 0) as num));
 
-    String currentRank = 'Iron';
+    String? matchedRank;
     for (final entry in sortedRanks) {
       final threshold = (entry.value['lifts'][lowerLift] ?? 0) as num;
       if (score >= threshold.toDouble()) {
-        currentRank = entry.key;
+        matchedRank = entry.key;
         break;
       }
     }
 
-    final currentIndex = sortedRanks.indexWhere((e) => e.key == currentRank);
-    final hasNext = currentIndex > 0;
-    final nextRank = hasNext ? sortedRanks[currentIndex - 1].key : null;
+    final currentRank = matchedRank ?? 'Unranked';
+
+    // Always show next benchmark — if Unranked, use lowest rank threshold
+    final nextIndex = currentRank == 'Unranked'
+        ? sortedRanks.length - 1
+        : sortedRanks.indexWhere((e) => e.key == currentRank) - 1;
+    final hasNext = nextIndex >= 0;
+    final nextRank = hasNext ? sortedRanks[nextIndex].key : null;
     final nextBenchmark = hasNext
         ? (standards[nextRank]!['lifts'][lowerLift] ?? score) as num
         : score;
 
-    final progress = RankUtils.calculateProgressPercentage(
-      score,
-      currentRank,
-      Map.fromEntries(
-        standards.entries.map((e) =>
-            MapEntry(e.key, {'total': (e.value['lifts'][lowerLift] ?? 0)})),
-      ),
-    );
+    final progress =
+        nextBenchmark > 0 ? (score / nextBenchmark).clamp(0.0, 1.0) : 0.0;
 
     final energy = RankUtils.rankEnergy[currentRank] ?? 0;
     final color = RankUtils.getRankColor(currentRank);
@@ -269,9 +268,7 @@ class _RankingRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    hasNext && nextBenchmark.toDouble() > score
-                        ? '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextBenchmark.toDouble())}'
-                        : 'MAX RANK',
+                    '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextBenchmark.toDouble())}',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
