@@ -3,6 +3,12 @@ from datetime import datetime
 from uuid import UUID
 
 
+class EnergySubmit(BaseModel):
+    user_id: UUID
+    energy: float
+    rank: str
+
+
 class EnergyEntry(BaseModel):
     id: UUID
     user_id: UUID
@@ -12,7 +18,6 @@ class EnergyEntry(BaseModel):
     model_config = {
         "from_attributes": True
     }
-
 
 
 class EnergyLeaderboardEntry(BaseModel):

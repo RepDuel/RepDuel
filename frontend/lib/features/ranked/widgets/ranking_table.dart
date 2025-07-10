@@ -8,6 +8,7 @@ class RankingTable extends StatelessWidget {
   final Function(String liftName) onLiftTapped;
   final Function(String scenarioId) onLeaderboardTapped;
   final VoidCallback onEnergyLeaderboardTapped;
+  final Function(int energy, String rank) onEnergyComputed;
 
   const RankingTable({
     super.key,
@@ -17,6 +18,7 @@ class RankingTable extends StatelessWidget {
     required this.onLiftTapped,
     required this.onLeaderboardTapped,
     required this.onEnergyLeaderboardTapped,
+    required this.onEnergyComputed,
   });
 
   static const scenarioIds = {
@@ -59,6 +61,8 @@ class RankingTable extends StatelessWidget {
     final overallRank = _getRankFromEnergy(averageEnergy);
     final color = RankUtils.getRankColor(overallRank);
 
+    onEnergyComputed(averageEnergy.round(), overallRank);
+
     return Column(
       children: [
         Row(
@@ -67,18 +71,14 @@ class RankingTable extends StatelessWidget {
             const Text(
               'Rank: ',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
             ),
             Text(
               '${averageEnergy.round()} $overallRank',
               style: TextStyle(
-                color: color,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: color, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             IconButton(
               icon: const Icon(Icons.leaderboard, color: Colors.blue),
@@ -211,10 +211,9 @@ class _RankingRow extends StatelessWidget {
             (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0)
                 .toDouble();
       } else {
-        nextThreshold = currentThreshold; // Already top rank
+        nextThreshold = currentThreshold;
       }
     } else {
-      // Unranked — get Iron threshold as the first target
       final iron = sortedRanks.last;
       nextThreshold = (iron.value['lifts'][lowerLift] ?? 0).toDouble();
     }
@@ -245,21 +244,13 @@ class _RankingRow extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              flex: 2,
-              child: Text(
-                lift,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
+                flex: 2,
+                child: Text(lift, style: const TextStyle(color: Colors.white))),
             Expanded(
-              flex: 2,
-              child: Center(
-                child: Text(
-                  RankUtils.formatKg(score),
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
+                flex: 2,
+                child: Center(
+                    child: Text(RankUtils.formatKg(score),
+                        style: const TextStyle(color: Colors.white)))),
             Expanded(
               flex: 2,
               child: Column(
@@ -274,37 +265,28 @@ class _RankingRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextThreshold)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
+                      '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextThreshold)}',
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 12)),
                 ],
               ),
             ),
             Expanded(
-              flex: 2,
-              child: Center(
-                child: Text(
-                  currentRank,
-                  style: TextStyle(color: color, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
+                flex: 2,
+                child: Center(
+                    child: Text(currentRank,
+                        style: TextStyle(
+                            color: color, fontWeight: FontWeight.bold)))),
             Expanded(
-              flex: 1,
-              child: Center(
-                child: Text(
-                  '$energy',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
+                flex: 1,
+                child: Center(
+                    child: Text('$energy',
+                        style: const TextStyle(color: Colors.white)))),
             Expanded(
-              flex: 1,
-              child: IconButton(
-                icon: const Icon(Icons.leaderboard, color: Colors.blue),
-                onPressed: onLeaderboardTap,
-              ),
-            ),
+                flex: 1,
+                child: IconButton(
+                    icon: const Icon(Icons.leaderboard, color: Colors.blue),
+                    onPressed: onLeaderboardTap)),
           ],
         ),
       ),

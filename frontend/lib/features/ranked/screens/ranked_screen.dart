@@ -11,6 +11,7 @@ import '../../leaderboard/screens/leaderboard_screen.dart';
 import '../../leaderboard/screens/energy_leaderboard_screen.dart';
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
+import '../utils/rank_utils.dart';
 
 class RankedScreen extends ConsumerStatefulWidget {
   const RankedScreen({super.key});
@@ -162,6 +163,44 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     );
   }
 
+  Future<void> _handleEnergyComputed(int energy, String rank) async {
+    final user = ref.read(authStateProvider).user;
+    if (user == null) return;
+
+    final url = Uri.parse('http://localhost:8000/api/v1/energy/submit');
+    final body = json.encode({
+      'user_id': user.id,
+      'energy': energy,
+      'rank': rank,
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      if (response.statusCode != 200) {
+        debugPrint("❌ Failed to send energy: ${response.body}");
+      } else {
+        debugPrint("✅ Energy submitted: $energy ($rank)");
+      }
+    } catch (e) {
+      debugPrint("❌ Error submitting energy: $e");
+    }
+  }
+
+  String _getRankFromEnergy(double energy) {
+    final entries = RankUtils.rankEnergy.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    for (final entry in entries) {
+      if (energy >= entry.value) return entry.key;
+    }
+
+    return 'Unranked';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) return _buildLoading();
@@ -195,6 +234,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                     onLiftTapped: _handleScenarioTap,
                     onLeaderboardTapped: _handleLeaderboardTap,
                     onEnergyLeaderboardTapped: _handleEnergyLeaderboardTap,
+                    onEnergyComputed: _handleEnergyComputed, // ✅ Added
                   ),
           ),
         ),
