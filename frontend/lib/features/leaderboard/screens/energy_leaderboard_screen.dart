@@ -140,9 +140,9 @@ class _EnergyLeaderboardScreenState extends State<EnergyLeaderboardScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '$formattedEnergy ⚡',
+                                  '$formattedEnergy',
                                   style: const TextStyle(
-                                    color: Colors.greenAccent,
+                                    color: Colors.white,
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),

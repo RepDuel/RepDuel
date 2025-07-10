@@ -1,5 +1,3 @@
-# backend/app/api/v1/energy.py
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -8,7 +6,7 @@ from uuid import UUID
 from app.api.v1.deps import get_db
 from app.models.energy_history import EnergyHistory
 from app.models.user import User
-from app.schemas.energy import EnergyEntry, EnergyLeaderboardEntry, EnergySubmit  # Ensure EnergySubmit is imported
+from app.schemas.energy import EnergyEntry, EnergyLeaderboardEntry, EnergySubmit
 
 router = APIRouter(
     prefix="/energy",
@@ -48,15 +46,27 @@ async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
 @router.get("/leaderboard", response_model=list[EnergyLeaderboardEntry])
 async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
+    # Subquery to get latest energy per user
+    subquery = (
+        select(
+            EnergyHistory.user_id,
+            func.max(EnergyHistory.created_at).label("latest")
+        )
+        .group_by(EnergyHistory.user_id)
+        .subquery()
+    )
+
     stmt = (
         select(
             User.id.label("user_id"),
             User.username,
-            func.sum(EnergyHistory.energy).label("total_energy")
+            EnergyHistory.energy.label("total_energy")
         )
         .join(EnergyHistory, User.id == EnergyHistory.user_id)
-        .group_by(User.id, User.username)
-        .order_by(func.sum(EnergyHistory.energy).desc())
+        .join(subquery,
+              (EnergyHistory.user_id == subquery.c.user_id) &
+              (EnergyHistory.created_at == subquery.c.latest))
+        .order_by(EnergyHistory.energy.desc())
     )
 
     result = await db.execute(stmt)
