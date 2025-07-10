@@ -63,33 +63,97 @@ class _EnergyLeaderboardScreenState extends State<EnergyLeaderboardScreen> {
           ? const Center(child: CircularProgressIndicator())
           : error != null
               ? Center(
-                  child:
-                      Text(error!, style: const TextStyle(color: Colors.red)),
+                  child: Text(
+                    error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 )
-              : ListView.builder(
-                  itemCount: entries.length,
-                  itemBuilder: (_, index) {
-                    final entry = entries[index];
-                    final username = entry['username'] ?? 'Anonymous';
-                    final energy =
-                        entry['total_energy']?.toStringAsFixed(1) ?? '0.0';
+              : Column(
+                  children: [
+                    const Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 40,
+                            child: Text(
+                              'Rank',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'User',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'Energy',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: entries.length,
+                        itemBuilder: (_, index) {
+                          final entry = entries[index];
+                          final username = entry['username'] ?? 'Anonymous';
+                          final energy = entry['total_energy'] ?? 0;
+                          final formattedEnergy = energy.round();
 
-                    return ListTile(
-                      leading: Text(
-                        '#${index + 1}',
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8.0, horizontal: 16.0),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 40,
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    username,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '$formattedEnergy ⚡',
+                                  style: const TextStyle(
+                                    color: Colors.greenAccent,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                      title: Text(
-                        username,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      trailing: Text(
-                        '$energy ⚡',
-                        style: const TextStyle(color: Colors.greenAccent),
-                      ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
     );
   }
