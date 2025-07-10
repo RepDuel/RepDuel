@@ -73,25 +73,95 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   child:
                       Text(error!, style: const TextStyle(color: Colors.red)),
                 )
-              : ListView.builder(
-                  itemCount: scores.length,
-                  itemBuilder: (_, index) {
-                    final score = scores[index];
-                    final user = score['user'];
-                    final username = user?['username'] ?? 'Anonymous';
-                    final weight = score['weight_lifted'] ?? 0;
+              : Column(
+                  children: [
+                    const Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 40,
+                            child: Text(
+                              'Rank',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'User',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'Score',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: scores.length,
+                        itemBuilder: (_, index) {
+                          final score = scores[index];
+                          final user = score['user'];
+                          final username = user?['username'] ?? 'Anonymous';
+                          final weight = score['weight_lifted'] ?? 0;
+                          final formattedWeight = weight % 1 == 0
+                              ? weight.toInt().toString()
+                              : weight.toStringAsFixed(1);
 
-                    return ListTile(
-                      title: Text(
-                        username,
-                        style: const TextStyle(color: Colors.white),
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8.0, horizontal: 16.0),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 40,
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    username,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '$formattedWeight kg',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                      trailing: Text(
-                        '$weight kg',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
     );
   }
