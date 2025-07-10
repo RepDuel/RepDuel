@@ -64,8 +64,9 @@ class RankUtils {
 
     if (nextBenchmark == currentBenchmark) return 1.0;
 
-    return ((score - currentBenchmark) / (nextBenchmark - currentBenchmark))
-        .clamp(0.0, 1.0);
+    final rawProgress =
+        (score - currentBenchmark) / (nextBenchmark - currentBenchmark);
+    return rawProgress.clamp(0.0, 1.0);
   }
 
   static double getInterpolatedEnergy({

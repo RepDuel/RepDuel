@@ -124,23 +124,6 @@ class RankingTable extends StatelessWidget {
     return 0.0;
   }
 
-  String _getLiftRank(
-      String lift, double score, Map<String, dynamic> standards) {
-    final lowerLift = lift.toLowerCase();
-    final sortedRanks = standards.entries.toList()
-      ..sort((a, b) => ((b.value['lifts'][lowerLift] ?? 0) as num)
-          .compareTo((a.value['lifts'][lowerLift] ?? 0) as num));
-
-    for (final entry in sortedRanks) {
-      final threshold = (entry.value['lifts'][lowerLift] ?? 0) as num;
-      if (score >= threshold.toDouble()) {
-        return entry.key;
-      }
-    }
-
-    return 'Unranked';
-  }
-
   String _getRankFromEnergy(double energy) {
     final entries = RankUtils.rankEnergy.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -216,18 +199,32 @@ class _RankingRow extends StatelessWidget {
 
     final currentRank = matchedRank ?? 'Unranked';
 
-    // Always show next benchmark — if Unranked, use lowest rank threshold
-    final nextIndex = currentRank == 'Unranked'
-        ? sortedRanks.length - 1
-        : sortedRanks.indexWhere((e) => e.key == currentRank) - 1;
-    final hasNext = nextIndex >= 0;
-    final nextRank = hasNext ? sortedRanks[nextIndex].key : null;
-    final nextBenchmark = hasNext
-        ? (standards[nextRank]!['lifts'][lowerLift] ?? score) as num
-        : score;
+    double currentThreshold = 0.0;
+    double nextThreshold = 0.0;
 
-    final progress =
-        nextBenchmark > 0 ? (score / nextBenchmark).clamp(0.0, 1.0) : 0.0;
+    if (matchedRank != null) {
+      final currentIndex = sortedRanks.indexWhere((e) => e.key == matchedRank);
+      currentThreshold =
+          (sortedRanks[currentIndex].value['lifts'][lowerLift] ?? 0).toDouble();
+      if (currentIndex > 0) {
+        nextThreshold =
+            (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0)
+                .toDouble();
+      } else {
+        nextThreshold = currentThreshold; // Already top rank
+      }
+    } else {
+      // Unranked — get Iron threshold as the first target
+      final iron = sortedRanks.last;
+      nextThreshold = (iron.value['lifts'][lowerLift] ?? 0).toDouble();
+    }
+
+    final progress = nextThreshold > currentThreshold
+        ? ((score - currentThreshold) / (nextThreshold - currentThreshold))
+            .clamp(0.0, 1.0)
+        : (matchedRank == null && nextThreshold > 0
+            ? (score / nextThreshold).clamp(0.0, 1.0)
+            : 1.0);
 
     final energy = RankUtils.getInterpolatedEnergy(
       score: score,
@@ -277,7 +274,7 @@ class _RankingRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextBenchmark.toDouble())}',
+                    '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextThreshold)}',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
