@@ -8,6 +8,7 @@ from app.api.v1.deps import get_db
 from app.models.score import Score
 from app.models.scenario import Scenario
 from app.schemas.score import ScoreCreate, ScoreOut, ScoreReadWithUser
+from app.services.energy_service import update_energy_if_personal_best
 
 router = APIRouter(prefix="/scores", tags=["Scores"])
 
@@ -37,6 +38,15 @@ async def create_score_for_scenario(
     db.add(db_score)
     await db.commit()
     await db.refresh(db_score)
+
+    # 🔥 Update energy if it's a new PR
+    await update_energy_if_personal_best(
+        user_id=score.user_id,
+        scenario_id=scenario_id,
+        new_score=score.weight_lifted,
+        db=db,
+    )
+
     return db_score
 
 
