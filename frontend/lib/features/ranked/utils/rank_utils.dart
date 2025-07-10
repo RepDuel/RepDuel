@@ -1,5 +1,3 @@
-// frontend/lib/features/ranked/utils/rank_utils.dart
-
 import 'package:flutter/material.dart';
 
 class RankUtils {
@@ -68,6 +66,60 @@ class RankUtils {
 
     return ((score - currentBenchmark) / (nextBenchmark - currentBenchmark))
         .clamp(0.0, 1.0);
+  }
+
+  static double getInterpolatedEnergy({
+    required double score,
+    required Map<String, dynamic> thresholds,
+    required String liftKey,
+  }) {
+    final sorted = thresholds.entries.toList()
+      ..sort((a, b) => ((a.value['lifts'][liftKey] ?? 0) as num)
+          .compareTo((b.value['lifts'][liftKey] ?? 0) as num));
+
+    if (sorted.length < 2) return 0.0;
+
+    final lowest = sorted.first;
+    final lowestThreshold = (lowest.value['lifts'][liftKey] ?? 0).toDouble();
+    final lowestEnergy = rankEnergy[lowest.key]?.toDouble() ?? 100;
+
+    // 🔻 Below Iron (interpolate from 0 to Iron)
+    if (score < lowestThreshold) {
+      final percent = (score / lowestThreshold).clamp(0.0, 1.0);
+      return (percent * lowestEnergy).roundToDouble();
+    }
+
+    // 🔁 Between ranks
+    for (int i = 0; i < sorted.length - 1; i++) {
+      final current = sorted[i];
+      final next = sorted[i + 1];
+
+      final currentVal = (current.value['lifts'][liftKey] ?? 0).toDouble();
+      final nextVal = (next.value['lifts'][liftKey] ?? 0).toDouble();
+
+      if (score >= currentVal && score <= nextVal) {
+        final percent = (score - currentVal) / (nextVal - currentVal);
+        final currentEnergy = rankEnergy[current.key]?.toDouble() ?? 0.0;
+        final nextEnergy = rankEnergy[next.key]?.toDouble() ?? 0.0;
+        return (currentEnergy + percent * (nextEnergy - currentEnergy))
+            .roundToDouble();
+      }
+    }
+
+    // 🔺 Above top rank (extrapolation)
+    final top = sorted.last;
+    final secondLast = sorted[sorted.length - 2];
+
+    final topVal = (top.value['lifts'][liftKey] ?? 0).toDouble();
+    final secondVal = (secondLast.value['lifts'][liftKey] ?? 0).toDouble();
+    final topEnergy = rankEnergy[top.key]?.toDouble() ?? 1200;
+    final secondEnergy = rankEnergy[secondLast.key]?.toDouble() ?? 1100;
+
+    final stepScore = topVal - secondVal;
+    final stepEnergy = topEnergy - secondEnergy;
+
+    final extraSteps = (score - topVal) / stepScore;
+    return (topEnergy + extraSteps * stepEnergy).roundToDouble();
   }
 
   /// Determine color of rank

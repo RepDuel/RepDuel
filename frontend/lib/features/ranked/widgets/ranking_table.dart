@@ -224,7 +224,11 @@ class _RankingRow extends StatelessWidget {
     final progress =
         nextBenchmark > 0 ? (score / nextBenchmark).clamp(0.0, 1.0) : 0.0;
 
-    final energy = RankUtils.rankEnergy[currentRank] ?? 0;
+    final energy = RankUtils.getInterpolatedEnergy(
+      score: score,
+      thresholds: standards,
+      liftKey: lowerLift,
+    );
     final color = RankUtils.getRankColor(currentRank);
 
     return GestureDetector(
