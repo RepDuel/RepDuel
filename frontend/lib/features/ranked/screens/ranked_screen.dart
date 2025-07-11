@@ -11,7 +11,6 @@ import '../../leaderboard/screens/leaderboard_screen.dart';
 import '../../leaderboard/screens/energy_leaderboard_screen.dart';
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
-import '../utils/rank_utils.dart';
 
 class RankedScreen extends ConsumerStatefulWidget {
   const RankedScreen({super.key});
@@ -120,7 +119,10 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ScenarioScreen(liftName: liftName),
+        builder: (_) => ScenarioScreen(
+          liftName: liftName,
+          scenarioId: liftToScenarioId[liftName] ?? '',
+        ),
       ),
     );
 
@@ -190,17 +192,6 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     }
   }
 
-  String _getRankFromEnergy(double energy) {
-    final entries = RankUtils.rankEnergy.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    for (final entry in entries) {
-      if (energy >= entry.value) return entry.key;
-    }
-
-    return 'Unranked';
-  }
-
   @override
   Widget build(BuildContext context) {
     if (isLoading) return _buildLoading();
@@ -234,7 +225,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                     onLiftTapped: _handleScenarioTap,
                     onLeaderboardTapped: _handleLeaderboardTap,
                     onEnergyLeaderboardTapped: _handleEnergyLeaderboardTap,
-                    onEnergyComputed: _handleEnergyComputed, // ✅ Added
+                    onEnergyComputed: _handleEnergyComputed,
                   ),
           ),
         ),

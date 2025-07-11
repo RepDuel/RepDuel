@@ -10,8 +10,13 @@ import '../../ranked/screens/result_screen.dart';
 
 class ScenarioScreen extends ConsumerStatefulWidget {
   final String liftName;
+  final String scenarioId; // ✅ NEW
 
-  const ScenarioScreen({super.key, required this.liftName});
+  const ScenarioScreen({
+    super.key,
+    required this.liftName,
+    required this.scenarioId, // ✅ NEW
+  });
 
   @override
   ConsumerState<ScenarioScreen> createState() => _ScenarioScreenState();
@@ -22,21 +27,14 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   final TextEditingController _repsController = TextEditingController();
   bool _isSubmitting = false;
 
-  static const scenarioIds = {
-    'Squat': 'a9b52e3a-248d-4a89-82ab-555be989de5b',
-    'Bench': 'bf610e59-fb34-4e21-bc36-bdf0f6f7be4f',
-    'Deadlift': '9b6cf826-e243-4d3e-81bd-dfe4a8a0c05e',
-  };
-
   double _calculateOneRepMax(double weight, int reps) {
     return weight * (1 + reps / 30);
   }
 
   Future<void> _submitScore(double score) async {
     final user = ref.read(authStateProvider).user;
-    final scenarioId = scenarioIds[widget.liftName];
 
-    if (user == null || scenarioId == null) return;
+    if (user == null) return;
 
     setState(() {
       _isSubmitting = true;
@@ -46,7 +44,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       final url = Uri.parse('http://localhost:8000/api/v1/scores/');
       final body = {
         'user_id': user.id,
-        'scenario_id': scenarioId,
+        'scenario_id': widget.scenarioId, // ✅ use passed-in scenario ID
         'weight_lifted': score,
       };
 
@@ -56,12 +54,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         body: json.encode(body),
       );
 
-      if (response.statusCode >= 400) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to submit score')),
-          );
-        }
+      if (response.statusCode >= 400 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to submit score')),
+        );
       }
     } finally {
       if (mounted) {
@@ -85,7 +81,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       MaterialPageRoute(
         builder: (_) => ResultScreen(
           finalScore: oneRepMax.round(),
-          previousBest: 100, // Replace with actual previous best
+          previousBest: 100, // Replace with actual previous best if needed
         ),
       ),
     );

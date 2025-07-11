@@ -48,11 +48,14 @@ class _NormalScreenState extends State<NormalScreen> {
     }
   }
 
-  void _goToScenario(String liftName) {
+  void _goToScenario(String id, String name) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ScenarioScreen(liftName: liftName),
+        builder: (_) => ScenarioScreen(
+          liftName: name,
+          scenarioId: id,
+        ),
       ),
     );
   }
@@ -108,7 +111,11 @@ class _NormalScreenState extends State<NormalScreen> {
                         children: [
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => _goToScenario(name),
+                              onTap: () {
+                                if (id != null) {
+                                  _goToScenario(id, name);
+                                }
+                              },
                               child: Text(
                                 name,
                                 style: const TextStyle(
