@@ -17,9 +17,7 @@ class AuthApiService {
   Future<Token?> login(String email, String password) async {
     final response = await _publicClient.post(
       '/users/login',
-      // The form data expects a 'username' key for the email
       data: {'username': email, 'password': password},
-      // Set the correct content type for the form data
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
       ),
@@ -48,7 +46,45 @@ class AuthApiService {
     if (token != null) {
       options = Options(headers: {'Authorization': 'Bearer $token'});
     }
+
     final response = await _privateClient.get('/users/me', options: options);
+
+    if (response.statusCode == 200) {
+      return User.fromJson(response.data);
+    }
+    return null;
+  }
+
+  Future<User?> updateUser({
+    required String token,
+    required Map<String, dynamic> updates,
+  }) async {
+    final response = await _privateClient.dio.patch(
+      '/users/me',
+      data: updates,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    if (response.statusCode == 200) {
+      return User.fromJson(response.data);
+    }
+    return null;
+  }
+
+  Future<User?> updateMe({
+    required String token,
+    String? gender,
+    double? weight,
+  }) async {
+    final data = <String, dynamic>{};
+    if (gender != null) data['gender'] = gender;
+    if (weight != null) data['weight'] = weight;
+
+    final response = await _privateClient.patch(
+      '/users/me',
+      data: data,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
 
     if (response.statusCode == 200) {
       return User.fromJson(response.data);

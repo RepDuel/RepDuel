@@ -1,5 +1,3 @@
-// frontend/lib/features/profile/screens/profile_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -13,11 +11,14 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  double weightKg = 90.7;
-  String gender = "Male";
-
   Future<void> _editWeight(BuildContext context) async {
-    final controller = TextEditingController(text: weightKg.toString());
+    final authNotifier = ref.read(authProvider.notifier);
+    final user = ref.read(authProvider).user;
+
+    if (user == null) return;
+
+    final controller =
+        TextEditingController(text: user.weight?.toString() ?? '');
 
     final result = await showDialog<String>(
       context: context,
@@ -49,13 +50,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
 
     if (result != null) {
-      setState(() {
-        weightKg = double.tryParse(result) ?? weightKg;
-      });
+      final weight = double.tryParse(result);
+      if (weight != null) {
+        await authNotifier.updateUser(weight: weight);
+      }
     }
   }
 
   Future<void> _editGender(BuildContext context) async {
+    final authNotifier = ref.read(authProvider.notifier);
+    final user = ref.read(authProvider).user;
+
+    if (user == null) return;
+
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
@@ -75,10 +82,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
 
-    if (result != null) {
-      setState(() {
-        gender = result;
-      });
+    if (result != null && result != user.gender) {
+      await authNotifier.updateUser(gender: result);
     }
   }
 
@@ -141,7 +146,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Row(
                     children: [
                       Text(
-                        'Gender: $gender',
+                        'Gender: ${user.gender ?? "Unknown"}',
                         style:
                             const TextStyle(color: Colors.white, fontSize: 16),
                       ),
@@ -155,7 +160,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Row(
                     children: [
                       Text(
-                        'Weight: ${weightKg.toStringAsFixed(1)} kg',
+                        'Weight: ${user.weight?.toStringAsFixed(1) ?? "N/A"} kg',
                         style:
                             const TextStyle(color: Colors.white, fontSize: 16),
                       ),

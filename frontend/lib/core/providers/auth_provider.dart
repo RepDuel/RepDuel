@@ -126,4 +126,50 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     }
   }
+
+  Future<bool> updateProfile({String? gender, double? weight}) async {
+    if (state.token == null) return false;
+    try {
+      final updatedUser = await _authApi.updateMe(
+        token: state.token!,
+        gender: gender,
+        weight: weight,
+      );
+      if (updatedUser != null) {
+        state = state.copyWith(user: updatedUser);
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> updateUser({String? gender, double? weight}) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final token = state.token;
+      if (token == null) {
+        throw Exception("No auth token found.");
+      }
+
+      final updatedUser = await _authApi.updateUser(
+        token: token,
+        updates: {
+          if (gender != null) 'gender': gender,
+          if (weight != null) 'weight': weight,
+        },
+      );
+
+      if (updatedUser != null) {
+        state = state.copyWith(user: updatedUser, isLoading: false);
+        return true;
+      } else {
+        state =
+            state.copyWith(isLoading: false, error: 'Failed to update user');
+        return false;
+      }
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
 }
