@@ -1,3 +1,5 @@
+# backend/app/api/v1/auth.py
+
 from app.api.v1.deps import get_db
 from app.core.config import settings
 from app.models.user import User

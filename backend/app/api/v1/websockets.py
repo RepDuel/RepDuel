@@ -1,3 +1,5 @@
+# backend/app/api/v1/websockets.py
+
 import json
 from uuid import UUID
 

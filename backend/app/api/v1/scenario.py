@@ -1,4 +1,4 @@
-# app/api/v1/scenario.py
+# backend/app/api/v1/scenario.py
 
 from app.api.v1.deps import get_db
 from app.models.scenario import Scenario

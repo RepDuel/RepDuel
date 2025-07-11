@@ -1,3 +1,5 @@
+# backend/app/core/auth.py
+
 import logging
 from typing import Optional
 

@@ -1,3 +1,5 @@
+# backend/app/api/v1/energy.py
+
 from uuid import UUID
 
 from app.api.v1.deps import get_db
