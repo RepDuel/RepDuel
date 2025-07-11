@@ -30,8 +30,13 @@ class _NormalScreenState extends State<NormalScreen> {
       );
 
       if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List;
+        data.sort(
+            (a, b) => (a['name'] ?? '').toString().toLowerCase().compareTo(
+                  (b['name'] ?? '').toString().toLowerCase(),
+                ));
         setState(() {
-          scenarios = json.decode(response.body);
+          scenarios = data;
           isLoading = false;
         });
       } else {
