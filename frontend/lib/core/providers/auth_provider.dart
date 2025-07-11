@@ -74,10 +74,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
           return true;
         }
       }
-      state = state.copyWith(isLoading: false, error: 'Authentication failed');
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Login failed. Invalid credentials.',
+      );
       return false;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      final errorMessage = e.toString().contains('401')
+          ? 'Incorrect email or password.'
+          : 'An unexpected error occurred.';
+      state = state.copyWith(isLoading: false, error: errorMessage);
       return false;
     }
   }
@@ -114,7 +120,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           await _secureStorage.deleteToken();
           state = AuthState();
         }
-      } catch (e) {
+      } catch (_) {
         await _secureStorage.deleteToken();
         state = AuthState();
       }

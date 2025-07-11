@@ -19,9 +19,7 @@ class MainBottomNavBar extends StatelessWidget {
       unselectedItemColor: Colors.grey,
       currentIndex: currentIndex,
       onTap: (index) {
-        onTap(index);
-
-        // Handle navigation with GoRouter
+        // Use GoRouter for navigation
         switch (index) {
           case 0:
             context.go('/normal');
@@ -36,6 +34,9 @@ class MainBottomNavBar extends StatelessWidget {
             context.go('/profile');
             break;
         }
+
+        // Call the onTap function to notify the parent widget about the index change
+        onTap(index);
       },
       items: const [
         BottomNavigationBarItem(
