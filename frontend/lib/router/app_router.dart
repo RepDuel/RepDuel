@@ -13,10 +13,11 @@ import '../features/routines/screens/exercise_list_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  ref.watch(authProvider);
+  // Watching the authProvider to ensure we always have the updated state
+  final auth = ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: '/profile',
+    initialLocation: '/profile', // Default route if no other route matches
     routes: [
       GoRoute(
         path: '/normal',
@@ -47,8 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
-        path:
-            '/exercise_list/:routineId', // Route with dynamic ID for the routine
+        path: '/exercise_list/:routineId',
         builder: (context, state) {
           final routineId = state.pathParameters['routineId']!;
           return ExerciseListScreen(routineId: routineId);
@@ -67,21 +67,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
-      final auth = ref.read(authProvider);
+      // Reading auth provider to get the current user state
       final isLoggedIn = auth.user != null;
       final path = state.uri.path;
 
+      // Check if user is logged in or not
       final isAuthRoute = path == '/login' || path == '/register';
 
+      // If user is not logged in and tries to access protected routes, redirect to login
       if (!isLoggedIn && !isAuthRoute) {
-        return '/login';
+        return '/login'; // Redirect to login if not logged in
       }
 
+      // If user is logged in and tries to access login page, redirect to profile
       if (isLoggedIn && path == '/login') {
         return '/profile';
       }
 
-      return null;
+      return null; // No redirection needed
     },
   );
 });
