@@ -28,7 +28,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!mounted) return;
 
-      if (!success) {
+      if (success) {
+        Navigator.pushReplacementNamed(context, '/profile');
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login failed')),
         );

@@ -17,7 +17,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: '/ranked',
+    initialLocation: '/profile',
     routes: [
       GoRoute(
         path: '/normal',
@@ -47,7 +47,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/home',
         builder: (context, state) => const HomeScreen(),
       ),
-      // New Route for Exercise List
       GoRoute(
         path:
             '/exercise_list/:routineId', // Route with dynamic ID for the routine
