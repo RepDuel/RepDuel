@@ -184,8 +184,6 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
       );
       if (response.statusCode != 200) {
         debugPrint("❌ Failed to send energy: ${response.body}");
-      } else {
-        debugPrint("✅ Energy submitted: $energy ($rank)");
       }
     } catch (e) {
       debugPrint("❌ Error submitting energy: $e");
@@ -232,9 +230,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
       ),
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 1,
-        onTap: (index) {
-          // TODO: Handle navigation
-        },
+        onTap: (_) {},
       ),
     );
   }

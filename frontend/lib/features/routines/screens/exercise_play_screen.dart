@@ -33,9 +33,9 @@ class ExercisePlayScreen extends StatelessWidget {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              Text(
+              const Text(
                 'Enter the weights and reps for each set',
-                style: const TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyle(color: Colors.white, fontSize: 18),
               ),
               const SizedBox(height: 20),
               ...List.generate(sets, (index) {
@@ -48,10 +48,10 @@ class ExercisePlayScreen extends StatelessWidget {
                         flex: 2,
                         child: TextField(
                           controller: weightControllers[index],
-                          decoration: InputDecoration(
-                            labelText: 'Set ${index + 1} Weight (kg)',
-                            labelStyle: const TextStyle(color: Colors.white70),
-                            border: const OutlineInputBorder(),
+                          decoration: const InputDecoration(
+                            labelText: 'Weight (kg)',
+                            labelStyle: TextStyle(color: Colors.white70),
+                            border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                         ),
@@ -62,10 +62,10 @@ class ExercisePlayScreen extends StatelessWidget {
                         flex: 1,
                         child: TextField(
                           controller: repControllers[index],
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Reps',
-                            labelStyle: const TextStyle(color: Colors.white70),
-                            border: const OutlineInputBorder(),
+                            labelStyle: TextStyle(color: Colors.white70),
+                            border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                         ),

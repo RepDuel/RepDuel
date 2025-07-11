@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart'; // For kDebugMode
 
 import '../../../core/models/routine.dart';
 
@@ -34,7 +35,11 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
         };
       });
     } else {
-      print('Failed to load scenarios');
+      if (kDebugMode) {
+        debugPrint('Failed to load scenarios');
+      }
+      // In production, you might want to use a proper logging package
+      // or show an error to the user
     }
   }
 
@@ -108,7 +113,7 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
                         ),
                       );
                     },
-                  ).toList(),
+                  ),
                 ],
               ),
       ),
