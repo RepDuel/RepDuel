@@ -1,5 +1,3 @@
-// frontend/lib/features/ranked/widgets/benchmarks_table.dart
-
 import 'package:flutter/material.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
 
@@ -18,8 +16,8 @@ class BenchmarksTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sortedRanks = standards.keys.toList()
-      ..sort((a, b) => (standards[b]['total'] as num)
-          .compareTo(standards[a]['total'] as num));
+      ..sort((a, b) => (standards[a]['total'] as num)
+          .compareTo(standards[b]['total'] as num));
 
     return Column(
       children: [
@@ -59,24 +57,24 @@ class _BenchmarksTableHeader extends StatelessWidget {
           flex: 3,
           child: _HeaderText('Rank'),
         ),
-        const Expanded(
-          flex: 2,
-          child: _HeaderText('Total', center: true),
-        ),
         if (showLifts) ...const [
-          Expanded(
-            flex: 2,
-            child: _HeaderText('Squat', center: true),
-          ),
           Expanded(
             flex: 2,
             child: _HeaderText('Bench', center: true),
           ),
           Expanded(
             flex: 2,
+            child: _HeaderText('Squat', center: true),
+          ),
+          Expanded(
+            flex: 2,
             child: _HeaderText('Deadlift', center: true),
           ),
         ],
+        const Expanded(
+          flex: 2,
+          child: _HeaderText('Total', center: true),
+        ),
       ],
     );
   }
@@ -121,24 +119,24 @@ class _BenchmarkRow extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: _LiftValue(total),
-          ),
           if (lifts != null) ...[
-            Expanded(
-              flex: 2,
-              child: _LiftValue(lifts!['squat']),
-            ),
             Expanded(
               flex: 2,
               child: _LiftValue(lifts!['bench']),
             ),
             Expanded(
               flex: 2,
+              child: _LiftValue(lifts!['squat']),
+            ),
+            Expanded(
+              flex: 2,
               child: _LiftValue(lifts!['deadlift']),
             ),
           ],
+          Expanded(
+            flex: 2,
+            child: _LiftValue(total),
+          ),
         ],
       ),
     );
