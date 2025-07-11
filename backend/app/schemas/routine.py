@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -10,9 +11,7 @@ class ScenarioSet(BaseModel):
     sets: int = Field(..., ge=0)
     reps: int = Field(..., ge=0)
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 
 class RoutineBase(BaseModel):
@@ -34,6 +33,4 @@ class RoutineRead(RoutineBase):
     created_at: datetime
     scenarios: List[ScenarioSet]
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}

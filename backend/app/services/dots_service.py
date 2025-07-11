@@ -1,9 +1,13 @@
 from typing import Dict, Optional
-from app.core.dots_constants import DOTS_RANKS, LIFT_RATIOS, DOTS_COEFFICIENTS, RANK_METADATA
+
+from app.core.dots_constants import (DOTS_COEFFICIENTS, DOTS_RANKS,
+                                     LIFT_RATIOS, RANK_METADATA)
+
 
 def round_to_nearest_5(x: float) -> float:
     """Round value to the nearest 5."""
     return round(x / 5) * 5
+
 
 class DotsCalculator:
     @staticmethod
@@ -11,13 +15,14 @@ class DotsCalculator:
         """Get DOTs coefficient for given bodyweight and gender"""
         gender_coeffs = DOTS_COEFFICIENTS.get(gender, DOTS_COEFFICIENTS["male"])
         closest_weight = min(
-            gender_coeffs.keys(),
-            key=lambda x: abs(float(x) - bodyweight_kg)
+            gender_coeffs.keys(), key=lambda x: abs(float(x) - bodyweight_kg)
         )
         return gender_coeffs[closest_weight]
 
     @staticmethod
-    def calculate_dots(total_kg: float, bodyweight_kg: float, gender: str = "male") -> float:
+    def calculate_dots(
+        total_kg: float, bodyweight_kg: float, gender: str = "male"
+    ) -> float:
         """Calculate DOTs score with gender support"""
         coeff = DotsCalculator.get_coefficient(bodyweight_kg, gender)
         return round(total_kg * coeff, 2)
@@ -26,7 +31,9 @@ class DotsCalculator:
     def get_rank(dots_score: float) -> Dict:
         """Get rank with metadata"""
         rank_name = "Iron"
-        for rank, threshold in sorted(DOTS_RANKS.items(), key=lambda x: x[1], reverse=True):
+        for rank, threshold in sorted(
+            DOTS_RANKS.items(), key=lambda x: x[1], reverse=True
+        ):
             if dots_score >= threshold:
                 rank_name = rank
                 break
@@ -35,7 +42,7 @@ class DotsCalculator:
             "name": rank_name,
             **RANK_METADATA.get(rank_name, {}),
             "next_rank": DotsCalculator.get_next_rank(rank_name),
-            "dots_required": DOTS_RANKS[rank_name]
+            "dots_required": DOTS_RANKS[rank_name],
         }
 
     @staticmethod
@@ -49,7 +56,7 @@ class DotsCalculator:
                 return {
                     "name": next_rank[0],
                     "dots_needed": next_rank[1] - DOTS_RANKS[current_rank],
-                    **RANK_METADATA.get(next_rank[0], {})
+                    **RANK_METADATA.get(next_rank[0], {}),
                 }
         except ValueError:
             pass
@@ -74,7 +81,7 @@ class DotsCalculator:
                     "bench": round_to_nearest_5(bench),
                     "deadlift": round_to_nearest_5(deadlift),
                 },
-                "metadata": RANK_METADATA.get(rank, {})
+                "metadata": RANK_METADATA.get(rank, {}),
             }
 
         return standards

@@ -1,15 +1,14 @@
 # backend/app/api/v1/routines.py
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 from uuid import UUID
 
 from app.api.v1.deps import get_db
 from app.models.user import User
 from app.schemas.routine import RoutineCreate, RoutineRead, RoutineUpdate
 from app.services import routine_service
-
-from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/routines", tags=["Routines"])
 
@@ -36,7 +35,9 @@ async def get_routine_by_id(
     routine_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    routine = await routine_service.get_routine_read(db, routine_id)  # Changed to use get_routine_read
+    routine = await routine_service.get_routine_read(
+        db, routine_id
+    )  # Changed to use get_routine_read
     if not routine:
         raise HTTPException(status_code=404, detail="Routine not found")
     return routine

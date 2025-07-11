@@ -1,21 +1,20 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
-from uuid import UUID
 import json
+from uuid import UUID
 
 from app.core.auth import get_current_user_ws
-from app.services.message_service import create_message
-from app.schemas.message import MessageCreate, MessageRead
 from app.db.session import async_session
+from app.schemas.message import MessageCreate, MessageRead
+from app.services.message_service import create_message
 from app.services.websocket_manager import WebSocketManager
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 router = APIRouter()
 ws_manager = WebSocketManager()
 
+
 @router.websocket("/ws/{channel_id}")
 async def websocket_chat(
-    websocket: WebSocket,
-    channel_id: UUID,
-    token: str = Query(...)
+    websocket: WebSocket, channel_id: UUID, token: str = Query(...)
 ):
     user = await get_current_user_ws(websocket, token)
     if not user:
@@ -34,7 +33,7 @@ async def websocket_chat(
                 if not content:
                     continue
             except json.JSONDecodeError:
-                content = text # Fallback for plain text messages
+                content = text  # Fallback for plain text messages
 
             async with async_session() as db:
                 message_in = MessageCreate(content=content, channel_id=channel_id)
@@ -44,7 +43,7 @@ async def websocket_chat(
                     author_id=user.id,
                 )
 
-                message_dict = MessageRead.from_orm(message).model_dump(mode='json')
+                message_dict = MessageRead.from_orm(message).model_dump(mode="json")
 
             # Broadcast the dictionary. The manager will handle the final encoding.
             await ws_manager.broadcast(message_dict, channel_id)

@@ -2,8 +2,9 @@
 
 import json
 from typing import Dict, List
-from fastapi import WebSocket
 from uuid import UUID
+
+from fastapi import WebSocket
 
 
 class WebSocketManager:
@@ -16,13 +17,17 @@ class WebSocketManager:
         if channel_id not in self.active_connections:
             self.active_connections[channel_id] = []
         self.active_connections[channel_id].append(websocket)
-        print(f"WebSocket connected to channel {channel_id}. Total: {len(self.active_connections[channel_id])}")
+        print(
+            f"WebSocket connected to channel {channel_id}. Total: {len(self.active_connections[channel_id])}"
+        )
 
     def disconnect(self, websocket: WebSocket, channel_id: UUID):
         connections = self.active_connections.get(channel_id, [])
         if websocket in connections:
             connections.remove(websocket)
-            print(f"WebSocket disconnected from channel {channel_id}. Remaining: {len(connections)}")
+            print(
+                f"WebSocket disconnected from channel {channel_id}. Remaining: {len(connections)}"
+            )
         if not connections:
             self.active_connections.pop(channel_id, None)
 

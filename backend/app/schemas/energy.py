@@ -1,6 +1,7 @@
-from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class EnergySubmit(BaseModel):
@@ -15,9 +16,7 @@ class EnergyEntry(BaseModel):
     energy: float
     created_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 
 class EnergyLeaderboardEntry(BaseModel):
@@ -26,6 +25,4 @@ class EnergyLeaderboardEntry(BaseModel):
     username: str
     total_energy: float
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}

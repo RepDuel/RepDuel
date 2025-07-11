@@ -3,11 +3,10 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, String, Float
+from app.db.base_class import Base
+from sqlalchemy import Boolean, Column, DateTime, Float, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-
-from app.db.base_class import Base
 
 
 class User(Base):
@@ -33,9 +32,12 @@ class User(Base):
 
     guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
 
-    messages = relationship("Message", back_populates="author", cascade="all, delete-orphan")
+    messages = relationship(
+        "Message", back_populates="author", cascade="all, delete-orphan"
+    )
 
     scores = relationship("Score", back_populates="user")
 
-    energy_history = relationship("EnergyHistory", back_populates="user", cascade="all, delete")
-
+    energy_history = relationship(
+        "EnergyHistory", back_populates="user", cascade="all, delete"
+    )

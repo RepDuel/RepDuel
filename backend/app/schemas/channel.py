@@ -1,7 +1,8 @@
-from pydantic import BaseModel
-from uuid import UUID
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class ChannelCreate(BaseModel):
@@ -14,6 +15,4 @@ class ChannelRead(ChannelCreate):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}

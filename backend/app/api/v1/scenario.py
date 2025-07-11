@@ -1,19 +1,21 @@
 # app/api/v1/scenario.py
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from app.api.v1.deps import get_db
 from app.models.scenario import Scenario
 from app.schemas.scenario import ScenarioCreate, ScenarioOut
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
+
 
 @router.get("/", response_model=list[ScenarioOut])
 async def list_scenarios(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Scenario))
     scenarios = result.scalars().all()
     return scenarios
+
 
 @router.post("/", response_model=ScenarioOut)
 async def create_scenario(scenario: ScenarioCreate, db: AsyncSession = Depends(get_db)):

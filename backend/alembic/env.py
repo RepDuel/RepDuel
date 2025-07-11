@@ -1,12 +1,11 @@
-import sys
-from pathlib import Path
 import asyncio
-
+import sys
 from logging.config import fileConfig
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import pool
+from pathlib import Path
 
 from alembic import context
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -19,6 +18,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+
 
 def run_migrations_offline() -> None:
     url = settings.DATABASE_URL
@@ -35,7 +35,7 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection):
     context.configure(connection=connection, target_metadata=target_metadata)
-    
+
     with context.begin_transaction():
         context.run_migrations()
 

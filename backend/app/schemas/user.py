@@ -1,5 +1,6 @@
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -19,9 +20,7 @@ class UserRead(UserBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 
 class UserUpdate(BaseModel):

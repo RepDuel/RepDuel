@@ -1,10 +1,12 @@
 # backend/app/models/score.py
 
-from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
 from datetime import datetime
+
 from app.db.base_class import Base
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
 
 class Score(Base):
     __tablename__ = "scores"

@@ -1,11 +1,11 @@
 # backend/app/services/message_service.py
 
 from uuid import UUID
-from sqlalchemy.future import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.message import Message
 from app.schemas.message import MessageCreate
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 
 async def create_message(

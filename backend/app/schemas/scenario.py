@@ -1,6 +1,8 @@
-from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
+
+from pydantic import BaseModel
+
 
 class ScenarioBase(BaseModel):
     name: str
@@ -18,10 +20,7 @@ class ScenarioUpdate(ScenarioBase):
 class ScenarioInDBBase(ScenarioBase):
     id: int
 
-    model_config = {
-        "from_attributes": True
-    }
-
+    model_config = {"from_attributes": True}
 
 
 class Scenario(ScenarioInDBBase):
@@ -33,7 +32,4 @@ class ScenarioOut(ScenarioInDBBase):
     name: str
     description: str | None = None
 
-    model_config = {
-        "from_attributes": True
-    }
-
+    model_config = {"from_attributes": True}

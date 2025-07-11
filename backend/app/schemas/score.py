@@ -1,7 +1,8 @@
-from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
+
 from app.schemas.user import UserRead
+from pydantic import BaseModel
 
 
 class ScoreCreate(BaseModel):
@@ -17,9 +18,8 @@ class ScoreOut(BaseModel):
     weight_lifted: float
     created_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
+
 
 class ScoreReadWithUser(BaseModel):
     id: int

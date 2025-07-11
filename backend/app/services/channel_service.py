@@ -1,17 +1,15 @@
 # backend/app/services/channel_service.py
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from uuid import UUID
+
 from app.models.channel import Channel
 from app.schemas.channel import ChannelCreate
-from uuid import UUID
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def create_channel(db: AsyncSession, channel_in: ChannelCreate) -> Channel:
-    channel = Channel(
-        name=channel_in.name,
-        guild_id=channel_in.guild_id
-    )
+    channel = Channel(name=channel_in.name, guild_id=channel_in.guild_id)
     db.add(channel)
     await db.commit()
     await db.refresh(channel)

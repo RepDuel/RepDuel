@@ -2,13 +2,14 @@
 
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
 
 from app.models.routine import Routine
 from app.models.routine_scenario import RoutineScenario
-from app.schemas.routine import RoutineCreate, RoutineUpdate, ScenarioSet, RoutineRead
+from app.schemas.routine import (RoutineCreate, RoutineRead, RoutineUpdate,
+                                 ScenarioSet)
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 
 
 # Fetch routine by ID
@@ -51,7 +52,9 @@ async def get_routine_read(db: AsyncSession, routine_id: UUID) -> Optional[Routi
 
 
 # Fetch a list of routines for a specific user
-async def get_user_routines(db: AsyncSession, user_id: Optional[UUID]) -> List[RoutineRead]:
+async def get_user_routines(
+    db: AsyncSession, user_id: Optional[UUID]
+) -> List[RoutineRead]:
     stmt = select(Routine)
     if user_id:
         stmt = stmt.where((Routine.user_id == user_id) | (Routine.user_id.is_(None)))
@@ -93,7 +96,9 @@ async def get_user_routines(db: AsyncSession, user_id: Optional[UUID]) -> List[R
 
 
 # Create a new routine
-async def create_routine(db: AsyncSession, routine_in: RoutineCreate, user_id: Optional[UUID] = None) -> RoutineRead:
+async def create_routine(
+    db: AsyncSession, routine_in: RoutineCreate, user_id: Optional[UUID] = None
+) -> RoutineRead:
     routine = Routine(
         name=routine_in.name,
         image_url=routine_in.image_url,
@@ -124,7 +129,9 @@ async def update_routine(
 
     if routine_in.scenarios is not None:
         await db.execute(
-            RoutineScenario.__table__.delete().where(RoutineScenario.routine_id == routine.id)
+            RoutineScenario.__table__.delete().where(
+                RoutineScenario.routine_id == routine.id
+            )
         )
         for item in routine_in.scenarios:
             assoc = RoutineScenario(
@@ -142,7 +149,9 @@ async def update_routine(
 # Delete a routine
 async def delete_routine(db: AsyncSession, routine: Routine) -> None:
     await db.execute(
-        RoutineScenario.__table__.delete().where(RoutineScenario.routine_id == routine.id)
+        RoutineScenario.__table__.delete().where(
+            RoutineScenario.routine_id == routine.id
+        )
     )
     await db.delete(routine)
     await db.commit()
