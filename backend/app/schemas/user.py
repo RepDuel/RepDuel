@@ -21,6 +21,9 @@ class UserRead(UserBase):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    avatar_url: str | None = None
+    weight: float | None = None
+    gender: str | None = None
 
     model_config = {"from_attributes": True}
 

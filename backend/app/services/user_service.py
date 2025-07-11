@@ -1,5 +1,3 @@
-# backend/app/services/user_service.py
-
 from app.core.security import hash_password, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
@@ -38,6 +36,7 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
 
 
 async def update_user(db: AsyncSession, user: User, updates: UserUpdate) -> User:
+    # Only update fields that are provided (exclude unset)
     for field, value in updates.model_dump(exclude_unset=True).items():
         if field == "password":
             setattr(user, "hashed_password", hash_password(value))
