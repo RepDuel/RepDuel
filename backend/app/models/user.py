@@ -16,19 +16,10 @@ class User(Base):
     username = Column(String(32), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(128), nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-    )
     avatar_url = Column(String, nullable=True)
-
-    weight = Column(Float, nullable=True)  # Weight field
-    gender = Column(String, nullable=True)  # Gender field
+    weight = Column(Float, nullable=True)
+    gender = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
 
     guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
 
@@ -40,4 +31,13 @@ class User(Base):
 
     energy_history = relationship(
         "EnergyHistory", back_populates="user", cascade="all, delete"
+    )
+
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )

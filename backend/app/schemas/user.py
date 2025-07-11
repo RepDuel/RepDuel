@@ -27,6 +27,8 @@ class UserUpdate(BaseModel):
     username: str | None = None
     email: EmailStr | None = None
     avatar_url: str | None = None
+    weight: float | None = None
+    gender: str | None = None
     password: str | None = None
 
 
