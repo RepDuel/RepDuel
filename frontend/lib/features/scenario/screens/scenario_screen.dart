@@ -1,5 +1,3 @@
-// frontend/lib/features/ranked/screens/scenario_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -10,12 +8,12 @@ import '../../ranked/screens/result_screen.dart';
 
 class ScenarioScreen extends ConsumerStatefulWidget {
   final String liftName;
-  final String scenarioId; // ✅ NEW
+  final String scenarioId;
 
   const ScenarioScreen({
     super.key,
     required this.liftName,
-    required this.scenarioId, // ✅ NEW
+    required this.scenarioId,
   });
 
   @override
@@ -31,48 +29,49 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     return weight * (1 + reps / 30);
   }
 
+  Future<int> _fetchPreviousBest(String userId, String scenarioId) async {
+    final url = Uri.parse(
+        'http://localhost:8000/api/v1/scores/user/$userId/scenario/$scenarioId/highscore');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['weight_lifted'] as num?)?.round() ?? 0;
+    }
+    return 0;
+  }
+
   Future<void> _submitScore(double score) async {
     final user = ref.read(authStateProvider).user;
-
     if (user == null) return;
+
+    final url = Uri.parse('http://localhost:8000/api/v1/scores/');
+    final body = {
+      'user_id': user.id,
+      'scenario_id': widget.scenarioId,
+      'weight_lifted': score,
+    };
+
+    await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(body),
+    );
+  }
+
+  Future<void> _handleSubmit() async {
+    final user = ref.read(authStateProvider).user;
+    if (user == null) return;
+
+    final weight = double.tryParse(_weightController.text) ?? 0;
+    final reps = int.tryParse(_repsController.text) ?? 0;
+    final oneRepMax = _calculateOneRepMax(weight, reps);
 
     setState(() {
       _isSubmitting = true;
     });
 
-    try {
-      final url = Uri.parse('http://localhost:8000/api/v1/scores/');
-      final body = {
-        'user_id': user.id,
-        'scenario_id': widget.scenarioId, // ✅ use passed-in scenario ID
-        'weight_lifted': score,
-      };
-
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(body),
-      );
-
-      if (response.statusCode >= 400 && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to submit score')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _handleSubmit() async {
-    final weight = double.tryParse(_weightController.text) ?? 0;
-    final reps = int.tryParse(_repsController.text) ?? 0;
-    final oneRepMax = _calculateOneRepMax(weight, reps);
-
+    final previousBest = await _fetchPreviousBest(user.id, widget.scenarioId);
     await _submitScore(oneRepMax);
 
     if (!mounted) return;
@@ -81,7 +80,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       MaterialPageRoute(
         builder: (_) => ResultScreen(
           finalScore: oneRepMax.round(),
-          previousBest: 100, // Replace with actual previous best if needed
+          previousBest: previousBest,
         ),
       ),
     );
@@ -89,6 +88,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     if (shouldRefresh == true && mounted) {
       Navigator.of(context).pop(true);
     }
+
+    setState(() {
+      _isSubmitting = false;
+    });
   }
 
   @override
