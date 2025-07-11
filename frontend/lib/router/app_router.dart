@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -67,7 +66,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
     ],
-    redirect: (BuildContext context, GoRouterState state) {
+    redirect: (context, state) {
+      final auth = ref.read(authProvider);
+      final isLoggedIn = auth.user != null;
+      final path = state.uri.path;
+
+      final isAuthRoute = path == '/login' || path == '/register';
+
+      if (!isLoggedIn && !isAuthRoute) {
+        return '/login';
+      }
+
+      if (isLoggedIn && path == '/login') {
+        return '/profile';
+      }
+
       return null;
     },
   );
