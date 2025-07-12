@@ -31,11 +31,14 @@ class MainBottomNavBar extends StatelessWidget {
             context.go('/routines');
             break;
           case 3:
+            context.go('/chat');
+            break;
+          case 4:
             context.go('/profile');
             break;
         }
 
-        // Call the onTap function to notify the parent widget about the index change
+        // Notify parent widget about index change
         onTap(index);
       },
       items: const [
@@ -50,6 +53,10 @@ class MainBottomNavBar extends StatelessWidget {
         BottomNavigationBarItem(
           icon: Icon(Icons.fitness_center),
           label: 'Routines',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.chat),
+          label: 'Chat',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person),

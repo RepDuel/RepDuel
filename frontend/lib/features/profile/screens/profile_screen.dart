@@ -85,7 +85,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
       ),
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 3,
+        currentIndex: 4,
         onTap: (index) {
           // Navigation handled in MainBottomNavBar
         },

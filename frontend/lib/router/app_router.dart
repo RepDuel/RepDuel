@@ -7,7 +7,8 @@ import '../features/home/screens/home_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/profile/screens/profile_wrapper.dart';
-import '../features/profile/screens/settings_screen.dart'; // ✅ Added import
+import '../features/profile/screens/settings_screen.dart';
+import '../features/chat/screens/chat_screen.dart';
 import '../features/normal/screens/normal_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
@@ -36,7 +37,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProfileWrapper(),
       ),
       GoRoute(
-        path: '/settings', // ✅ New settings route
+        path: '/chat',
+        builder: (context, state) => const ChatScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
