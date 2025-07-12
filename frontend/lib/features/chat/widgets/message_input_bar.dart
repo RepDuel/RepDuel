@@ -1,3 +1,5 @@
+// frontend/lib/features/chat/widgets/message_input_bar.dart
+
 import 'package:flutter/material.dart';
 
 class MessageInputBar extends StatelessWidget {

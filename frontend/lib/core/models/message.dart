@@ -17,6 +17,11 @@ class Message {
     required this.updatedAt,
   });
 
+  /// Optional convenience getter (used in ChatBubble or elsewhere)
+  /// Returns a user-friendly sender label
+  String get sender => authorId;
+
+  /// Deserialize from JSON
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
       id: json['id'],
@@ -28,6 +33,7 @@ class Message {
     );
   }
 
+  /// Serialize to JSON
   Map<String, dynamic> toJson() => {
         'id': id,
         'content': content,

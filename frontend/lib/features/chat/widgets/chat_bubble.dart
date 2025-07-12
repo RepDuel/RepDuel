@@ -1,5 +1,7 @@
+// frontend/lib/features/chat/widgets/chat_bubble.dart
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For date formatting
+import 'package:intl/intl.dart';
 import '../../../core/models/message.dart';
 
 class ChatBubble extends StatelessWidget {
