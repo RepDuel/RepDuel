@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
+import '../widgets/energy_graph.dart'; // <-- make sure this import is correct
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -73,16 +74,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Gender: ${user.gender ?? "Unknown"}',
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'Energy Over Time',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Weight: ${user.weight?.toStringAsFixed(1) ?? "N/A"} kg',
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+                  const SizedBox(height: 16),
+                  EnergyGraph(userId: user.id),
                 ],
               ),
       ),

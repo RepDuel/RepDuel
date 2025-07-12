@@ -18,9 +18,14 @@ router = APIRouter(
     tags=["Energy"],
 )
 
-# Submit new energy entry
+# -------------------------------
+# POST /energy/submit
+# Submit a new energy record
+# -------------------------------
 @router.post("/submit")
-async def submit_energy(data: EnergySubmit, db: AsyncSession = Depends(get_db)):
+async def submit_energy(
+    data: EnergySubmit, db: AsyncSession = Depends(get_db)
+):
     stmt = select(User).where(User.id == data.user_id)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
@@ -31,11 +36,17 @@ async def submit_energy(data: EnergySubmit, db: AsyncSession = Depends(get_db)):
     entry = EnergyHistory(user_id=data.user_id, energy=data.energy)
     db.add(entry)
     await db.commit()
+
     return {"message": "Energy submitted successfully"}
 
-# List full history for user
+# -------------------------------
+# GET /energy/history/{user_id}
+# Full energy history (recent first)
+# -------------------------------
 @router.get("/history/{user_id}", response_model=list[EnergyEntry])
-async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_energy_history(
+    user_id: UUID, db: AsyncSession = Depends(get_db)
+):
     stmt = (
         select(EnergyHistory)
         .where(EnergyHistory.user_id == user_id)
@@ -44,9 +55,13 @@ async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     return result.scalars().all()
 
-# Leaderboard (latest energy per user)
+# -------------------------------
+# GET /energy/leaderboard
+# Latest energy entry per user
+# -------------------------------
 @router.get("/leaderboard", response_model=list[EnergyLeaderboardEntry])
 async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
+    # Subquery to get latest entry timestamp per user
     subquery = (
         select(
             EnergyHistory.user_id,
@@ -84,13 +99,18 @@ async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
         for index, row in enumerate(rows, start=1)
     ]
 
-# 🆕 Daily energy summary for graph
+# -------------------------------
+# GET /energy/daily/{user_id}
+# Daily peak (max) energy for graphing
+# -------------------------------
 @router.get("/daily/{user_id}", response_model=list[DailyEnergyEntry])
-async def get_energy_by_day(user_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_energy_by_day(
+    user_id: UUID, db: AsyncSession = Depends(get_db)
+):
     stmt = (
         select(
             func.date(EnergyHistory.created_at).label("date"),
-            func.sum(EnergyHistory.energy).label("total_energy"),
+            func.max(EnergyHistory.energy).label("total_energy"),  # ✅ changed from sum to max
         )
         .where(EnergyHistory.user_id == user_id)
         .group_by(func.date(EnergyHistory.created_at))
