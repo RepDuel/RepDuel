@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
 
 import '../../../core/models/message.dart';
@@ -22,7 +25,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Message> messages = [];
 
-  // TEMP user ID; replace with auth logic later
+  // TEMP user ID; replace with actual auth integration
   final String currentUserId = 'my-user-id';
 
   void _sendMessage() {
@@ -45,15 +48,36 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _loadHistory() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:8000/api/v1/chat/history/global'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final history = data.map((json) => Message.fromJson(json)).toList();
+        setState(() {
+          messages.insertAll(0, history);
+        });
+      } else {
+        debugPrint('Failed to load chat history: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error loading chat history: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadHistory();
+
     channel.stream.listen((messageText) {
       final now = DateTime.now();
       final msg = Message(
         id: 'remote-${now.millisecondsSinceEpoch}',
         content: messageText,
-        authorId: 'other-user',
+        authorId: 'other-user', // update this if using real user IDs
         channelId: 'global',
         createdAt: now,
         updatedAt: now,
