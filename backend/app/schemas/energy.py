@@ -1,7 +1,12 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel
+
+
+class DailyEnergyEntry(BaseModel):
+    date: date
+    total_energy: float
 
 
 class EnergySubmit(BaseModel):
