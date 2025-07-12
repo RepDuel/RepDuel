@@ -7,17 +7,17 @@ import '../features/home/screens/home_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/profile/screens/profile_wrapper.dart';
+import '../features/profile/screens/settings_screen.dart'; // ✅ Added import
 import '../features/normal/screens/normal_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // Watching the authProvider to ensure we always have the updated state
   final auth = ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: '/profile', // Default route if no other route matches
+    initialLocation: '/profile',
     routes: [
       GoRoute(
         path: '/normal',
@@ -34,6 +34,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileWrapper(),
+      ),
+      GoRoute(
+        path: '/settings', // ✅ New settings route
+        builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
         path: '/login',
@@ -67,24 +71,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
-      // Reading auth provider to get the current user state
       final isLoggedIn = auth.user != null;
       final path = state.uri.path;
-
-      // Check if user is logged in or not
       final isAuthRoute = path == '/login' || path == '/register';
 
-      // If user is not logged in and tries to access protected routes, redirect to login
       if (!isLoggedIn && !isAuthRoute) {
-        return '/login'; // Redirect to login if not logged in
+        return '/login';
       }
 
-      // If user is logged in and tries to access login page, redirect to profile
       if (isLoggedIn && path == '/login') {
         return '/profile';
       }
 
-      return null; // No redirection needed
+      return null;
     },
   );
 });
