@@ -30,7 +30,7 @@ class User(Base):
     scores = relationship("Score", back_populates="user")
 
     energy_history = relationship(
-        "EnergyHistory", back_populates="user", cascade="all, delete"
+        "EnergyHistory", back_populates="user", cascade="all, delete-orphan"
     )
 
     created_at = Column(
