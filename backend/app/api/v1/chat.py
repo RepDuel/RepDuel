@@ -4,11 +4,18 @@ from typing import List
 from datetime import datetime
 import uuid
 
-from app.db.session import get_db
+from app.api.v1.deps import get_db
 from app.models.message import Message as MessageModel
-from app.schemas.message import MessageRead  # if using Pydantic schemas
+from app.schemas.message import MessageRead
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException
+from app.models.channel import Channel
 
-router = APIRouter()
+
+
+router = APIRouter(prefix="/chat", tags=["chat"])
 
 active_connections: List[WebSocket] = []
 
@@ -41,12 +48,20 @@ async def websocket_global_chat(websocket: WebSocket, db: Session = Depends(get_
         active_connections.remove(websocket)
 
 
-@router.get("/chat/history/global", response_model=List[MessageRead])
-def get_global_chat_history(db: Session = Depends(get_db)):
-    messages = (
-        db.query(MessageModel)
-        .filter(MessageModel.channel_id == "global")
+@router.get("/history/global", response_model=List[MessageRead])
+async def get_global_chat_history(db: AsyncSession = Depends(get_db)):
+    # Step 1: Get the UUID of the "global" channel
+    result = await db.execute(select(Channel).where(Channel.name == "global"))
+    global_channel = result.scalar_one_or_none()
+
+    if not global_channel:
+        raise HTTPException(status_code=404, detail="Global channel not found")
+
+    # Step 2: Fetch messages using that UUID
+    result = await db.execute(
+        select(MessageModel)
+        .where(MessageModel.channel_id == global_channel.id)
         .order_by(MessageModel.created_at.asc())
-        .all()
     )
+    messages = result.scalars().all()
     return messages
