@@ -1,46 +1,94 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
-import 'package:go_router/go_router.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/message.dart';
-import '../../../widgets/main_bottom_nav_bar.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/message_input_bar.dart';
+import '../../../widgets/main_bottom_nav_bar.dart';
+import 'package:go_router/go_router.dart';
 
-class ChatScreen extends StatefulWidget {
+class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  final channel = WebSocketChannel.connect(
-    Uri.parse('ws://localhost:8000/ws/chat/global'),
-  );
-
+class _ChatScreenState extends ConsumerState<ChatScreen> {
+  WebSocketChannel? channel;
   final TextEditingController _controller = TextEditingController();
   final List<Message> messages = [];
 
-  // TEMP user ID; replace with actual auth integration
-  final String currentUserId = 'my-user-id';
+  @override
+  void initState() {
+    super.initState();
+    _initChat();
+  }
+
+  Future<void> _initChat() async {
+    final token = ref.read(authStateProvider).token;
+
+    if (token != null && token.isNotEmpty) {
+      channel = WebSocketChannel.connect(
+        Uri.parse('ws://localhost:8000/api/v1/ws/chat/global?token=$token'),
+      );
+
+      channel!.stream.listen((text) {
+        final now = DateTime.now();
+        final msg = Message(
+          id: 'remote-${now.millisecondsSinceEpoch}',
+          content: text,
+          authorId: 'other-user',
+          channelId: 'global',
+          createdAt: now,
+          updatedAt: now,
+        );
+        setState(() => messages.add(msg));
+      }, onError: (e) {
+        debugPrint('WebSocket error: $e');
+        context.pop(); // return to previous screen on failure
+      });
+
+      await _loadHistory();
+    } else {
+      debugPrint('Missing JWT token. Cannot connect to chat.');
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final res = await http.get(
+        Uri.parse('http://localhost:8000/api/v1/chat/history/global'),
+      );
+      if (res.statusCode == 200) {
+        final hist = (jsonDecode(res.body) as List)
+            .map((j) => Message.fromJson(j))
+            .toList();
+        setState(() => messages.insertAll(0, hist));
+      } else {
+        debugPrint('Failed to load chat history: ${res.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error loading chat history: $e');
+    }
+  }
 
   void _sendMessage() {
-    final content = _controller.text.trim();
-    if (content.isNotEmpty) {
+    final c = _controller.text.trim();
+    if (c.isNotEmpty && channel != null) {
       final now = DateTime.now();
       final myMessage = Message(
         id: 'local-${now.millisecondsSinceEpoch}',
-        content: content,
-        authorId: currentUserId,
+        content: c,
+        authorId: ref.read(authStateProvider).user?.id ?? 'me',
         channelId: 'global',
         createdAt: now,
         updatedAt: now,
       );
-      channel.sink.add(content);
+      channel!.sink.add(c);
       setState(() {
         messages.add(myMessage);
       });
@@ -48,49 +96,9 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _loadHistory() async {
-    try {
-      final response = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/chat/history/global'),
-      );
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        final history = data.map((json) => Message.fromJson(json)).toList();
-        setState(() {
-          messages.insertAll(0, history);
-        });
-      } else {
-        debugPrint('Failed to load chat history: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Error loading chat history: $e');
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadHistory();
-
-    channel.stream.listen((messageText) {
-      final now = DateTime.now();
-      final msg = Message(
-        id: 'remote-${now.millisecondsSinceEpoch}',
-        content: messageText,
-        authorId: 'other-user', // update this if using real user IDs
-        channelId: 'global',
-        createdAt: now,
-        updatedAt: now,
-      );
-      setState(() {
-        messages.add(msg);
-      });
-    });
-  }
-
   @override
   void dispose() {
-    channel.sink.close();
+    channel?.sink.close();
     _controller.dispose();
     super.dispose();
   }
@@ -114,7 +122,8 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final message = messages[index];
-                final isMe = message.authorId == currentUserId;
+                final isMe =
+                    message.authorId == ref.read(authStateProvider).user?.id;
                 return ChatBubble(message: message, isMe: isMe);
               },
             ),
