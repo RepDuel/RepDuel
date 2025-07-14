@@ -1,3 +1,5 @@
+// frontend/lib/features/chat/screens/chat_screen.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -59,9 +61,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _loadHistory() async {
+    final token = ref.read(authStateProvider).token;
+
+    if (token == null || token.isEmpty) {
+      debugPrint('Cannot load history without token.');
+      return;
+    }
+
     try {
       final res = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/chat/history/global'),
+        Uri.parse('http://localhost:8000/api/v1/history/global'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
       if (res.statusCode == 200) {
         final hist = (jsonDecode(res.body) as List)

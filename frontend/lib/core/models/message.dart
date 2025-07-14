@@ -24,12 +24,12 @@ class Message {
   /// Deserialize from JSON
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
-      id: json['id'],
-      content: json['content'],
-      authorId: json['author_id'],
-      channelId: json['channel_id'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      id: json['id'] ?? '',
+      content: json['content'] ?? '',
+      authorId: json['author_id'] ?? '',
+      channelId: json['channel_id'] ?? '',
+      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
     );
   }
 
