@@ -8,7 +8,9 @@ import '../widgets/chat_bubble.dart';
 import '../widgets/message_input_bar.dart';
 
 // Provider to manage the list of messages for the current channel
-final messageListProvider = StateNotifierProvider.autoDispose<MessageListNotifier, List<Message>>((ref) {
+final messageListProvider =
+    StateNotifierProvider.autoDispose<MessageListNotifier, List<Message>>(
+        (ref) {
   return MessageListNotifier();
 });
 

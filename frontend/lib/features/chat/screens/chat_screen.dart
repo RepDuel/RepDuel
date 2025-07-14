@@ -91,19 +91,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _sendMessage() {
     final c = _controller.text.trim();
     if (c.isNotEmpty && channel != null) {
-      final now = DateTime.now();
-      final myMessage = Message(
-        id: 'local-${now.millisecondsSinceEpoch}',
-        content: c,
-        authorId: ref.read(authStateProvider).user?.id ?? 'me',
-        channelId: 'global',
-        createdAt: now,
-        updatedAt: now,
-      );
       channel!.sink.add(c);
-      setState(() {
-        messages.add(myMessage);
-      });
       _controller.clear();
     }
   }

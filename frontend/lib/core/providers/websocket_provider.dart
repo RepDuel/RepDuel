@@ -1,3 +1,5 @@
+// frontend/lib/core/providers/websocket_provider.dart
+
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -8,7 +10,8 @@ import 'api_providers.dart';
 
 final logger = Logger();
 
-final webSocketProvider = Provider.family<WebSocketService, String>((ref, channelId) {
+final webSocketProvider =
+    Provider.family<WebSocketService, String>((ref, channelId) {
   final secureStorage = ref.read(secureStorageProvider);
   return WebSocketService(channelId: channelId, secureStorage: secureStorage);
 });
@@ -38,7 +41,8 @@ class WebSocketService {
     try {
       _channel = WebSocketChannel.connect(uri);
     } catch (e, stackTrace) {
-      logger.e('Failed to connect to WebSocket', error: e, stackTrace: stackTrace);
+      logger.e('Failed to connect to WebSocket',
+          error: e, stackTrace: stackTrace);
       return;
     }
 
@@ -49,7 +53,8 @@ class WebSocketService {
           final data = jsonDecode(message);
           onMessage(data);
         } catch (e, stackTrace) {
-          logger.e('Failed to decode WebSocket message', error: e, stackTrace: stackTrace);
+          logger.e('Failed to decode WebSocket message',
+              error: e, stackTrace: stackTrace);
         }
       },
       onError: (error, stackTrace) {
