@@ -51,7 +51,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         setState(() => messages.add(msg));
       }, onError: (e) {
         debugPrint('WebSocket error: $e');
-        context.pop(); // return to previous screen on failure
+        if (mounted) {
+          context.pop(); // return to previous screen on failure
+        }
       });
 
       await _loadHistory();
