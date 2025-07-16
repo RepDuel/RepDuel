@@ -117,3 +117,19 @@ async def get_energy_by_day(user_id: UUID, db: AsyncSession = Depends(get_db)):
     return [
         DailyEnergyEntry(date=row.date, total_energy=row.total_energy) for row in result
     ]
+
+@router.get("/latest/{user_id}", response_model=int)
+async def get_latest_energy(user_id: UUID, db: AsyncSession = Depends(get_db)):
+    stmt = (
+        select(EnergyHistory)
+        .where(EnergyHistory.user_id == user_id)
+        .order_by(EnergyHistory.created_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    latest = result.scalar_one_or_none()
+
+    if latest is None:
+        raise HTTPException(status_code=404, detail="No energy record found")
+    return latest.energy
+

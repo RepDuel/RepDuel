@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 import '../api/auth_api_service.dart';
 import '../api/guild_api_service.dart';
+import '../api/energy_api_service.dart';
 import '../services/secure_storage_service.dart';
 import '../api/message_api_service.dart';
 import '../utils/http_client.dart';
@@ -76,4 +77,9 @@ final guildChannelsProvider = FutureProvider.autoDispose
     .family<List<Channel>, String>((ref, guildId) async {
   final channelService = ref.watch(channelApiProvider);
   return channelService.getGuildChannels(guildId);
+});
+
+final energyApiProvider = Provider<EnergyApiService>((ref) {
+  final client = ref.read(privateHttpClientProvider);
+  return EnergyApiService(client);
 });
