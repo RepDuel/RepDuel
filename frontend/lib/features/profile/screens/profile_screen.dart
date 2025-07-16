@@ -47,27 +47,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case 'Iron':
         return Colors.grey;
       case 'Bronze':
-        return const Color(0xFFCD7F32);
+        return const Color(0xFFcd7f32);
       case 'Silver':
-        return const Color(0xFFC0C0C0);
+        return const Color(0xFFc0c0c0);
       case 'Gold':
-        return const Color(0xFFFFD700);
+        return const Color(0xFFefbf04);
       case 'Platinum':
-        return const Color(0xFFE5E4E2);
+        return const Color(0xFF00ced1);
       case 'Diamond':
-        return const Color(0xFFB9F2FF);
+        return const Color(0xFFb9f2ff);
       case 'Jade':
-        return const Color(0xFF00A86B);
+        return const Color(0xFF62f40c);
       case 'Master':
-        return Colors.purple;
+        return const Color(0xFFff00ff); // pink
       case 'Grandmaster':
-        return Colors.deepPurple;
+        return const Color(0xFFffde21); // yellow
       case 'Nova':
-        return Colors.tealAccent;
+        return const Color(0xFFa45ee5); // purple
       case 'Astra':
-        return Colors.lightBlueAccent;
+        return const Color(0xFFff4040); // red
       case 'Celestial':
-        return Colors.pinkAccent;
+        return const Color(0xFF00ffff); // cyan
       default:
         return Colors.white;
     }

@@ -1,6 +1,5 @@
-// frontend/lib/features/ranked/widgets/ranking_table.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
 
 class RankingTable extends StatelessWidget {
@@ -61,33 +60,10 @@ class RankingTable extends StatelessWidget {
         : 0.0;
 
     final overallRank = _getRankFromEnergy(averageEnergy);
-    final color = RankUtils.getRankColor(overallRank);
-
     onEnergyComputed(averageEnergy.round(), overallRank);
 
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Rank: ',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold),
-            ),
-            Text(
-              '${averageEnergy.round()} $overallRank',
-              style: TextStyle(
-                  color: color, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            IconButton(
-              icon: const Icon(Icons.leaderboard, color: Colors.blue),
-              onPressed: onEnergyLeaderboardTapped,
-            ),
-          ],
-        ),
         const SizedBox(height: 16),
         const _RankingTableHeader(),
         const SizedBox(height: 12),
@@ -232,7 +208,7 @@ class _RankingRow extends StatelessWidget {
       thresholds: standards,
       liftKey: lowerLift,
     );
-    final color = RankUtils.getRankColor(currentRank);
+    final iconPath = 'assets/images/ranks/${currentRank.toLowerCase()}.svg';
 
     return GestureDetector(
       onTap: onTap,
@@ -262,23 +238,21 @@ class _RankingRow extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Colors.grey[800],
-                      color: color,
+                      color: RankUtils.getRankColor(currentRank),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                      '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextThreshold)}',
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 12)),
+                    '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextThreshold)}',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 ],
               ),
             ),
             Expanded(
                 flex: 2,
                 child: Center(
-                    child: Text(currentRank,
-                        style: TextStyle(
-                            color: color, fontWeight: FontWeight.bold)))),
+                    child: SvgPicture.asset(iconPath, height: 24, width: 24))),
             Expanded(
                 flex: 1,
                 child: Center(
