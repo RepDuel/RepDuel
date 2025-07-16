@@ -1,4 +1,4 @@
-// lib/core/models/guild.dart
+// frontend/lib/core/models/guild.dart
 
 import 'channel.dart';
 

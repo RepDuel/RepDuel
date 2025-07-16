@@ -1,3 +1,5 @@
+// frontend/lib/core/models/token.dart
+
 import 'package:json_annotation/json_annotation.dart';
 
 part 'token.g.dart';

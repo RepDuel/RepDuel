@@ -1,4 +1,4 @@
-// lib/core/models/user.dart
+// frontend/lib/core/models/user.dart
 
 class User {
   final String id;

@@ -28,7 +28,9 @@ async def get_current_user_ws(
 ) -> Optional[UserRead]:
     try:
         logger.debug(f"[WS AUTH] token: {token}")
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         logger.debug(f"[WS AUTH] payload: {payload}")
         user_id = payload.get("sub")
         logger.debug(f"[WS AUTH] extracted user_id: {user_id}")

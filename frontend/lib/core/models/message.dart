@@ -1,4 +1,4 @@
-// lib/core/models/message.dart
+// frontend/lib/core/models/message.dart
 
 class Message {
   final String id;

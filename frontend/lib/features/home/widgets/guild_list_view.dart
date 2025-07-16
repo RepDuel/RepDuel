@@ -1,3 +1,5 @@
+// frontend/lib/features/home/widgets/guild_list_view.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -67,7 +69,8 @@ class GuildIcon extends StatelessWidget {
             : Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Text(
           guild.name.isNotEmpty ? guild.name[0].toUpperCase() : 'G',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );

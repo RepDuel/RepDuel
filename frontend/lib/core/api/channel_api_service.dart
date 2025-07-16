@@ -1,3 +1,5 @@
+// frontend/lib/core/api/channel_api_service.dart
+
 import '../models/channel.dart';
 import '../utils/http_client.dart';
 

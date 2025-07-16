@@ -1,3 +1,5 @@
+// frontend/lib/features/normal/screens/normal_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:frontend/widgets/main_bottom_nav_bar.dart';
 import 'package:http/http.dart' as http;

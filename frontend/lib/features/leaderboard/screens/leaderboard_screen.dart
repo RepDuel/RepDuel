@@ -1,4 +1,4 @@
-// frontend/lib/features/ranked/screens/leaderboard_screen.dart
+// frontend/lib/features/leaderboard/screens/leaderboard_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;

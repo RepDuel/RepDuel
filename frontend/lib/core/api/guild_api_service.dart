@@ -1,3 +1,5 @@
+// frontend/lib/core/api/guild_api_service.dart
+
 import '../models/guild.dart';
 import '../utils/http_client.dart';
 

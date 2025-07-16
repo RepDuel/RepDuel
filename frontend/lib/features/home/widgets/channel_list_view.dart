@@ -1,3 +1,5 @@
+// frontend/lib/features/home/widgets/channel_list_view.dart
+
 import 'package:flutter/material.dart';
 import '../../../core/models/channel.dart';
 

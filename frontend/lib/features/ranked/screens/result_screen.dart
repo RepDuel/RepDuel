@@ -1,3 +1,5 @@
+// frontend/lib/features/ranked/screens/result_screen.dart
+
 import 'package:flutter/material.dart';
 
 class ResultScreen extends StatelessWidget {

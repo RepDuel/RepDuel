@@ -1,4 +1,4 @@
-// lib/core/models/routine.dart
+// frontend/lib/core/models/routine.dart
 
 class ScenarioSet {
   final String scenarioId;

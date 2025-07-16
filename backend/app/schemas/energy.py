@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from uuid import UUID
+
 from pydantic import BaseModel
 
 
@@ -36,8 +37,11 @@ class EnergyLeaderboardEntry(BaseModel):
 
     class Config:
         from_attributes = True
+
+
 from datetime import date, datetime
 from uuid import UUID
+
 from pydantic import BaseModel
 
 

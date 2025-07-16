@@ -2,22 +2,17 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.api.v1.auth import get_current_user
 from app.api.v1.deps import get_db
 from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead, UserUpdate
-from app.services.user_service import (
-    authenticate_user,
-    create_user,
-    get_user_by_email,
-    update_user,
-)
+from app.services.user_service import (authenticate_user, create_user,
+                                       get_user_by_email, update_user)
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/users", tags=["users"])
 

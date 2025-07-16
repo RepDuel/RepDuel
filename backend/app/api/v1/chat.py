@@ -1,21 +1,22 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
-from fastapi import Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from typing import List
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import List
 
 from app.api.v1.deps import get_db
-from app.models.message import Message as MessageModel
+from app.core.auth import get_current_user_ws
 from app.models.channel import Channel
 from app.models.guild import Guild
+from app.models.message import Message as MessageModel
 from app.models.user import User
 from app.schemas.message import MessageRead
-from app.core.auth import get_current_user_ws
+from fastapi import (APIRouter, Depends, HTTPException, Query, WebSocket,
+                     WebSocketDisconnect)
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 router = APIRouter(tags=["chat"])
 active_connections: List[WebSocket] = []
+
 
 @router.websocket("/ws/chat/global")
 async def websocket_global_chat(
@@ -76,6 +77,7 @@ async def websocket_global_chat(
 
     except WebSocketDisconnect:
         active_connections.remove(websocket)
+
 
 @router.get("/history/global", response_model=List[MessageRead])
 async def get_history(db: AsyncSession = Depends(get_db)):

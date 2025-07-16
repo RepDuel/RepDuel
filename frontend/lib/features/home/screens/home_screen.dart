@@ -1,3 +1,5 @@
+// frontend/lib/features/home/screens/home_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,7 +29,8 @@ class HomeScreen extends ConsumerWidget {
             selectedGuild: selectedGuild,
             onGuildSelected: (guild) {
               ref.read(selectedGuildProvider.notifier).state = guild;
-              ref.read(selectedChannelProvider.notifier).state = null; // Deselect channel on new guild click
+              ref.read(selectedChannelProvider.notifier).state =
+                  null; // Deselect channel on new guild click
             },
           ),
           // Use a Builder to only try fetching channels if a guild is selected
@@ -35,11 +38,13 @@ class HomeScreen extends ConsumerWidget {
             builder: (context) {
               if (selectedGuild == null) {
                 // If no guild is selected, show an empty, styled container
-                return Container(width: 240, color: Theme.of(context).canvasColor);
+                return Container(
+                    width: 240, color: Theme.of(context).canvasColor);
               }
 
               // If a guild IS selected, call the provider family with its ID
-              final channelsAsyncValue = ref.watch(guildChannelsProvider(selectedGuild.id));
+              final channelsAsyncValue =
+                  ref.watch(guildChannelsProvider(selectedGuild.id));
 
               // Use .when to handle loading/error states for the channel list
               return channelsAsyncValue.when(
@@ -64,7 +69,8 @@ class HomeScreen extends ConsumerWidget {
           Expanded(
             child: selectedChannel != null
                 ? ChannelScreen(channelId: selectedChannel.id)
-                : const Center(child: Text('Select a channel to start chatting')),
+                : const Center(
+                    child: Text('Select a channel to start chatting')),
           ),
         ],
       ),

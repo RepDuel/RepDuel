@@ -1,12 +1,11 @@
+// frontend/lib/features/profile/widgets/energy_graph.dart
+
 import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
-// -------------------------------
-// Model
-// -------------------------------
 class DailyEnergyEntry {
   final String date; // Format: "2025-07-11"
   final double totalEnergy;
@@ -21,9 +20,6 @@ class DailyEnergyEntry {
   }
 }
 
-// -------------------------------
-// Provider
-// -------------------------------
 final energyGraphProvider =
     FutureProvider.family<List<DailyEnergyEntry>, String>((ref, userId) async {
   final res = await http.get(
@@ -41,9 +37,6 @@ final energyGraphProvider =
   return data.map((e) => DailyEnergyEntry.fromJson(e)).toList();
 });
 
-// -------------------------------
-// Widget
-// -------------------------------
 class EnergyGraph extends ConsumerWidget {
   final String userId;
 

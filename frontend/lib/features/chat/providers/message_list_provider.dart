@@ -1,9 +1,11 @@
+// frontend/lib/features/chat/providers/message_list_provider.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/models/message.dart';
 import 'package:frontend/core/providers/api_providers.dart';
 
-final messageListProvider = StateNotifierProvider.family<
-    MessageListNotifier, AsyncValue<List<Message>>, String>((ref, channelId) {
+final messageListProvider = StateNotifierProvider.family<MessageListNotifier,
+    AsyncValue<List<Message>>, String>((ref, channelId) {
   final api = ref.read(messageApiProvider);
   return MessageListNotifier(api: api, channelId: channelId);
 });

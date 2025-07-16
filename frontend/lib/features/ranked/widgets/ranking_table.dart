@@ -1,3 +1,5 @@
+// frontend/lib/features/ranked/widgets/ranking_table.dart
+
 import 'package:flutter/material.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
 
