@@ -6,6 +6,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/message.dart';
+import '../../../core/models/user.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/message_input_bar.dart';
@@ -23,6 +24,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   WebSocketChannel? channel;
   final TextEditingController _controller = TextEditingController();
   final List<Message> messages = [];
+  User? currentUser;
+  int currentUserEnergy = 0;
 
   @override
   void initState() {
@@ -31,7 +34,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _initChat() async {
-    final token = ref.read(authStateProvider).token;
+    final auth = ref.read(authStateProvider);
+    final token = auth.token;
+    currentUser = auth.user;
+
+    if (currentUser != null) {
+      await _fetchCurrentUserEnergy(currentUser!.id);
+    }
 
     if (token != null && token.isNotEmpty) {
       channel = WebSocketChannel.connect(
@@ -59,6 +68,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await _loadHistory();
     } else {
       debugPrint('Missing JWT token. Cannot connect to chat.');
+    }
+  }
+
+  Future<void> _fetchCurrentUserEnergy(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:8000/api/v1/energy/latest/$userId'),
+      );
+      if (response.statusCode == 200) {
+        setState(() {
+          currentUserEnergy = int.tryParse(response.body) ?? 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch energy: $e');
     }
   }
 
@@ -126,7 +150,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 final message = messages[index];
                 final isMe =
                     message.authorId == ref.read(authStateProvider).user?.id;
-                return ChatBubble(message: message, isMe: isMe);
+                return ChatBubble(
+                  message: message,
+                  isMe: isMe,
+                  author: currentUser,
+                  energy: currentUserEnergy,
+                );
               },
             ),
           ),

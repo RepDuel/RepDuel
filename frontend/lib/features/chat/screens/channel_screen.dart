@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/message.dart';
-import '../../../core/providers/auth_provider.dart'; // Import to get current user
+import '../../../core/models/user.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/websocket_provider.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/message_input_bar.dart';
@@ -80,6 +81,24 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
     final messages = ref.watch(messageListProvider);
     final currentUser = ref.watch(authProvider).user;
 
+    final mockUsers = {
+      for (var message in messages)
+        message.authorId: User(
+          id: message.authorId,
+          username: message.authorId == currentUser?.id
+              ? currentUser!.username
+              : 'User${message.authorId.substring(0, 4)}',
+          email: '',
+          isActive: true,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        )
+    };
+
+    final mockEnergies = {
+      for (var id in mockUsers.keys) id: 450,
+    };
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Channel"),
@@ -93,15 +112,17 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
-                      // Pass the required 'isMe' parameter
+                      final author = mockUsers[message.authorId]!;
+                      final energy = mockEnergies[message.authorId]!;
                       return ChatBubble(
                         message: message,
                         isMe: message.authorId == currentUser?.id,
+                        author: author,
+                        energy: energy,
                       );
                     },
                   ),
           ),
-          // Pass the required 'controller' and 'onSend' parameters
           MessageInputBar(
             controller: _messageController,
             onSend: _sendMessage,
