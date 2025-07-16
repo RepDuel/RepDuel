@@ -1,6 +1,7 @@
 // frontend/lib/features/ranked/widgets/benchmarks_table.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
 
 class BenchmarksTable extends StatelessWidget {
@@ -28,7 +29,6 @@ class BenchmarksTable extends StatelessWidget {
         const SizedBox(height: 8),
         ...sortedRanks.map((rank) => _BenchmarkRow(
               rank: rank,
-              total: standards[rank]['total']?.toDouble(),
               lifts: showLifts ? standards[rank]['lifts'] : null,
               metadata: standards[rank]['metadata'],
             )),
@@ -56,7 +56,7 @@ class _BenchmarksTableHeader extends StatelessWidget {
     return Row(
       children: [
         const Expanded(
-          flex: 3,
+          flex: 5,
           child: _HeaderText('Rank'),
         ),
         if (showLifts) ...const [
@@ -73,10 +73,6 @@ class _BenchmarksTableHeader extends StatelessWidget {
             child: _HeaderText('Deadlift', center: true),
           ),
         ],
-        const Expanded(
-          flex: 2,
-          child: _HeaderText('Total', center: true),
-        ),
       ],
     );
   }
@@ -84,13 +80,11 @@ class _BenchmarksTableHeader extends StatelessWidget {
 
 class _BenchmarkRow extends StatelessWidget {
   final String rank;
-  final double? total;
   final Map<String, dynamic>? lifts;
   final Map<String, dynamic>? metadata;
 
   const _BenchmarkRow({
     required this.rank,
-    required this.total,
     this.lifts,
     this.metadata,
   });
@@ -100,6 +94,8 @@ class _BenchmarkRow extends StatelessWidget {
     final color = metadata?['color'] != null
         ? Color(int.parse(metadata!['color'].substring(1, 7), radix: 16))
         : RankUtils.getRankColor(rank);
+
+    final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -111,14 +107,24 @@ class _BenchmarkRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            flex: 3,
-            child: Text(
-              rank,
-              style: TextStyle(
-                color: color,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            flex: 5,
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  iconPath,
+                  height: 20,
+                  width: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  rank,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
           if (lifts != null) ...[
@@ -135,10 +141,6 @@ class _BenchmarkRow extends StatelessWidget {
               child: _LiftValue(lifts!['deadlift']),
             ),
           ],
-          Expanded(
-            flex: 2,
-            child: _LiftValue(total),
-          ),
         ],
       ),
     );
