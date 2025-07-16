@@ -1,3 +1,5 @@
+// frontend/lib/features/ranked/widgets/ranking_table.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
@@ -45,6 +47,7 @@ class RankingTable extends StatelessWidget {
         lift: _normalizeAndGetScore(lift, userHighScores),
     };
 
+    // Calculate individual energies and average
     final energies = allLifts.entries.map((entry) {
       final liftKey = entry.key.toLowerCase();
       final score = entry.value;
@@ -60,10 +63,45 @@ class RankingTable extends StatelessWidget {
         : 0.0;
 
     final overallRank = _getRankFromEnergy(averageEnergy);
+    final overallColor = RankUtils.getRankColor(overallRank);
+
+    // Notify parent of computed energy
     onEnergyComputed(averageEnergy.round(), overallRank);
 
     return Column(
       children: [
+        // Display overall energy and rank
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Overall Energy: ',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '${averageEnergy.round()}',
+              style: TextStyle(
+                color: overallColor,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            SvgPicture.asset(
+              'assets/images/ranks/${overallRank.toLowerCase()}.svg',
+              height: 24,
+              width: 24,
+            ),
+            IconButton(
+              icon: const Icon(Icons.leaderboard, color: Colors.blue),
+              onPressed: onEnergyLeaderboardTapped,
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         const _RankingTableHeader(),
         const SizedBox(height: 12),
@@ -91,25 +129,22 @@ class RankingTable extends StatelessWidget {
     );
   }
 
-  double _normalizeAndGetScore(String lift, Map<String, double> scores) {
-    for (var entry in scores.entries) {
-      final name = entry.key.toLowerCase();
-      if (lift.toLowerCase() == name ||
-          (lift == 'Bench' && name.contains('bench'))) {
-        return entry.value;
-      }
-    }
-    return 0.0;
-  }
+  double _normalizeAndGetScore(String lift, Map<String, double> scores) =>
+      scores.entries
+          .firstWhere(
+            (e) =>
+                e.key.toLowerCase() == lift.toLowerCase() ||
+                (lift == 'Bench' && e.key.toLowerCase().contains('bench')),
+            orElse: () => const MapEntry('', 0.0),
+          )
+          .value;
 
   String _getRankFromEnergy(double energy) {
     final entries = RankUtils.rankEnergy.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-
     for (final entry in entries) {
       if (energy >= entry.value) return entry.key;
     }
-
     return 'Unranked';
   }
 }
@@ -131,8 +166,7 @@ class _RankingTableHeader extends StatelessWidget {
             flex: 2, child: Center(child: Text('Rank', style: _headerStyle))),
         Expanded(
             flex: 1, child: Center(child: Text('Energy', style: _headerStyle))),
-        Expanded(
-            flex: 1, child: Center(child: Text('Lb', style: _headerStyle))),
+        Expanded(flex: 1, child: Center(child: Text('', style: _headerStyle))),
       ],
     );
   }
@@ -161,7 +195,6 @@ class _RankingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lowerLift = lift.toLowerCase();
-
     final sortedRanks = standards.entries.toList()
       ..sort((a, b) => ((b.value['lifts'][lowerLift] ?? 0) as num)
           .compareTo((a.value['lifts'][lowerLift] ?? 0) as num));
@@ -174,26 +207,20 @@ class _RankingRow extends StatelessWidget {
         break;
       }
     }
-
     final currentRank = matchedRank ?? 'Unranked';
 
-    double currentThreshold = 0.0;
-    double nextThreshold = 0.0;
-
+    double currentThreshold = 0.0, nextThreshold = 0.0;
     if (matchedRank != null) {
       final currentIndex = sortedRanks.indexWhere((e) => e.key == matchedRank);
       currentThreshold =
           (sortedRanks[currentIndex].value['lifts'][lowerLift] ?? 0).toDouble();
-      if (currentIndex > 0) {
-        nextThreshold =
-            (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0)
-                .toDouble();
-      } else {
-        nextThreshold = currentThreshold;
-      }
+      nextThreshold = currentIndex > 0
+          ? (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0)
+              .toDouble()
+          : currentThreshold;
     } else {
-      final iron = sortedRanks.last;
-      nextThreshold = (iron.value['lifts'][lowerLift] ?? 0).toDouble();
+      nextThreshold =
+          (sortedRanks.last.value['lifts'][lowerLift] ?? 0).toDouble();
     }
 
     final progress = nextThreshold > currentThreshold
@@ -250,9 +277,11 @@ class _RankingRow extends StatelessWidget {
               ),
             ),
             Expanded(
-                flex: 2,
-                child: Center(
-                    child: SvgPicture.asset(iconPath, height: 24, width: 24))),
+              flex: 2,
+              child: Center(
+                child: SvgPicture.asset(iconPath, height: 24, width: 24),
+              ),
+            ),
             Expanded(
                 flex: 1,
                 child: Center(
