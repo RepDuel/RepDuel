@@ -52,3 +52,9 @@ async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User:
     result = await db.execute(select(User).filter(User.id == user_id))
     user = result.scalars().first()
     return user
+
+
+async def get_user_by_username(db: AsyncSession, username: str) -> User:
+    result = await db.execute(select(User).filter(User.username == username))
+    user = result.scalars().first()
+    return user

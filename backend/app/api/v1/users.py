@@ -9,7 +9,7 @@ from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.user_service import (authenticate_user, create_user,
-                                       get_user_by_email, update_user, get_user_by_id)
+                                       get_user_by_email, update_user, get_user_by_id, get_user_by_username)
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,5 +65,15 @@ async def read_user_by_id(user_id: UUID, db: AsyncSession = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with ID {user_id} not found",
+        )
+    return user
+
+@router.get("/username/{username}", response_model=UserRead)
+async def get_user_uuid_by_username(username: str, db: AsyncSession = Depends(get_db)):
+    user = await get_user_by_username(db, username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with username '{username}' not found",
         )
     return user
