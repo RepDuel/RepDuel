@@ -148,6 +148,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           'is_active': userJson['is_active'] ?? true,
           'created_at': userJson['created_at'],
           'updated_at': userJson['updated_at'],
+          'avatar_url': userJson['avatar_url'] ?? '', // Add avatar_url
         });
         setState(() {
           usersCache[authorId] = user;
@@ -161,7 +162,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             email: 'Unknown',
             isActive: true,
             createdAt: DateTime.now(),
-            updatedAt: DateTime.now());
+            updatedAt: DateTime.now(),
+            avatarUrl: ''); // Default avatar_url if no data
       }
     } catch (e) {
       debugPrint('Error loading user details: $e');
@@ -171,7 +173,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           email: 'Unknown',
           isActive: true,
           createdAt: DateTime.now(),
-          updatedAt: DateTime.now());
+          updatedAt: DateTime.now(),
+          avatarUrl: '');
     }
   }
 
