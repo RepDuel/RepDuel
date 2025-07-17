@@ -1,5 +1,5 @@
 from app.db.base_class import Base
-from sqlalchemy import Column, ForeignKey, Integer
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -9,7 +9,9 @@ class RoutineScenario(Base):
 
     routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), primary_key=True)
     scenario_id = Column(
-        UUID(as_uuid=True), ForeignKey("scenarios.id"), primary_key=True
+        String,
+        ForeignKey("scenarios.id"), 
+        primary_key=True
     )
     sets = Column(Integer, nullable=False, default=3)
     reps = Column(Integer, nullable=False, default=10)

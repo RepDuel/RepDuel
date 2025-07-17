@@ -1,7 +1,7 @@
 # backend/app/models/leaderboard.py
 
 from app.db.base_class import Base
-from sqlalchemy import Column, Float, ForeignKey, text
+from sqlalchemy import Column, Float, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import UUID
 
 
@@ -15,5 +15,5 @@ class LeaderboardEntry(Base):
         index=True,
     )
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    scenario_id = Column(UUID(as_uuid=True), ForeignKey("scenarios.id"), nullable=False)
+    scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=False)
     weight_lifted = Column(Float, nullable=False)
