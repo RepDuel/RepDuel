@@ -26,10 +26,10 @@ class Message {
     return Message(
       id: json['id'] ?? '',
       content: json['content'] ?? '',
-      authorId: json['author_id'] ?? '',
-      channelId: json['channel_id'] ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
+      authorId: json['authorId'] ?? '',
+      channelId: json['channelId'] ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
     );
   }
 
