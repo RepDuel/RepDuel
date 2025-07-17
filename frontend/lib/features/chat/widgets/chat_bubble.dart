@@ -21,7 +21,7 @@ class ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final username = author?.username ?? 'Unknown';
     final avatarUrl = author?.avatarUrl ?? ''; // Get the avatar URL
-    final rankColor = Colors.blue; // Change or calculate rank color as needed
+    const rankColor = Colors.blue; // Change or calculate rank color as needed
 
     return Align(
       alignment: Alignment.centerLeft, // Always align to the left
@@ -48,7 +48,7 @@ class ChatBubble extends StatelessWidget {
                 children: [
                   Text(
                     username,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: rankColor, // You can use rankColor here if needed
                     ),

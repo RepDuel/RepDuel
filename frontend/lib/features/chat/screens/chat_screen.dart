@@ -113,10 +113,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         debugPrint('Loaded ${hist.length} messages from history');
 
         // Debug print to output full message details
-        hist.forEach((message) {
+        for (var message in hist) {
           debugPrint(
               'Message details: id = ${message.id}, authorId = ${message.authorId}, content = ${message.content}, createdAt = ${message.createdAt}, updatedAt = ${message.updatedAt}');
-        });
+        }
 
         setState(() => messages.insertAll(0, hist));
       } else {

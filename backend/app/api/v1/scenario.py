@@ -19,7 +19,7 @@ async def list_scenarios(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", response_model=ScenarioOut)
 async def create_scenario(scenario: ScenarioCreate, db: AsyncSession = Depends(get_db)):
-    db_scenario = Scenario(**scenario.dict())
+    db_scenario = Scenario(**scenario.model_dump())
     db.add(db_scenario)
     await db.commit()
     await db.refresh(db_scenario)
