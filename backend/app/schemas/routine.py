@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class ScenarioSet(BaseModel):
-    scenario_id: UUID
+    scenario_id: str
     name: str
     sets: int = Field(..., ge=0)
     reps: int = Field(..., ge=0)

@@ -34,14 +34,14 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     'Deadlift': 0.0,
   };
 
-  final squatId = 'a9b52e3a-248d-4a89-82ab-555be989de5b';
-  final benchId = 'bf610e59-fb34-4e21-bc36-bdf0f6f7be4f';
-  final deadliftId = '9b6cf826-e243-4d3e-81bd-dfe4a8a0c05e';
+  final squatId = 'back_squat';
+  final benchId = 'barbell_bench_press';
+  final deadliftId = 'deadlift';
 
   final Map<String, String> liftToScenarioId = {
-    'Squat': 'a9b52e3a-248d-4a89-82ab-555be989de5b',
-    'Bench': 'bf610e59-fb34-4e21-bc36-bdf0f6f7be4f',
-    'Deadlift': '9b6cf826-e243-4d3e-81bd-dfe4a8a0c05e'
+    'Squat': 'back_squat',
+    'Bench': 'barbell_bench_press',
+    'Deadlift': 'deadlift'
   };
 
   @override

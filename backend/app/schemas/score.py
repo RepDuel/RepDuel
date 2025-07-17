@@ -7,14 +7,14 @@ from pydantic import BaseModel
 
 class ScoreCreate(BaseModel):
     user_id: UUID
-    scenario_id: UUID
+    scenario_id: str
     weight_lifted: float
 
 
 class ScoreOut(BaseModel):
     id: int
     user_id: UUID
-    scenario_id: UUID
+    scenario_id: str
     weight_lifted: float
     created_at: datetime
 

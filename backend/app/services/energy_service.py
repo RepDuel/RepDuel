@@ -10,9 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Hardcoded mapping for each scenario to the corresponding lift name
 SCENARIO_LIFT_MAP = {
-    "a9b52e3a-248d-4a89-82ab-555be989de5b": "squat",
-    "bf610e59-fb34-4e21-bc36-bdf0f6f7be4f": "bench",
-    "9b6cf826-e243-4d3e-81bd-dfe4a8a0c05e": "deadlift",
+    "back_squat": "squat",
+    "barbell_bench_press": "bench",
+    "deadlift": "deadlift",
 }
 
 

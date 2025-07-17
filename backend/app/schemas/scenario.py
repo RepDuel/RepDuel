@@ -28,7 +28,7 @@ class Scenario(ScenarioInDBBase):
 
 
 class ScenarioOut(ScenarioInDBBase):
-    id: UUID
+    id: str
     name: str
     description: str | None = None
 
