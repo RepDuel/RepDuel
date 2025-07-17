@@ -29,7 +29,7 @@ async def create_score(
 
 @router.post("/scenario/{scenario_id}/", response_model=ScoreOut)
 async def create_score_for_scenario(
-    scenario_id: UUID,
+    scenario_id: str,
     score: ScoreCreate,
     db: AsyncSession = Depends(get_db),
 ):
@@ -56,7 +56,7 @@ async def create_score_for_scenario(
     "/scenario/{scenario_id}/leaderboard", response_model=list[ScoreReadWithUser]
 )
 async def get_leaderboard(
-    scenario_id: UUID,
+    scenario_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     subquery = (
@@ -85,7 +85,7 @@ async def get_leaderboard(
 @router.get("/user/{user_id}/scenario/{scenario_id}", response_model=list[ScoreOut])
 async def get_user_score_history(
     user_id: UUID,
-    scenario_id: UUID,
+    scenario_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     stmt = (
@@ -100,7 +100,7 @@ async def get_user_score_history(
 @router.get("/user/{user_id}/scenario/{scenario_id}/highscore", response_model=ScoreOut)
 async def get_user_high_score(
     user_id: UUID,
-    scenario_id: UUID,
+    scenario_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     stmt = (

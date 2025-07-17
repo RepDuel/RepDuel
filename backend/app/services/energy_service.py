@@ -106,7 +106,7 @@ def compute_energy_for_lift(score: float, lift: str, standards: dict) -> int:
 async def update_energy_if_personal_best(
     db: AsyncSession,
     user_id: UUID,
-    scenario_id: UUID,
+    scenario_id: str,
     new_score: float,
     bodyweight_kg: float,
     gender: str,
