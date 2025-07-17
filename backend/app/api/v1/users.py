@@ -9,10 +9,11 @@ from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.user_service import (authenticate_user, create_user,
-                                       get_user_by_email, update_user)
+                                       get_user_by_email, update_user, get_user_by_id)
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -56,3 +57,13 @@ async def update_current_user(
     current_user: User = Depends(get_current_user),
 ):
     return await update_user(db, current_user, updates)
+
+@router.get("/{user_id}", response_model=UserRead)
+async def read_user_by_id(user_id: UUID, db: AsyncSession = Depends(get_db)):
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found",
+        )
+    return user

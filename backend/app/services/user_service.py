@@ -3,6 +3,7 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from uuid import UUID
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
@@ -44,4 +45,10 @@ async def update_user(db: AsyncSession, user: User, updates: UserUpdate) -> User
             setattr(user, field, value)
     await db.commit()
     await db.refresh(user)
+    return user
+
+
+async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User:
+    result = await db.execute(select(User).filter(User.id == user_id))
+    user = result.scalars().first()
     return user
