@@ -21,6 +21,8 @@ class User(Base):
     gender = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
 
+    display_name = Column(String(255), nullable=True)
+
     guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
 
     messages = relationship(
