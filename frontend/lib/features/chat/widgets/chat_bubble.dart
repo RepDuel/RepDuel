@@ -1,5 +1,3 @@
-// frontend/lib/features/chat/widgets/chat_bubble.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/message.dart';
@@ -27,19 +25,17 @@ class ChatBubble extends StatelessWidget {
     final rankColor = RankUtils.getRankColor(rank);
 
     return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: Alignment.centerLeft, // Always align to the left
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         decoration: BoxDecoration(
-          color: isMe
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
+          // Color is uniform for all messages
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start, // Always start (left)
           children: [
             if (!isMe)
               Text(
