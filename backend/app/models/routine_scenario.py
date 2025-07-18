@@ -1,3 +1,5 @@
+# backend/app/models/routine_scenario.py
+
 from app.db.base_class import Base
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID

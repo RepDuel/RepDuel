@@ -10,5 +10,6 @@ from app.models.routine import Routine
 from app.models.routine_scenario import RoutineScenario
 from app.models.scenario import Scenario
 from app.models.score import Score
+from app.models.routine_submission import RoutineScenarioSubmission, RoutineSubmission
 # Import all of the models
 from app.models.user import User
