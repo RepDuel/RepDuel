@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'exercise_play_screen.dart';
+import 'summary_screen.dart'; // Import SummaryScreen
 
 class ExerciseListScreen extends StatefulWidget {
   final String routineId;
@@ -14,7 +15,7 @@ class ExerciseListScreen extends StatefulWidget {
 
 class ExerciseListScreenState extends State<ExerciseListScreen> {
   late Future<List<dynamic>> exercises;
-  num totalVolume = 0; // To track the total volume lifted during the session
+  num totalVolume = 0;
 
   Future<List<dynamic>> fetchExercises() async {
     final response = await http.get(
@@ -31,7 +32,6 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
 
   void _updateVolume(List<Map<String, dynamic>> setData) {
     setState(() {
-      totalVolume = 0;
       for (var set in setData) {
         totalVolume += set['weight'] * set['reps'];
       }
@@ -44,13 +44,28 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
     exercises = fetchExercises();
   }
 
+  void _finishRoutine() {
+    // Navigate to SummaryScreen with total volume as a parameter
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => SummaryScreen(totalVolume: totalVolume)),
+    );
+  }
+
+  void _quitRoutine() {
+    Navigator.pop(context);
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exercise List'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.black, // Use backgroundColor instead of primary
+        foregroundColor:
+            Colors.white, // Use foregroundColor instead of primaryColor
       ),
       body: FutureBuilder<List<dynamic>>(
         future: exercises,
@@ -124,6 +139,31 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                         );
                       },
                     ),
+                  ),
+                  // Finish Routine Button with white text
+                  ElevatedButton(
+                    onPressed: _finishRoutine,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white, // Set text color to white
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 24),
+                      textStyle: const TextStyle(fontSize: 16),
+                    ),
+                    child: const Text('Finish Routine'),
+                  ),
+                  const SizedBox(height: 16),
+                  // Quit Routine Button with white text
+                  ElevatedButton(
+                    onPressed: _quitRoutine,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 24),
+                      textStyle: const TextStyle(fontSize: 16),
+                    ),
+                    child: const Text('Quit Routine'),
                   ),
                 ],
               ),
