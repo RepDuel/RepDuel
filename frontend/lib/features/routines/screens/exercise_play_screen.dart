@@ -77,15 +77,16 @@ class ExercisePlayScreen extends StatelessWidget {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context); // Go back to the previous screen
+                  Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
                   textStyle: const TextStyle(fontSize: 16),
                 ),
-                child: const Text('Start Exercise'),
+                child: const Text('Submit'),
               ),
             ],
           ),
