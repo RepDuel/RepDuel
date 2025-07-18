@@ -19,6 +19,8 @@ class RoutineScenarioSubmission(Base):
     # Relationships
     routine = relationship("Routine", back_populates="scenarios")
     scenario = relationship("Scenario")
+    routine_submission = relationship("RoutineSubmission", back_populates="scenarios")
+
 
 # Model to represent the complete routine submission
 class RoutineSubmission(Base):

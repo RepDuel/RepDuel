@@ -1,9 +1,9 @@
 from pydantic import BaseModel
-from typing import List
 from uuid import UUID
+from typing import List
 from datetime import datetime
 
-# Model to represent the data for each routine scenario when submitting a routine
+# Model for routine scenario submission
 class RoutineScenarioSubmission(BaseModel):
     scenario_id: str  # ID of the scenario (string)
     sets: int  # Number of sets
@@ -15,14 +15,27 @@ class RoutineScenarioSubmission(BaseModel):
         orm_mode = True  # To allow compatibility with SQLAlchemy models
 
 
-# Model to represent the complete routine submission
-class RoutineSubmission(BaseModel):
-    routine_id: UUID  # ID of the routine being submitted
-    user_id: UUID  # ID of the user submitting the routine
-    duration: float  # Duration of the routine in minutes
-    completion_timestamp: datetime  # Timestamp when the routine was completed
+# Model for creating a routine submission
+class RoutineSubmissionCreate(BaseModel):
+    routine_id: UUID
+    user_id: UUID
+    duration: float
+    completion_timestamp: datetime
+    status: str  # 'completed' or 'partial'
     scenarios: List[RoutineScenarioSubmission]  # List of routine scenarios with data
-    status: str  # Can be 'completed' or 'partial'
+
+    class Config:
+        orm_mode = True
+
+
+# Model for reading a routine submission (response model)
+class RoutineSubmissionRead(BaseModel):
+    routine_id: UUID
+    user_id: UUID
+    duration: float
+    completion_timestamp: datetime
+    status: str
+    scenarios: List[RoutineScenarioSubmission]  # List of scenarios with data
 
     class Config:
         orm_mode = True
