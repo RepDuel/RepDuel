@@ -1,8 +1,9 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Float
+from sqlalchemy import Column, ForeignKey, Integer, Interval, String, Float, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from uuid import UUID as UUIDType
+from datetime import datetime
 
 # Model to represent the data for each routine scenario when submitting a routine
 class RoutineScenarioSubmission(Base):
@@ -25,6 +26,8 @@ class RoutineSubmission(Base):
 
     routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), primary_key=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    duration = Column(Interval, nullable=True)  # Store the duration as an interval
+    completion_timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
     scenarios = relationship("RoutineScenarioSubmission", back_populates="routine_submission", cascade="all, delete-orphan")
 
     # Relationships
