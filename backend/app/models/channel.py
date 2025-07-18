@@ -15,7 +15,7 @@ class Channel(Base):
     name = Column(String, nullable=False)
 
     guild_id = Column(
-        UUID(as_uuid=True), ForeignKey("guilds.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True), ForeignKey("guilds.id", ondelete="CASCADE"), nullable=True
     )
     guild = relationship("Guild", back_populates="channels")
 
