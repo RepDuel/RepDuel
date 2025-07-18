@@ -18,7 +18,6 @@ class ExercisePlayScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     List<TextEditingController> weightControllers =
         List.generate(sets, (_) => TextEditingController());
-
     List<TextEditingController> repControllers = List.generate(
         sets, (_) => TextEditingController(text: reps.toString()));
 
@@ -77,7 +76,20 @@ class ExercisePlayScreen extends StatelessWidget {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  // Gather the data from the controllers
+                  List<Map<String, dynamic>> setData = [];
+                  for (int i = 0; i < sets; i++) {
+                    double weight =
+                        double.tryParse(weightControllers[i].text) ?? 0;
+                    int reps = int.tryParse(repControllers[i].text) ?? 0;
+                    setData.add({
+                      'weight': weight,
+                      'reps': reps,
+                    });
+                  }
+
+                  // Send the data back to the ExerciseListScreen
+                  Navigator.pop(context, setData); // Pop with set data
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,

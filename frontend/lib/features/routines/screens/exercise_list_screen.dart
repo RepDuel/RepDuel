@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'exercise_play_screen.dart';
-import 'dart:async'; // For the session timer
 
 class ExerciseListScreen extends StatefulWidget {
   final String routineId;
@@ -15,10 +14,7 @@ class ExerciseListScreen extends StatefulWidget {
 
 class ExerciseListScreenState extends State<ExerciseListScreen> {
   late Future<List<dynamic>> exercises;
-  Stopwatch _stopwatch = Stopwatch(); // To track the session time
-  Timer? _timer; // Timer to periodically update the UI
-  int totalVolume = 0; // To track the total volume lifted during the session
-  String sessionTime = "00:00"; // Store the session time as a string
+  num totalVolume = 0; // To track the total volume lifted during the session
 
   Future<List<dynamic>> fetchExercises() async {
     final response = await http.get(
@@ -33,40 +29,19 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
     }
   }
 
+  void _updateVolume(List<Map<String, dynamic>> setData) {
+    setState(() {
+      totalVolume = 0;
+      for (var set in setData) {
+        totalVolume += set['weight'] * set['reps'];
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     exercises = fetchExercises();
-    _startSessionTimer(); // Start the timer when the screen is initialized
-  }
-
-  // Function to start the session timer
-  void _startSessionTimer() {
-    _stopwatch.start();
-    _timer = Timer.periodic(const Duration(seconds: 1), _updateSessionTime);
-  }
-
-  // Function to stop the session timer
-  void _stopSessionTimer() {
-    _stopwatch.stop();
-    _timer?.cancel();
-  }
-
-  // Update session time every second
-  void _updateSessionTime(Timer timer) {
-    setState(() {
-      final elapsed = _stopwatch.elapsed;
-      final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
-      final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
-      sessionTime = "$minutes:$seconds"; // Update session time string
-    });
-  }
-
-  // Function to update the volume counter
-  void _updateVolume(int sets, int reps, double weight) {
-    setState(() {
-      totalVolume += sets * reps * weight.toInt();
-    });
   }
 
   @override
@@ -91,24 +66,12 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  // Display the session timer and volume counter
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Session Time: $sessionTime',
-                        style:
-                            const TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                      Text(
-                        'Total Volume: $totalVolume kg',
-                        style:
-                            const TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                    ],
+                  // Display the total volume
+                  Text(
+                    'Total Volume: $totalVolume kg',
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
                   ),
                   const SizedBox(height: 16),
-
                   Expanded(
                     child: ListView.builder(
                       itemCount: exercisesData.length,
@@ -118,7 +81,6 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                             exercise['name'] ?? 'Unnamed Exercise';
                         final sets = exercise['sets'] ?? 0;
                         final reps = exercise['reps'] ?? 0;
-                        final weight = exercise['weight'] ?? 0.0;
 
                         return Card(
                           color: Colors.white12,
@@ -130,17 +92,16 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                                   color: Colors.white, fontSize: 18),
                             ),
                             subtitle: Text(
-                              'Sets: $sets | Reps: $reps | Weight: $weight kg',
+                              'Sets: $sets | Reps: $reps',
                               style: const TextStyle(
                                   color: Colors.white70, fontSize: 14),
                             ),
                             trailing: IconButton(
                               icon: const Icon(Icons.play_arrow,
                                   color: Colors.green),
-                              onPressed: () {
-                                // Update volume when the exercise starts
-                                _updateVolume(sets, reps, weight);
-                                Navigator.push(
+                              onPressed: () async {
+                                // Navigate to ExercisePlayScreen and await the returned data
+                                final setData = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => ExercisePlayScreen(
@@ -151,28 +112,18 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                                     ),
                                   ),
                                 );
+
+                                // Update total volume with the returned data
+                                if (setData != null) {
+                                  _updateVolume(
+                                      setData); // Update volume based on returned data
+                                }
                               },
                             ),
                           ),
                         );
                       },
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      _stopSessionTimer(); // Stop the session timer when the routine is completed
-                      int count = 0;
-                      Navigator.of(context).popUntil((_) => count++ >= 2);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 24),
-                      textStyle: const TextStyle(fontSize: 16),
-                    ),
-                    child: const Text('Submit Routine'),
                   ),
                 ],
               ),
