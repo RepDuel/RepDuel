@@ -12,7 +12,7 @@ class RoutineScenarioSubmission(BaseModel):
     total_volume: float  # Total volume (weight * reps * sets)
 
     class Config:
-        orm_mode = True  # To allow compatibility with SQLAlchemy models
+        from_attributes = True  # Replacing orm_mode with from_attributes
 
 
 # Model for creating a routine submission
@@ -25,7 +25,7 @@ class RoutineSubmissionCreate(BaseModel):
     scenarios: List[RoutineScenarioSubmission]  # List of routine scenarios with data
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Replacing orm_mode with from_attributes
 
 
 # Model for reading a routine submission (response model)
@@ -38,4 +38,4 @@ class RoutineSubmissionRead(BaseModel):
     scenarios: List[RoutineScenarioSubmission]  # List of scenarios with data
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Replacing orm_mode with from_attributes
