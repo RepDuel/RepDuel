@@ -1,37 +1,41 @@
+# backend/app/models/routine_submission.py
+
 from sqlalchemy import Column, ForeignKey, Integer, Interval, String, Float, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
-from uuid import UUID as UUIDType
+from uuid import uuid4
 from datetime import datetime
 
-# Model to represent the data for each routine scenario when submitting a routine
 class RoutineScenarioSubmission(Base):
     __tablename__ = "routine_scenario_submission"
 
-    routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), primary_key=True)
+    routine_id = Column(UUID(as_uuid=True), ForeignKey("routine_submission.id"), primary_key=True)
     scenario_id = Column(String, ForeignKey("scenarios.id"), primary_key=True)
     sets = Column(Integer, nullable=False, default=3)
     reps = Column(Integer, nullable=False, default=10)
-    weight = Column(Float, nullable=False)  # Weight lifted in kg
-    total_volume = Column(Float, nullable=False)  # Total volume (weight * reps * sets)
+    weight = Column(Float, nullable=False)
+    total_volume = Column(Float, nullable=False)
 
-    # Relationships
-    routine = relationship("Routine", back_populates="scenarios")
+    routine_submission = relationship("RoutineSubmission", back_populates="scenario_submissions")
     scenario = relationship("Scenario")
-    routine_submission = relationship("RoutineSubmission", back_populates="scenarios")
 
-
-# Model to represent the complete routine submission
 class RoutineSubmission(Base):
     __tablename__ = "routine_submission"
 
-    routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), primary_key=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    duration = Column(Interval, nullable=True)  # Store the duration as an interval
+    duration = Column(Interval, nullable=True)
     completion_timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
-    scenarios = relationship("RoutineScenarioSubmission", back_populates="routine_submission", cascade="all, delete-orphan")
+    status = Column(String, nullable=False)
 
-    # Relationships
+    scenario_submissions = relationship(
+        "RoutineScenarioSubmission",
+        back_populates="routine_submission",
+        cascade="all, delete-orphan",
+        single_parent=True
+    )
+
     routine = relationship("Routine", back_populates="submissions")
     user = relationship("User", back_populates="routine_submissions")

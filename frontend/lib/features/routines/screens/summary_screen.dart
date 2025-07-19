@@ -1,3 +1,5 @@
+// frontend/lib/features/routines/screens/summary_screen.dart
+
 import 'package:flutter/material.dart';
 
 class SummaryScreen extends StatelessWidget {

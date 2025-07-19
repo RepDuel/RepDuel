@@ -1,3 +1,5 @@
+# backend/app/api/v1/routine_submission.py
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.services.routine_submission_service import create_routine_submission
 from app.schemas.routine_submission import RoutineSubmissionCreate, RoutineSubmissionRead
