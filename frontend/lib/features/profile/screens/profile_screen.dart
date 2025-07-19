@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../widgets/energy_graph.dart';
-import '../../../core/providers/energy_providers.dart'; // corrected import for energyApiProvider
+import '../../../core/providers/energy_providers.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -15,6 +15,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _showGraph = false;
   late Future<int> _energyFuture;
 
   @override
@@ -22,8 +23,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.initState();
     final user = ref.read(authProvider).user;
     if (user != null) {
-      _energyFuture =
-          ref.read(energyApiProvider).getLatestEnergy(user.id); // API call
+      _energyFuture = ref.read(energyApiProvider).getLatestEnergy(user.id);
     }
   }
 
@@ -59,15 +59,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case 'Jade':
         return const Color(0xFF62f40c);
       case 'Master':
-        return const Color(0xFFff00ff); // pink
+        return const Color(0xFFff00ff);
       case 'Grandmaster':
-        return const Color(0xFFffde21); // yellow
+        return const Color(0xFFffde21);
       case 'Nova':
-        return const Color(0xFFa45ee5); // purple
+        return const Color(0xFFa45ee5);
       case 'Astra':
-        return const Color(0xFFff4040); // red
+        return const Color(0xFFff4040);
       case 'Celestial':
-        return const Color(0xFF00ffff); // cyan
+        return const Color(0xFF00ffff);
       default:
         return Colors.white;
     }
@@ -93,16 +93,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: user == null
-            ? const Center(
-                child: Text(
-                  'User not found.',
-                  style: TextStyle(color: Colors.white),
-                ),
-              )
-            : Column(
+      body: user == null
+          ? const Center(
+              child: Text(
+                'User not found.',
+                style: TextStyle(color: Colors.white),
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -141,40 +141,64 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       if (snapshot.connectionState != ConnectionState.done) {
                         return const CircularProgressIndicator();
                       }
+
                       final energy = snapshot.data ?? 0;
                       final rank = getRank(energy);
                       final color = getRankColor(rank);
                       final iconPath =
                           'assets/images/ranks/${rank.toLowerCase()}.svg';
 
-                      return Row(
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Energy: ',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
+                          Row(
+                            children: [
+                              const Text(
+                                'Energy: ',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 18),
+                              ),
+                              Text(
+                                '$energy ',
+                                style: TextStyle(
+                                  color: color,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SvgPicture.asset(
+                                iconPath,
+                                height: 24,
+                                width: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _showGraph = !_showGraph;
+                                  });
+                                },
+                                child: Text(
+                                  _showGraph ? 'Hide Graph' : 'View Graph',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            '$energy ',
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          if (_showGraph) ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 200,
+                              child: EnergyGraph(userId: user.id),
                             ),
-                          ),
-                          SvgPicture.asset(
-                            iconPath,
-                            height: 24,
-                            width: 24,
-                          ),
+                          ],
                         ],
                       );
                     },
                   ),
-                  const SizedBox(height: 16),
-                  EnergyGraph(userId: user.id),
                 ],
               ),
-      ),
+            ),
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 4,
         onTap: (index) {},
