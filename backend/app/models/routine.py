@@ -28,3 +28,7 @@ class Routine(Base):
     scenarios = relationship(
         "RoutineScenario", back_populates="routine", cascade="all, delete-orphan"
     )
+
+    submissions = relationship(
+        "RoutineSubmission", back_populates="routine", cascade="all, delete-orphan"
+    )

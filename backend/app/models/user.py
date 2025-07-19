@@ -43,3 +43,7 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+    routine_submissions = relationship(
+        "RoutineSubmission", back_populates="user", cascade="all, delete-orphan"
+    )
