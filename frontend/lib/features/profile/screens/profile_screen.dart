@@ -6,6 +6,9 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../widgets/energy_graph.dart';
 import '../../../core/providers/energy_providers.dart';
+import '../widgets/workout_history_list.dart';
+import 'package:http/http.dart' as http;
+import '../../../core/services/secure_storage_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -16,15 +19,27 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _showGraph = false;
-  late Future<int> _energyFuture;
+  Future<int>? _energyFuture;
 
   @override
-  void initState() {
-    super.initState();
-    final user = ref.read(authProvider).user;
-    if (user != null) {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final user = ref.watch(authProvider).user;
+    if (user != null && _energyFuture == null) {
       _energyFuture = ref.read(energyApiProvider).getLatestEnergy(user.id);
     }
+  }
+
+  Future<void> _testHistoryApi(String userId) async {
+    final token = await SecureStorageService().readToken();
+    final res = await http.get(
+      Uri.parse('http://localhost:8000/api/v1/routine_submission/user/$userId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    debugPrint('Status Code: ${res.statusCode}');
+    debugPrint('Body: ${res.body}');
   }
 
   String getRank(int energy) {
@@ -95,11 +110,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       body: user == null
           ? const Center(
-              child: Text(
-                'User not found.',
-                style: TextStyle(color: Colors.white),
-              ),
-            )
+              child: Text('User not found.',
+                  style: TextStyle(color: Colors.white)))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -111,98 +123,92 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child:
                             user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                                ? Image.network(
-                                    user.avatarUrl!,
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                  )
+                                ? Image.network(user.avatarUrl!,
+                                    width: 80, height: 80, fit: BoxFit.cover)
                                 : Image.asset(
                                     'assets/images/profile_placeholder.png',
                                     width: 80,
                                     height: 80,
-                                    fit: BoxFit.cover,
-                                  ),
+                                    fit: BoxFit.cover),
                       ),
                       const SizedBox(width: 16),
-                      Text(
-                        user.username,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                        ),
-                      ),
+                      Text(user.username,
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 24)),
                     ],
                   ),
                   const SizedBox(height: 32),
-                  FutureBuilder<int>(
-                    future: _energyFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return const CircularProgressIndicator();
-                      }
+                  if (_energyFuture != null)
+                    FutureBuilder<int>(
+                      future: _energyFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const CircularProgressIndicator();
+                        }
+                        final energy = snapshot.data ?? 0;
+                        final rank = getRank(energy);
+                        final color = getRankColor(rank);
+                        final iconPath =
+                            'assets/images/ranks/${rank.toLowerCase()}.svg';
 
-                      final energy = snapshot.data ?? 0;
-                      final rank = getRank(energy);
-                      final color = getRankColor(rank);
-                      final iconPath =
-                          'assets/images/ranks/${rank.toLowerCase()}.svg';
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Text(
-                                'Energy: ',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 18),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  const Text('Energy: ',
+                                      style: TextStyle(
+                                          color: Colors.white, fontSize: 18)),
+                                  Text('$energy ',
+                                      style: TextStyle(
+                                          color: color,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold)),
+                                  SvgPicture.asset(iconPath,
+                                      height: 24, width: 24),
+                                  const SizedBox(width: 8),
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() => _showGraph = !_showGraph);
+                                    },
+                                    child: Text(
+                                        _showGraph
+                                            ? 'Hide Graph'
+                                            : 'View Graph',
+                                        style: const TextStyle(
+                                            color: Colors.white)),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                '$energy ',
-                                style: TextStyle(
-                                  color: color,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SvgPicture.asset(
-                                iconPath,
-                                height: 24,
-                                width: 24,
-                              ),
-                              const SizedBox(width: 8),
-                              TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _showGraph = !_showGraph;
-                                  });
-                                },
-                                child: Text(
-                                  _showGraph ? 'Hide Graph' : 'View Graph',
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (_showGraph) ...[
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 200,
-                              child: EnergyGraph(userId: user.id),
                             ),
+                            if (_showGraph) const SizedBox(height: 8),
+                            if (_showGraph)
+                              SizedBox(
+                                  height: 200,
+                                  child: EnergyGraph(userId: user.id)),
                           ],
-                        ],
-                      );
-                    },
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 32),
+                  const Text('Workout History',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  WorkoutHistoryList(userId: user.id),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => _testHistoryApi(user.id),
+                    child: const Text('Test History API'),
                   ),
                 ],
               ),
             ),
-      bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 4,
-        onTap: (index) {},
-      ),
+      bottomNavigationBar: MainBottomNavBar(currentIndex: 4, onTap: (index) {}),
     );
   }
 }

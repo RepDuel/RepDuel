@@ -36,9 +36,5 @@ async def get_user_routine_history(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    # Query logic from service (to be implemented)
     return await get_user_submissions(db, user_id)
 
