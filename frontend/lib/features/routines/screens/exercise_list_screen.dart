@@ -1,10 +1,9 @@
-// frontend/lib/features/routines/screens/exercise_list_screen.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'exercise_play_screen.dart';
-import 'summary_screen.dart'; // Import SummaryScreen
+import 'summary_screen.dart';
+import 'add_exercise_screen.dart'; // Import the Add Exercise screen
 
 class ExerciseListScreen extends StatefulWidget {
   final String routineId;
@@ -17,6 +16,7 @@ class ExerciseListScreen extends StatefulWidget {
 
 class ExerciseListScreenState extends State<ExerciseListScreen> {
   late Future<List<dynamic>> exercises;
+  List<dynamic> exercisesList = []; // Change to a list to store exercises
   num totalVolume = 0;
 
   Future<List<dynamic>> fetchExercises() async {
@@ -47,7 +47,6 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
   }
 
   void _finishRoutine() {
-    // Navigate to SummaryScreen with total volume as a parameter
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -60,14 +59,28 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
     Navigator.pop(context);
   }
 
+  // Navigate to Add Exercise Screen
+  void _navigateToAddExercise() async {
+    final newExercise = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AddExerciseScreen()),
+    );
+
+    // Add the new exercise to the list if returned data is not null
+    if (newExercise != null) {
+      setState(() {
+        exercisesList.add(newExercise); // Modify exercisesList
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exercise List'),
-        backgroundColor: Colors.black, // Use backgroundColor instead of primary
-        foregroundColor:
-            Colors.white, // Use foregroundColor instead of primaryColor
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
       ),
       body: FutureBuilder<List<dynamic>>(
         future: exercises,
@@ -77,7 +90,10 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else {
-            final exercisesData = snapshot.data!;
+            // Once data is fetched, populate exercisesList
+            if (snapshot.hasData) {
+              exercisesList = snapshot.data!;
+            }
 
             return Padding(
               padding: const EdgeInsets.all(16.0),
@@ -91,9 +107,9 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: ListView.builder(
-                      itemCount: exercisesData.length,
+                      itemCount: exercisesList.length,
                       itemBuilder: (context, index) {
-                        final exercise = exercisesData[index];
+                        final exercise = exercisesList[index];
                         final scenarioName =
                             exercise['name'] ?? 'Unnamed Exercise';
                         final sets = exercise['sets'] ?? 0;
@@ -117,7 +133,6 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                               icon: const Icon(Icons.play_arrow,
                                   color: Colors.green),
                               onPressed: () async {
-                                // Navigate to ExercisePlayScreen and await the returned data
                                 final setData = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -130,10 +145,8 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                                   ),
                                 );
 
-                                // Update total volume with the returned data
                                 if (setData != null) {
-                                  _updateVolume(
-                                      setData); // Update volume based on returned data
+                                  _updateVolume(setData);
                                 }
                               },
                             ),
@@ -142,12 +155,24 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                       },
                     ),
                   ),
-                  // Finish Routine Button with white text
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _navigateToAddExercise,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 24),
+                      textStyle: const TextStyle(fontSize: 16),
+                    ),
+                    child: const Text('Add Exercise'),
+                  ),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _finishRoutine,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
-                      foregroundColor: Colors.white, // Set text color to white
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                           vertical: 14, horizontal: 24),
                       textStyle: const TextStyle(fontSize: 16),
@@ -155,7 +180,6 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                     child: const Text('Finish Routine'),
                   ),
                   const SizedBox(height: 16),
-                  // Quit Routine Button with white text
                   ElevatedButton(
                     onPressed: _quitRoutine,
                     style: ElevatedButton.styleFrom(
