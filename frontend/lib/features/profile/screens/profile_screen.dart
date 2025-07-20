@@ -201,10 +201,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 8),
                   WorkoutHistoryList(userId: user.id),
                   const SizedBox(height: 16),
+                  /*
                   ElevatedButton(
                     onPressed: () => _testHistoryApi(user.id),
                     child: const Text('Test History API'),
                   ),
+                  */
                 ],
               ),
             ),
