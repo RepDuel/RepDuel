@@ -30,6 +30,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _testHistoryApi(String userId) async {
     final token = await SecureStorageService().readToken();
     final res = await http.get(
