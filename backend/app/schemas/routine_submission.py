@@ -1,20 +1,18 @@
-# backend/app/schemas/routine_submission.py
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from typing import List
 from datetime import datetime
 
-# Model for routine scenario submission
+# Model for individual scenario submission
 class RoutineScenarioSubmission(BaseModel):
-    scenario_id: str  # ID of the scenario (string)
-    sets: int  # Number of sets
-    reps: int  # Number of reps per set
-    weight: float  # Weight lifted in kg
-    total_volume: float  # Total volume (weight * reps * sets)
+    scenario_id: str
+    sets: int
+    reps: int
+    weight: float
+    total_volume: float
 
     class Config:
-        from_attributes = True  # Replacing orm_mode with from_attributes
+        from_attributes = True
 
 
 # Model for creating a routine submission
@@ -23,21 +21,23 @@ class RoutineSubmissionCreate(BaseModel):
     user_id: UUID
     duration: float
     completion_timestamp: datetime
-    status: str  # 'completed' or 'partial'
-    scenarios: List[RoutineScenarioSubmission]  # List of routine scenarios with data
+    status: str
+    scenarios: List[RoutineScenarioSubmission] = Field(..., alias="scenario_submissions")
 
     class Config:
-        from_attributes = True  # Replacing orm_mode with from_attributes
+        from_attributes = True
+        populate_by_name = True
 
 
-# Model for reading a routine submission (response model)
+# Model for reading a routine submission (API response)
 class RoutineSubmissionRead(BaseModel):
     routine_id: UUID
     user_id: UUID
     duration: float
     completion_timestamp: datetime
     status: str
-    scenarios: List[RoutineScenarioSubmission]  # List of scenarios with data
+    scenarios: List[RoutineScenarioSubmission] = Field(..., alias="scenario_submissions")
 
     class Config:
-        from_attributes = True  # Replacing orm_mode with from_attributes
+        from_attributes = True
+        populate_by_name = True

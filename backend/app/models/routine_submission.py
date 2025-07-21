@@ -1,6 +1,4 @@
-# backend/app/models/routine_submission.py
-
-from sqlalchemy import Column, ForeignKey, Integer, Interval, String, Float, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, Float, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
@@ -10,8 +8,9 @@ from datetime import datetime
 class RoutineScenarioSubmission(Base):
     __tablename__ = "routine_scenario_submission"
 
-    routine_id = Column(UUID(as_uuid=True), ForeignKey("routine_submission.id"), primary_key=True)
-    scenario_id = Column(String, ForeignKey("scenarios.id"), primary_key=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    routine_id = Column(UUID(as_uuid=True), ForeignKey("routine_submission.id"), nullable=False)
+    scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=False)
     sets = Column(Integer, nullable=False, default=3)
     reps = Column(Integer, nullable=False, default=10)
     weight = Column(Float, nullable=False)

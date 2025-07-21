@@ -6,6 +6,7 @@ import '../providers/set_data_provider.dart';
 import 'exercise_play_screen.dart';
 import 'summary_screen.dart';
 import 'add_exercise_screen.dart';
+import '../../../core/providers/auth_provider.dart';
 
 class ExerciseListScreen extends ConsumerStatefulWidget {
   final String routineId;
@@ -48,13 +49,52 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     exercises = fetchExercises();
   }
 
-  void _finishRoutine() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SummaryScreen(totalVolume: totalVolume),
-      ),
+  void _finishRoutine() async {
+    final user = ref.read(authStateProvider).user;
+    final token = ref.read(authStateProvider).token;
+    final sets = ref.read(routineSetProvider);
+
+    if (!mounted) return;
+
+    if (user == null || token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("User not authenticated.")),
+      );
+      return;
+    }
+
+    final submissionBody = {
+      'routine_id': widget.routineId,
+      'user_id': user.id,
+      'duration': 13.0,
+      'completion_timestamp': DateTime.now().toIso8601String(),
+      'status': 'completed',
+      'scenarios': sets.map((set) => set.toJson()).toList(),
+    };
+
+    final response = await http.post(
+      Uri.parse('http://localhost:8000/api/v1/routine_submission'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(submissionBody),
     );
+
+    if (!mounted) return;
+
+    if (response.statusCode == 201) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SummaryScreen(totalVolume: totalVolume),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Submission failed: ${response.body}")),
+      );
+    }
   }
 
   void _quitRoutine() {
