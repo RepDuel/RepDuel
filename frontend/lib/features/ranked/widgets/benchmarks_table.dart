@@ -3,8 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
+import '../../../core/providers/auth_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class BenchmarksTable extends StatelessWidget {
+class BenchmarksTable extends ConsumerWidget {
   final Map<String, dynamic> standards;
   final Function() onViewRankings;
   final bool showLifts;
@@ -17,7 +19,10 @@ class BenchmarksTable extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider).user;
+    final weightMultiplier = user?.weightMultiplier ?? 1.0;
+
     final sortedRanks = standards.keys.toList()
       ..sort((a, b) => (standards[a]['total'] as num)
           .compareTo(standards[b]['total'] as num));
@@ -31,6 +36,7 @@ class BenchmarksTable extends StatelessWidget {
               rank: rank,
               lifts: showLifts ? standards[rank]['lifts'] : null,
               metadata: standards[rank]['metadata'],
+              weightMultiplier: weightMultiplier,
             )),
         const SizedBox(height: 20),
         ElevatedButton(
@@ -82,11 +88,13 @@ class _BenchmarkRow extends StatelessWidget {
   final String rank;
   final Map<String, dynamic>? lifts;
   final Map<String, dynamic>? metadata;
+  final double weightMultiplier;
 
   const _BenchmarkRow({
     required this.rank,
     this.lifts,
     this.metadata,
+    required this.weightMultiplier,
   });
 
   @override
@@ -130,15 +138,15 @@ class _BenchmarkRow extends StatelessWidget {
           if (lifts != null) ...[
             Expanded(
               flex: 2,
-              child: _LiftValue(lifts!['bench']),
+              child: _LiftValue(lifts!['bench'], weightMultiplier),
             ),
             Expanded(
               flex: 2,
-              child: _LiftValue(lifts!['squat']),
+              child: _LiftValue(lifts!['squat'], weightMultiplier),
             ),
             Expanded(
               flex: 2,
-              child: _LiftValue(lifts!['deadlift']),
+              child: _LiftValue(lifts!['deadlift'], weightMultiplier),
             ),
           ],
         ],
@@ -167,17 +175,24 @@ class _HeaderText extends StatelessWidget {
 
 class _LiftValue extends StatelessWidget {
   final dynamic value;
-  const _LiftValue(this.value);
+  final double weightMultiplier;
+
+  const _LiftValue(this.value, this.weightMultiplier);
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      value != null ? RankUtils.formatKg(value) : '-',
+      value != null ? _roundToNearest5(value * weightMultiplier) : '-',
       textAlign: TextAlign.center,
       style: const TextStyle(
         color: Colors.white,
         fontSize: 16,
       ),
     );
+  }
+
+  String _roundToNearest5(double value) {
+    final roundedValue = (value / 5).round() * 5;
+    return roundedValue.toString();
   }
 }

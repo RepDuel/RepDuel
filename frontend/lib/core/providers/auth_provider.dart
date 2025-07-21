@@ -1,3 +1,5 @@
+// frontend/lib/core/providers/auth_provider.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
