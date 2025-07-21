@@ -273,7 +273,7 @@ class _RankingRow extends StatelessWidget {
             Expanded(
                 flex: 2,
                 child: Center(
-                    child: Text(RankUtils.formatKg(score * userMultiplier),
+                    child: Text(RankUtils.formatKg(score),
                         style: const TextStyle(color: Colors.white)))),
             Expanded(
               flex: 2,
@@ -289,7 +289,7 @@ class _RankingRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${RankUtils.formatKg(score * userMultiplier)} / ${RankUtils.formatKg(nextThreshold)}',
+                    '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextThreshold)}',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
