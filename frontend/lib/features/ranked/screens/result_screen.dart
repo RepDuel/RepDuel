@@ -1,5 +1,4 @@
 // frontend/lib/features/ranked/screens/result_screen.dart
-
 import 'package:flutter/material.dart';
 
 class ResultScreen extends StatelessWidget {
@@ -47,7 +46,8 @@ class ResultScreen extends StatelessWidget {
             const Spacer(),
             ElevatedButton(
               onPressed: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
+                // Passing `true` to indicate that a new score was entered
+                Navigator.pop(context, true); // <-- This line passes `true`
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
