@@ -1,9 +1,13 @@
+// frontend/lib/features/chat/widgets/chat_bubble.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/message.dart';
 import '../../../core/models/user.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
-class ChatBubble extends StatelessWidget {
+class ChatBubble extends ConsumerWidget {
   final Message message;
   final bool isMe;
   final User? author;
@@ -18,10 +22,14 @@ class ChatBubble extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final username = author?.username ?? 'Unknown';
     final avatarUrl = author?.avatarUrl ?? ''; // Get the avatar URL
-    const rankColor = Colors.blue; // Change or calculate rank color as needed
+
+    // Fetch the user's energy rank and icon
+    final rank = _getRankFromEnergy(energy);
+    final rankColor = _getRankColor(rank);
+    final rankIconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
 
     return Align(
       alignment: Alignment.centerLeft, // Always align to the left
@@ -46,12 +54,22 @@ class ChatBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    username,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: rankColor, // You can use rankColor here if needed
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        username,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: rankColor, // Rank color here
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SvgPicture.asset(
+                        rankIconPath, // Rank icon here
+                        height: 20,
+                        width: 20,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -75,5 +93,51 @@ class ChatBubble extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getRankFromEnergy(int energy) {
+    if (energy >= 1200) return 'Celestial';
+    if (energy >= 1100) return 'Astra';
+    if (energy >= 1000) return 'Nova';
+    if (energy >= 900) return 'Grandmaster';
+    if (energy >= 800) return 'Master';
+    if (energy >= 700) return 'Jade';
+    if (energy >= 600) return 'Diamond';
+    if (energy >= 500) return 'Platinum';
+    if (energy >= 400) return 'Gold';
+    if (energy >= 300) return 'Silver';
+    if (energy >= 200) return 'Bronze';
+    return 'Iron';
+  }
+
+  Color _getRankColor(String rank) {
+    switch (rank) {
+      case 'Iron':
+        return Colors.grey;
+      case 'Bronze':
+        return const Color(0xFFcd7f32);
+      case 'Silver':
+        return const Color(0xFFc0c0c0);
+      case 'Gold':
+        return const Color(0xFFefbf04);
+      case 'Platinum':
+        return const Color(0xFF00ced1);
+      case 'Diamond':
+        return const Color(0xFFb9f2ff);
+      case 'Jade':
+        return const Color(0xFF62f40c);
+      case 'Master':
+        return const Color(0xFFff00ff); // pink
+      case 'Grandmaster':
+        return const Color(0xFFffde21); // yellow
+      case 'Nova':
+        return const Color(0xFFa45ee5); // purple
+      case 'Astra':
+        return const Color(0xFFff4040); // red
+      case 'Celestial':
+        return const Color(0xFF00ffff); // cyan
+      default:
+        return Colors.white;
+    }
   }
 }
