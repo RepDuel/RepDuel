@@ -1,5 +1,3 @@
-// frontend/lib/core/providers/auth_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
@@ -43,7 +41,7 @@ class AuthState {
       user: user ?? this.user,
       token: token ?? this.token,
       isLoading: isLoading ?? this.isLoading,
-      error: error,
+      error: error ?? this.error,
     );
   }
 }
@@ -145,7 +143,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return false;
   }
 
-  Future<bool> updateUser({String? gender, double? weight}) async {
+  Future<bool> updateUser({
+    String? gender,
+    double? weight,
+    double? weightMultiplier,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final token = state.token;
@@ -158,6 +160,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         updates: {
           if (gender != null) 'gender': gender,
           if (weight != null) 'weight': weight,
+          if (weightMultiplier != null)
+            'weight_multiplier': weightMultiplier, // Handle weight multiplier
         },
       );
 

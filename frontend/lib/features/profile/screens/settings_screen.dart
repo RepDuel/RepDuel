@@ -1,5 +1,3 @@
-// frontend/lib/features/profile/screens/settings_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -81,6 +79,53 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _editWeightUnit(BuildContext context, WidgetRef ref) async {
+    final authNotifier = ref.read(authProvider.notifier);
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+
+    final isKg = user.weightMultiplier == 1.0;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Select Weight Unit"),
+          backgroundColor: Colors.grey[900],
+          titleTextStyle: const TextStyle(color: Colors.white),
+          contentTextStyle: const TextStyle(color: Colors.white),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('Kilograms',
+                    style: TextStyle(color: Colors.white)),
+                onTap: () => Navigator.pop(context, 'kg'),
+              ),
+              ListTile(
+                title:
+                    const Text('Pounds', style: TextStyle(color: Colors.white)),
+                onTap: () => Navigator.pop(context, 'lbs'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (result != null && result != (isKg ? 'kg' : 'lbs')) {
+      final newMultiplier = result == 'kg' ? 1.0 : 2.20462;
+      debugPrint('Selected weight unit: $result, multiplier: $newMultiplier');
+      final success =
+          await authNotifier.updateUser(weightMultiplier: newMultiplier);
+      if (success) {
+        debugPrint('Successfully updated weight multiplier.');
+      } else {
+        debugPrint('Failed to update weight multiplier.');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
@@ -115,6 +160,15 @@ class SettingsScreen extends ConsumerWidget {
                       style: const TextStyle(color: Colors.grey)),
                   trailing: const Icon(Icons.edit, color: Colors.white),
                   onTap: () => _editWeight(context, ref),
+                ),
+                const Divider(color: Colors.grey),
+                ListTile(
+                  title: const Text('Weight Unit (kg/lbs)',
+                      style: TextStyle(color: Colors.white)),
+                  subtitle: Text(user.weightMultiplier == 1.0 ? "kg" : "lbs",
+                      style: const TextStyle(color: Colors.grey)),
+                  trailing: const Icon(Icons.edit, color: Colors.white),
+                  onTap: () => _editWeightUnit(context, ref),
                 ),
               ],
             ),
