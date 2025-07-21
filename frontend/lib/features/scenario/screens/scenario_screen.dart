@@ -26,6 +26,9 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   bool _isSubmitting = false;
 
   double _calculateOneRepMax(double weight, int reps) {
+    if (reps == 1) {
+      return weight;
+    }
     return weight * (1 + reps / 30);
   }
 
