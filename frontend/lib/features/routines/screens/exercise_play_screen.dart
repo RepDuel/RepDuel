@@ -1,8 +1,8 @@
-// frontend/lib/features/routines/screens/exercise_play_screen.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/set_data_provider.dart';
 
-class ExercisePlayScreen extends StatelessWidget {
+class ExercisePlayScreen extends ConsumerWidget {
   final String exerciseId;
   final String exerciseName;
   final int sets;
@@ -17,11 +17,29 @@ class ExercisePlayScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    List<TextEditingController> weightControllers =
-        List.generate(sets, (_) => TextEditingController());
+  Widget build(BuildContext context, WidgetRef ref) {
+    final previousSets = ref
+        .watch(routineSetProvider)
+        .where((set) => set.scenarioId == exerciseId)
+        .toList();
+
+    List<TextEditingController> weightControllers = List.generate(
+      sets,
+      (index) => TextEditingController(
+        text: index < previousSets.length
+            ? previousSets[index].weight.toString()
+            : '',
+      ),
+    );
+
     List<TextEditingController> repControllers = List.generate(
-        sets, (_) => TextEditingController(text: reps.toString()));
+      sets,
+      (index) => TextEditingController(
+        text: index < previousSets.length
+            ? previousSets[index].reps.toString()
+            : reps.toString(),
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -44,7 +62,6 @@ class ExercisePlayScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     children: [
-                      // Weight input
                       Expanded(
                         flex: 2,
                         child: TextField(
@@ -58,7 +75,6 @@ class ExercisePlayScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Reps input
                       Expanded(
                         flex: 1,
                         child: TextField(
@@ -78,20 +94,18 @@ class ExercisePlayScreen extends StatelessWidget {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  // Gather the data from the controllers
                   List<Map<String, dynamic>> setData = [];
                   for (int i = 0; i < sets; i++) {
                     double weight =
                         double.tryParse(weightControllers[i].text) ?? 0;
                     int reps = int.tryParse(repControllers[i].text) ?? 0;
-                    setData.add({
-                      'weight': weight,
-                      'reps': reps,
-                    });
+                    setData.add({'weight': weight, 'reps': reps});
                   }
 
-                  // Send the data back to the ExerciseListScreen
-                  Navigator.pop(context, setData); // Pop with set data
+                  ref
+                      .read(routineSetProvider.notifier)
+                      .addSets(exerciseId, setData);
+                  Navigator.pop(context, setData);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,

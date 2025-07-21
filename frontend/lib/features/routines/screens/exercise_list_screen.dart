@@ -1,24 +1,24 @@
-// frontend/lib/features/routines/screens/exercise_list_screen.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import '../providers/set_data_provider.dart';
 import 'exercise_play_screen.dart';
 import 'summary_screen.dart';
 import 'add_exercise_screen.dart';
 
-class ExerciseListScreen extends StatefulWidget {
+class ExerciseListScreen extends ConsumerStatefulWidget {
   final String routineId;
 
   const ExerciseListScreen({super.key, required this.routineId});
 
   @override
-  ExerciseListScreenState createState() => ExerciseListScreenState();
+  ConsumerState<ExerciseListScreen> createState() => ExerciseListScreenState();
 }
 
-class ExerciseListScreenState extends State<ExerciseListScreen> {
+class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   late Future<List<dynamic>> exercises;
-  List<dynamic> exercisesList = []; // Change to a list to store exercises
+  List<dynamic> exercisesList = [];
   num totalVolume = 0;
 
   Future<List<dynamic>> fetchExercises() async {
@@ -52,7 +52,8 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (_) => SummaryScreen(totalVolume: totalVolume)),
+        builder: (_) => SummaryScreen(totalVolume: totalVolume),
+      ),
     );
   }
 
@@ -61,23 +62,23 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
     Navigator.pop(context);
   }
 
-  // Navigate to Add Exercise Screen
   void _navigateToAddExercise() async {
     final newExercise = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => AddExerciseScreen()),
     );
 
-    // Add the new exercise to the list if returned data is not null
     if (newExercise != null) {
       setState(() {
-        exercisesList.add(newExercise); // Modify exercisesList
+        exercisesList.add(newExercise);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final setData = ref.watch(routineSetProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exercise List'),
@@ -92,7 +93,6 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else {
-            // Once data is fetched, populate exercisesList
             if (snapshot.hasData) {
               exercisesList = snapshot.data!;
             }
@@ -101,7 +101,6 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  // Display the total volume
                   Text(
                     'Total Volume: $totalVolume kg',
                     style: const TextStyle(fontSize: 16, color: Colors.white),
@@ -112,13 +111,20 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                       itemCount: exercisesList.length,
                       itemBuilder: (context, index) {
                         final exercise = exercisesList[index];
+                        final scenarioId = exercise['scenario_id'];
                         final scenarioName =
                             exercise['name'] ?? 'Unnamed Exercise';
                         final sets = exercise['sets'] ?? 0;
                         final reps = exercise['reps'] ?? 0;
 
+                        final isCompleted = setData
+                                .where((s) => s.scenarioId == scenarioId)
+                                .length >=
+                            sets;
+
                         return Card(
-                          color: Colors.white12,
+                          color:
+                              isCompleted ? Colors.green[800] : Colors.white12,
                           margin: const EdgeInsets.symmetric(vertical: 8),
                           child: ListTile(
                             title: Text(
@@ -139,7 +145,7 @@ class ExerciseListScreenState extends State<ExerciseListScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => ExercisePlayScreen(
-                                      exerciseId: exercise['scenario_id'],
+                                      exerciseId: scenarioId,
                                       exerciseName: scenarioName,
                                       sets: sets,
                                       reps: reps,
