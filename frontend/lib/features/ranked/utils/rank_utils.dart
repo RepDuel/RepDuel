@@ -78,6 +78,7 @@ class RankUtils {
     required double score,
     required Map<String, dynamic> thresholds,
     required String liftKey,
+    required double userMultiplier, // Add user multiplier as a parameter
   }) {
     final sorted = thresholds.entries.toList()
       ..sort((a, b) => ((a.value['lifts'][liftKey] ?? 0) as num)
@@ -86,7 +87,8 @@ class RankUtils {
     if (sorted.length < 2) return 0.0;
 
     final lowest = sorted.first;
-    final lowestThreshold = (lowest.value['lifts'][liftKey] ?? 0).toDouble();
+    final lowestThreshold = (lowest.value['lifts'][liftKey] ?? 0).toDouble() *
+        userMultiplier; // Multiply threshold by user multiplier
     final lowestEnergy = rankEnergy[lowest.key]?.toDouble() ?? 100;
 
     // 🔻 Below Iron (interpolate from 0 to Iron)
@@ -100,14 +102,16 @@ class RankUtils {
       final current = sorted[i];
       final next = sorted[i + 1];
 
-      final currentVal = (current.value['lifts'][liftKey] ?? 0).toDouble();
-      final nextVal = (next.value['lifts'][liftKey] ?? 0).toDouble();
+      final currentVal = (current.value['lifts'][liftKey] ?? 0).toDouble() *
+          userMultiplier; // Multiply threshold by user multiplier
+      final nextVal = (next.value['lifts'][liftKey] ?? 0).toDouble() *
+          userMultiplier; // Multiply threshold by user multiplier
 
       if (score >= currentVal && score <= nextVal) {
         final percent = (score - currentVal) / (nextVal - currentVal);
         final currentEnergy = rankEnergy[current.key]?.toDouble() ?? 0.0;
         final nextEnergy = rankEnergy[next.key]?.toDouble() ?? 0.0;
-        return (currentEnergy + percent * (nextEnergy - currentEnergy))
+        return ((currentEnergy + percent * (nextEnergy - currentEnergy)))
             .roundToDouble();
       }
     }
@@ -116,8 +120,10 @@ class RankUtils {
     final top = sorted.last;
     final secondLast = sorted[sorted.length - 2];
 
-    final topVal = (top.value['lifts'][liftKey] ?? 0).toDouble();
-    final secondVal = (secondLast.value['lifts'][liftKey] ?? 0).toDouble();
+    final topVal = (top.value['lifts'][liftKey] ?? 0).toDouble() *
+        userMultiplier; // Multiply threshold by user multiplier
+    final secondVal = (secondLast.value['lifts'][liftKey] ?? 0).toDouble() *
+        userMultiplier; // Multiply threshold by user multiplier
     final topEnergy = rankEnergy[top.key]?.toDouble() ?? 1200;
     final secondEnergy = rankEnergy[secondLast.key]?.toDouble() ?? 1100;
 
@@ -125,7 +131,7 @@ class RankUtils {
     final stepEnergy = topEnergy - secondEnergy;
 
     final extraSteps = (score - topVal) / stepScore;
-    return (topEnergy + extraSteps * stepEnergy).roundToDouble();
+    return ((topEnergy + extraSteps * stepEnergy)).roundToDouble();
   }
 
   /// Determine color of rank

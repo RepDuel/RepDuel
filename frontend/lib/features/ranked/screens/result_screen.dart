@@ -1,7 +1,8 @@
-// frontend/lib/features/ranked/screens/result_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/auth_provider.dart';
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends ConsumerWidget {
   final int finalScore;
   final int previousBest;
 
@@ -12,7 +13,15 @@ class ResultScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Get the user multiplier from the auth provider
+    final userMultiplier =
+        ref.read(authStateProvider).user?.weightMultiplier ?? 1.0;
+
+    // Multiply scores by the user multiplier
+    final adjustedFinalScore = (finalScore * userMultiplier).round();
+    final adjustedPreviousBest = (previousBest * userMultiplier).round();
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -28,7 +37,7 @@ class ResultScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 100),
             Text(
-              'Final Score: $finalScore',
+              'Final Score: $adjustedFinalScore',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 28,
@@ -37,7 +46,7 @@ class ResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Previous Best Score: $previousBest',
+              'Previous Best Score: $adjustedPreviousBest',
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 20,

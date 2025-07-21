@@ -58,10 +58,10 @@ class RankingTable extends ConsumerWidget {
       final liftKey = entry.key.toLowerCase();
       final score = entry.value;
       return RankUtils.getInterpolatedEnergy(
-        score: score * userMultiplier, // Multiply score by userMultiplier
-        thresholds: liftStandards!,
-        liftKey: liftKey,
-      );
+          score: score * userMultiplier, // Multiply score by userMultiplier
+          thresholds: liftStandards!,
+          liftKey: liftKey,
+          userMultiplier: userMultiplier);
     }).toList();
 
     final averageEnergy = energies.isNotEmpty
@@ -190,7 +190,7 @@ class _RankingRow extends StatelessWidget {
   final Map<String, dynamic> standards;
   final VoidCallback onTap;
   final VoidCallback onLeaderboardTap;
-  final double userMultiplier; // Added multiplier
+  final double userMultiplier;
 
   const _RankingRow({
     required this.lift,
@@ -198,7 +198,7 @@ class _RankingRow extends StatelessWidget {
     required this.standards,
     required this.onTap,
     required this.onLeaderboardTap,
-    required this.userMultiplier, // Accept multiplier
+    required this.userMultiplier,
   });
 
   @override
@@ -249,10 +249,10 @@ class _RankingRow extends StatelessWidget {
             : 1.0);
 
     final energy = RankUtils.getInterpolatedEnergy(
-      score: score * userMultiplier, // Multiply score by userMultiplier
-      thresholds: standards,
-      liftKey: lowerLift,
-    );
+        score: score * userMultiplier,
+        thresholds: standards,
+        liftKey: lowerLift,
+        userMultiplier: userMultiplier);
     final iconPath =
         'assets/images/ranks/${matchedRank?.toLowerCase() ?? 'unranked'}.svg';
 
@@ -273,7 +273,7 @@ class _RankingRow extends StatelessWidget {
             Expanded(
                 flex: 2,
                 child: Center(
-                    child: Text(RankUtils.formatKg(score),
+                    child: Text(RankUtils.formatKg(score * userMultiplier),
                         style: const TextStyle(color: Colors.white)))),
             Expanded(
               flex: 2,

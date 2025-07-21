@@ -75,14 +75,19 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     });
 
     final previousBest = await _fetchPreviousBest(user.id, widget.scenarioId);
-    await _submitScore(oneRepMax);
+
+    // Get user multiplier from the auth provider and divide the score by it
+    final userMultiplier = user.weightMultiplier;
+    final adjustedScore = oneRepMax / userMultiplier;
+
+    await _submitScore(adjustedScore);
 
     if (!mounted) return;
 
     final shouldRefresh = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ResultScreen(
-          finalScore: oneRepMax.round(),
+          finalScore: adjustedScore.round(),
           previousBest: previousBest,
         ),
       ),
