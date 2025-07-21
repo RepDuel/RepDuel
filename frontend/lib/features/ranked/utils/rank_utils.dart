@@ -1,6 +1,9 @@
 // frontend/lib/features/ranked/utils/rank_utils.dart
 
 import 'package:flutter/material.dart';
+import 'package:frontend/core/providers/auth_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/api_providers.dart';
 
 class RankUtils {
   static const Map<String, int> rankEnergy = {
@@ -180,5 +183,30 @@ class RankUtils {
   ) {
     final userTotal = calculateUserTotal(userHighScores);
     return calculateRank(userTotal, standards);
+  }
+
+  static Future<Color> getUserRankColor(WidgetRef ref) async {
+    final user = ref.read(authProvider).user;
+    if (user == null) {
+      return Colors.grey; // Default color if user not found
+    }
+
+    // Get the user's energy from the API using their user ID
+    final energyApiService = ref.read(energyApiProvider);
+    final energy = await energyApiService.getLatestEnergy(user.id);
+
+    // Determine rank based on energy
+    if (energy >= 1200) return getRankColor('Celestial');
+    if (energy >= 1100) return getRankColor('Astra');
+    if (energy >= 1000) return getRankColor('Nova');
+    if (energy >= 900) return getRankColor('Grandmaster');
+    if (energy >= 800) return getRankColor('Master');
+    if (energy >= 700) return getRankColor('Jade');
+    if (energy >= 600) return getRankColor('Diamond');
+    if (energy >= 500) return getRankColor('Platinum');
+    if (energy >= 400) return getRankColor('Gold');
+    if (energy >= 300) return getRankColor('Silver');
+    if (energy >= 200) return getRankColor('Bronze');
+    return getRankColor('Iron');
   }
 }
