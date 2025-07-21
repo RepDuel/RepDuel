@@ -56,9 +56,10 @@ class RankingTable extends ConsumerWidget {
     // Calculate individual energies and average
     final energies = allLifts.entries.map((entry) {
       final liftKey = entry.key.toLowerCase();
-      final score = entry.value;
+      final score =
+          entry.value * userMultiplier; // Multiply score by userMultiplier
       return RankUtils.getInterpolatedEnergy(
-          score: score * userMultiplier, // Multiply score by userMultiplier
+          score: score, // Use adjusted score
           thresholds: liftStandards!,
           liftKey: liftKey,
           userMultiplier: userMultiplier);
@@ -114,7 +115,7 @@ class RankingTable extends ConsumerWidget {
         ...allLifts.entries.map(
           (entry) => _RankingRow(
             lift: entry.key,
-            score: entry.value,
+            score: entry.value * userMultiplier, // Pass adjusted score
             standards: liftStandards!,
             onTap: () => onLiftTapped(entry.key),
             onLeaderboardTap: () =>
@@ -241,15 +242,14 @@ class _RankingRow extends StatelessWidget {
     }
 
     final progress = nextThreshold > currentThreshold
-        ? ((score * userMultiplier - currentThreshold) /
-                (nextThreshold - currentThreshold))
+        ? ((score - currentThreshold) / (nextThreshold - currentThreshold))
             .clamp(0.0, 1.0)
         : (matchedRank == null && nextThreshold > 0
-            ? ((score * userMultiplier) / nextThreshold).clamp(0.0, 1.0)
+            ? (score / nextThreshold).clamp(0.0, 1.0)
             : 1.0);
 
     final energy = RankUtils.getInterpolatedEnergy(
-        score: score * userMultiplier,
+        score: score,
         thresholds: standards,
         liftKey: lowerLift,
         userMultiplier: userMultiplier);
