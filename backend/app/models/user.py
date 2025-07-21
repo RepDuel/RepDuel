@@ -47,3 +47,5 @@ class User(Base):
     routine_submissions = relationship(
         "RoutineSubmission", back_populates="user", cascade="all, delete-orphan"
     )
+
+    weight_multiplier = Column(Float, default=1.0)

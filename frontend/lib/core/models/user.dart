@@ -10,6 +10,7 @@ class User {
   final String? avatarUrl;
   final double? weight;
   final String? gender;
+  final double weightMultiplier;
 
   User({
     required this.id,
@@ -21,6 +22,7 @@ class User {
     this.avatarUrl,
     this.weight,
     this.gender,
+    this.weightMultiplier = 1.0, // Default to 1.0
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,8 @@ class User {
       weight:
           json['weight'] != null ? (json['weight'] as num).toDouble() : null,
       gender: json['gender'] as String?,
+      weightMultiplier: (json['weight_multiplier'] as num?)?.toDouble() ??
+          1.0, // Set weight multiplier
     );
   }
 
@@ -49,6 +53,7 @@ class User {
       'avatar_url': avatarUrl,
       'weight': weight,
       'gender': gender,
+      'weight_multiplier': weightMultiplier,
     };
   }
 }

@@ -24,6 +24,7 @@ class UserRead(UserBase):
     avatar_url: str | None = None
     weight: float | None = None
     gender: str | None = None
+    weight_multiplier: float = 1.0
 
     model_config = {"from_attributes": True}
 
@@ -35,6 +36,7 @@ class UserUpdate(BaseModel):
     weight: float | None = None
     gender: str | None = None
     password: str | None = None
+    weight_multiplier: float | None = None
 
 
 class UserLogin(BaseModel):
