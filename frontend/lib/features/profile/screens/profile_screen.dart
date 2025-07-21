@@ -133,14 +133,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     fit: BoxFit.cover),
                       ),
                       const SizedBox(width: 16),
-                      Text(user.username,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 24)),
+                      Expanded(
+                        child: Text(user.username,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 24)),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 32),
                   if (_energyFuture != null)
                     FutureBuilder<int>(
+                      // Fetch the energy data
                       future: _energyFuture,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState != ConnectionState.done) {
@@ -202,12 +205,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 8),
                   WorkoutHistoryList(userId: user.id),
                   const SizedBox(height: 16),
-                  /*
-                  ElevatedButton(
-                    onPressed: () => _testHistoryApi(user.id),
-                    child: const Text('Test History API'),
-                  ),
-                  */
                 ],
               ),
             ),

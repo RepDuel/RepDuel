@@ -1,5 +1,3 @@
-// frontend/lib/features/ranked/screens/ranked_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -22,8 +20,6 @@ class RankedScreen extends ConsumerStatefulWidget {
 }
 
 class _RankedScreenState extends ConsumerState<RankedScreen> {
-  double bodyweightKg = 90.7;
-  String gender = "male";
   bool showBenchmarks = false;
   Map<String, dynamic>? liftStandards;
   bool isLoading = true;
@@ -52,12 +48,19 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
 
   Future<void> _initializeData() async {
     setState(() => isLoading = true);
-    await _fetchLiftStandards();
+
+    // Get the user's bodyweight and gender from authProvider
+    final user = ref.read(authProvider).user;
+    final bodyweightKg = user?.weight ?? 90.7; // Default to 90.7 if not found
+    final gender =
+        user?.gender?.toLowerCase() ?? 'male'; // Convert to lowercase
+
+    await _fetchLiftStandards(bodyweightKg, gender);
     await _fetchUserHighScores();
     setState(() => isLoading = false);
   }
 
-  Future<void> _fetchLiftStandards() async {
+  Future<void> _fetchLiftStandards(double bodyweightKg, String gender) async {
     try {
       final response = await http.get(
         Uri.parse(
