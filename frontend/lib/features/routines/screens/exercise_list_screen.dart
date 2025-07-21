@@ -1,9 +1,11 @@
+// frontend/lib/features/routines/screens/exercise_list_screen.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'exercise_play_screen.dart';
 import 'summary_screen.dart';
-import 'add_exercise_screen.dart'; // Import the Add Exercise screen
+import 'add_exercise_screen.dart';
 
 class ExerciseListScreen extends StatefulWidget {
   final String routineId;

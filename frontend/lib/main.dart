@@ -1,3 +1,5 @@
+// frontend/lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,21 +14,20 @@ void main() {
   );
 }
 
-// Convert MyApp to a ConsumerWidget to access the router provider.
+// Use ConsumerWidget to access Riverpod providers like routerProvider
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the router provider to get the GoRouter instance.
+    // Access the GoRouter instance via routerProvider
     final router = ref.watch(routerProvider);
 
-    // Use MaterialApp.router to integrate GoRouter.
     return MaterialApp.router(
       title: 'YavaSuite',
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
-      routerConfig: router,
+      routerConfig: router, // Connect GoRouter here
     );
   }
 }
