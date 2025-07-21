@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/secure_storage_service.dart';
+import '../models/routine_submission_read.dart';
+import 'package:http/http.dart' as http;
 
 final workoutHistoryProvider =
-    FutureProvider.family<List<RoutineSubmissionEntry>, String>(
+    FutureProvider.family<List<RoutineSubmissionRead>, String>(
         (ref, userId) async {
   final storage = SecureStorageService();
   final token = await storage.readToken();
@@ -22,28 +23,5 @@ final workoutHistoryProvider =
   }
 
   final List<dynamic> jsonData = json.decode(res.body);
-  return jsonData.map((e) => RoutineSubmissionEntry.fromJson(e)).toList();
+  return jsonData.map((e) => RoutineSubmissionRead.fromJson(e)).toList();
 });
-
-class RoutineSubmissionEntry {
-  final String id;
-  final String routineId;
-  final String status;
-  final String completionTimestamp;
-
-  RoutineSubmissionEntry({
-    required this.id,
-    required this.routineId,
-    required this.status,
-    required this.completionTimestamp,
-  });
-
-  factory RoutineSubmissionEntry.fromJson(Map<String, dynamic> json) {
-    return RoutineSubmissionEntry(
-      id: json['id'],
-      routineId: json['routine_id'],
-      status: json['status'],
-      completionTimestamp: json['completion_timestamp'],
-    );
-  }
-}

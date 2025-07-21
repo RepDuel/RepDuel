@@ -27,15 +27,36 @@ class WorkoutHistoryList extends ConsumerWidget {
 
         return Column(
           children: entries.map((entry) {
-            final date = DateTime.parse(entry.completionTimestamp);
-            final dateStr =
-                '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+            final totalVolume = entry.scenarios
+                .fold<double>(0.0, (sum, s) => sum + s.totalVolume);
 
-            return ListTile(
-              title: Text('Routine ID: ${entry.routineId}',
-                  style: const TextStyle(color: Colors.white)),
-              subtitle: Text('$dateStr • ${entry.status}',
-                  style: const TextStyle(color: Colors.grey)),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Routine ID: ${entry.routineId}',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Time: ${entry.duration} minutes',
+                      style: const TextStyle(color: Colors.white70)),
+                  Text('Volume: ${totalVolume.toStringAsFixed(1)}',
+                      style: const TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 8),
+                  ...entry.scenarios.map((s) {
+                    return Text(
+                      '${s.sets} × ${s.scenarioId}',
+                      style: const TextStyle(color: Colors.white),
+                    );
+                  }),
+                ],
+              ),
             );
           }).toList(),
         );
