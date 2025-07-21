@@ -3,8 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:frontend/features/ranked/utils/rank_utils.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/auth_provider.dart';
 
-class RankingTable extends StatelessWidget {
+class RankingTable extends ConsumerWidget {
   final Map<String, dynamic>? liftStandards;
   final Map<String, double> userHighScores;
   final Function() onViewBenchmarks;
@@ -31,7 +33,11 @@ class RankingTable extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Get user multiplier from the auth provider
+    final userMultiplier =
+        ref.read(authStateProvider).user?.weightMultiplier ?? 1.0;
+
     if (liftStandards == null) {
       return const Center(
         child: Text(
@@ -52,7 +58,7 @@ class RankingTable extends StatelessWidget {
       final liftKey = entry.key.toLowerCase();
       final score = entry.value;
       return RankUtils.getInterpolatedEnergy(
-        score: score,
+        score: score * userMultiplier, // Multiply score by userMultiplier
         thresholds: liftStandards!,
         liftKey: liftKey,
       );
@@ -113,6 +119,7 @@ class RankingTable extends StatelessWidget {
             onTap: () => onLiftTapped(entry.key),
             onLeaderboardTap: () =>
                 onLeaderboardTapped(scenarioIds[entry.key]!),
+            userMultiplier: userMultiplier, // Pass multiplier here
           ),
         ),
         const SizedBox(height: 20),
@@ -183,6 +190,7 @@ class _RankingRow extends StatelessWidget {
   final Map<String, dynamic> standards;
   final VoidCallback onTap;
   final VoidCallback onLeaderboardTap;
+  final double userMultiplier; // Added multiplier
 
   const _RankingRow({
     required this.lift,
@@ -190,6 +198,7 @@ class _RankingRow extends StatelessWidget {
     required this.standards,
     required this.onTap,
     required this.onLeaderboardTap,
+    required this.userMultiplier, // Accept multiplier
   });
 
   @override
@@ -200,42 +209,52 @@ class _RankingRow extends StatelessWidget {
           .compareTo((a.value['lifts'][lowerLift] ?? 0) as num));
 
     String? matchedRank;
+    double currentThreshold = 0.0, nextThreshold = 0.0;
+
+    // Round thresholds to the nearest 5
     for (final entry in sortedRanks) {
       final threshold = (entry.value['lifts'][lowerLift] ?? 0) as num;
-      if (score >= threshold.toDouble()) {
+      final adjustedThreshold = (threshold.toDouble() * userMultiplier);
+      final roundedThreshold = _roundToNearest5(adjustedThreshold);
+
+      if (score >= roundedThreshold) {
         matchedRank = entry.key;
+        currentThreshold = roundedThreshold;
         break;
       }
     }
-    final currentRank = matchedRank ?? 'Unranked';
 
-    double currentThreshold = 0.0, nextThreshold = 0.0;
+    // If no match was found, set next threshold to the last available rounded value
+    if (matchedRank == null) {
+      nextThreshold = _roundToNearest5(
+          (sortedRanks.last.value['lifts'][lowerLift] ?? 0) * userMultiplier);
+    }
+
+    // Calculate next threshold if matched
     if (matchedRank != null) {
       final currentIndex = sortedRanks.indexWhere((e) => e.key == matchedRank);
-      currentThreshold =
-          (sortedRanks[currentIndex].value['lifts'][lowerLift] ?? 0).toDouble();
       nextThreshold = currentIndex > 0
-          ? (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0)
-              .toDouble()
+          ? _roundToNearest5(
+              (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0) *
+                  userMultiplier)
           : currentThreshold;
-    } else {
-      nextThreshold =
-          (sortedRanks.last.value['lifts'][lowerLift] ?? 0).toDouble();
     }
 
     final progress = nextThreshold > currentThreshold
-        ? ((score - currentThreshold) / (nextThreshold - currentThreshold))
+        ? ((score * userMultiplier - currentThreshold) /
+                (nextThreshold - currentThreshold))
             .clamp(0.0, 1.0)
         : (matchedRank == null && nextThreshold > 0
-            ? (score / nextThreshold).clamp(0.0, 1.0)
+            ? ((score * userMultiplier) / nextThreshold).clamp(0.0, 1.0)
             : 1.0);
 
     final energy = RankUtils.getInterpolatedEnergy(
-      score: score,
+      score: score * userMultiplier, // Multiply score by userMultiplier
       thresholds: standards,
       liftKey: lowerLift,
     );
-    final iconPath = 'assets/images/ranks/${currentRank.toLowerCase()}.svg';
+    final iconPath =
+        'assets/images/ranks/${matchedRank?.toLowerCase() ?? 'unranked'}.svg';
 
     return GestureDetector(
       onTap: onTap,
@@ -265,12 +284,12 @@ class _RankingRow extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Colors.grey[800],
-                      color: RankUtils.getRankColor(currentRank),
+                      color: RankUtils.getRankColor(matchedRank ?? 'Unranked'),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextThreshold)}',
+                    '${RankUtils.formatKg(score * userMultiplier)} / ${RankUtils.formatKg(nextThreshold)}',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
@@ -279,8 +298,7 @@ class _RankingRow extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Center(
-                child: SvgPicture.asset(iconPath, height: 24, width: 24),
-              ),
+                  child: SvgPicture.asset(iconPath, height: 24, width: 24)),
             ),
             Expanded(
                 flex: 1,
@@ -296,5 +314,10 @@ class _RankingRow extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Helper method to round a value to the nearest 5
+  double _roundToNearest5(double value) {
+    return (value / 5).round() * 5.0;
   }
 }
