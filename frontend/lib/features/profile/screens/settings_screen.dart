@@ -93,7 +93,7 @@ class SettingsScreen extends ConsumerWidget {
         contentTextStyle: const TextStyle(color: Colors.white),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: ['Male', 'Female', 'Other'].map((option) {
+          children: ['Male', 'Female'].map((option) {
             return ListTile(
               title: Text(option, style: const TextStyle(color: Colors.white)),
               onTap: () => Navigator.pop(context, option),
