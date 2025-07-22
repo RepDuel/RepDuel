@@ -1,11 +1,14 @@
 # backend/app/models/scenario.py
 
+from app.db.base_class import Base
+from app.models.associations import (ScenarioEquipmentAssociation,
+                                     ScenarioPrimaryMuscleAssociation,
+                                     ScenarioSecondaryMuscleAssociation)
+from app.models.equipment import Equipment
+from app.models.muscle import Muscle
 from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
-from app.db.base_class import Base
-from app.models.muscle import Muscle
-from app.models.associations import ScenarioPrimaryMuscleAssociation, ScenarioSecondaryMuscleAssociation, ScenarioEquipmentAssociation
-from app.models.equipment import Equipment
+
 
 class Scenario(Base):
     __tablename__ = "scenarios"

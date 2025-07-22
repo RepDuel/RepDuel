@@ -1,16 +1,20 @@
 # backend/app/services/routine_submission_service.py
 
+from datetime import datetime
 from typing import List
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.models.routine_submission import RoutineSubmission, RoutineScenarioSubmission
+
 from app.models.routine import Routine
+from app.models.routine_submission import (RoutineScenarioSubmission,
+                                           RoutineSubmission)
 from app.models.user import User
 from app.schemas.routine_submission import RoutineSubmissionCreate
-from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 
-async def get_user_submissions(db: AsyncSession, user_id: str) -> List[RoutineSubmission]:
+async def get_user_submissions(
+    db: AsyncSession, user_id: str
+) -> List[RoutineSubmission]:
     result = await db.execute(
         select(RoutineSubmission).where(RoutineSubmission.user_id == user_id)
     )

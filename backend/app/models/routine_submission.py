@@ -1,23 +1,30 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Float, DateTime
+from datetime import datetime
+from uuid import uuid4
+
+from app.db.base_class import Base
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from app.db.base_class import Base
-from uuid import uuid4
-from datetime import datetime
+
 
 class RoutineScenarioSubmission(Base):
     __tablename__ = "routine_scenario_submission"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    routine_id = Column(UUID(as_uuid=True), ForeignKey("routine_submission.id"), nullable=False)
+    routine_id = Column(
+        UUID(as_uuid=True), ForeignKey("routine_submission.id"), nullable=False
+    )
     scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=False)
     sets = Column(Integer, nullable=False, default=3)
     reps = Column(Integer, nullable=False, default=10)
     weight = Column(Float, nullable=False)
     total_volume = Column(Float, nullable=False)
 
-    routine_submission = relationship("RoutineSubmission", back_populates="scenario_submissions")
+    routine_submission = relationship(
+        "RoutineSubmission", back_populates="scenario_submissions"
+    )
     scenario = relationship("Scenario")
+
 
 class RoutineSubmission(Base):
     __tablename__ = "routine_submission"
@@ -33,7 +40,7 @@ class RoutineSubmission(Base):
         "RoutineScenarioSubmission",
         back_populates="routine_submission",
         cascade="all, delete-orphan",
-        single_parent=True
+        single_parent=True,
     )
 
     routine = relationship("Routine", back_populates="submissions")

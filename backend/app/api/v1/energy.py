@@ -118,6 +118,7 @@ async def get_energy_by_day(user_id: UUID, db: AsyncSession = Depends(get_db)):
         DailyEnergyEntry(date=row.date, total_energy=row.total_energy) for row in result
     ]
 
+
 @router.get("/latest/{user_id}", response_model=int)
 async def get_latest_energy(user_id: UUID, db: AsyncSession = Depends(get_db)):
     stmt = (
@@ -132,4 +133,3 @@ async def get_latest_energy(user_id: UUID, db: AsyncSession = Depends(get_db)):
     if latest is None:
         raise HTTPException(status_code=404, detail="No energy record found")
     return latest.energy
-

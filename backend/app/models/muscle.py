@@ -1,9 +1,11 @@
 # backend/app/models/muscle.py
 
+from app.db.base_class import Base
+from app.models.associations import (ScenarioPrimaryMuscleAssociation,
+                                     ScenarioSecondaryMuscleAssociation)
 from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
-from app.db.base_class import Base
-from app.models.associations import ScenarioPrimaryMuscleAssociation, ScenarioSecondaryMuscleAssociation
+
 
 class Muscle(Base):
     __tablename__ = "muscles"

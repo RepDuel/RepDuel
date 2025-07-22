@@ -1,9 +1,10 @@
 # backend/app/models/equipment.py
 
-from sqlalchemy import Column, String
-from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from app.models.associations import ScenarioEquipmentAssociation
+from sqlalchemy import Column, String
+from sqlalchemy.orm import relationship
+
 
 class Equipment(Base):
     __tablename__ = "equipment"

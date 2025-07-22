@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
-from uuid import UUID
-from typing import List
 from datetime import datetime
+from typing import List
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
 
 # Model for individual scenario submission
 class RoutineScenarioSubmission(BaseModel):
@@ -22,7 +24,9 @@ class RoutineSubmissionCreate(BaseModel):
     duration: float
     completion_timestamp: datetime
     status: str
-    scenarios: List[RoutineScenarioSubmission] = Field(..., alias="scenario_submissions")
+    scenarios: List[RoutineScenarioSubmission] = Field(
+        ..., alias="scenario_submissions"
+    )
 
     class Config:
         from_attributes = True
@@ -36,7 +40,9 @@ class RoutineSubmissionRead(BaseModel):
     duration: float
     completion_timestamp: datetime
     status: str
-    scenarios: List[RoutineScenarioSubmission] = Field(..., alias="scenario_submissions")
+    scenarios: List[RoutineScenarioSubmission] = Field(
+        ..., alias="scenario_submissions"
+    )
 
     class Config:
         from_attributes = True

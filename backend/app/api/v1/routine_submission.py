@@ -1,27 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
-from app.services.routine_submission_service import (
-    create_routine_submission,
-)
-from app.schemas.routine_submission import RoutineSubmissionCreate, RoutineSubmissionRead
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.v1.deps import get_db
-from app.models.user import User
 from app.core.auth import get_current_user
 from app.models.routine_submission import RoutineSubmission
+from app.models.user import User
+from app.schemas.routine_submission import (RoutineSubmissionCreate,
+                                            RoutineSubmissionRead)
+from app.services.routine_submission_service import create_routine_submission
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/routine_submission", tags=["routine_submission"])
 
-@router.post("/", response_model=RoutineSubmissionRead, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/", response_model=RoutineSubmissionRead, status_code=status.HTTP_201_CREATED
+)
 async def submit_routine(
     routine_submission_data: RoutineSubmissionCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        submission = await create_routine_submission(db, routine_submission_data, current_user)
+        submission = await create_routine_submission(
+            db, routine_submission_data, current_user
+        )
         await db.refresh(submission)
 
         result = await db.execute(
@@ -33,6 +38,7 @@ async def submit_routine(
         return RoutineSubmissionRead.model_validate(loaded)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get("/user/{user_id}", response_model=List[RoutineSubmissionRead])
 async def get_user_routine_history(
