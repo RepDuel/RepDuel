@@ -1,4 +1,138 @@
-# YavaSuite - A Proprietary Communication Platform
+# GymRank
+
+GymRank is a fitness-focused, gamified ranking platform that tracks users' workout performances, facilitates competition through leaderboards, and provides comprehensive energy and performance analytics. It features interactive elements like real-time chat, user authentication, and customizable exercise routines.
+
+## 📦 Project Structure
+
+GymRank is built with a **frontend** in Flutter/Dart and a **backend** using Python (FastAPI) and PostgreSQL.
+
+```
+.
+├── frontend (Flutter)
+│   ├── lib
+│   │   ├── core (API, models, providers, services)
+│   │   ├── features (auth, chat, leaderboard, ranked exercises, routines, user profile)
+│   │   ├── router (navigation logic)
+│   │   ├── theme (UI theming)
+│   │   └── widgets (reusable widgets)
+│   ├── assets (icons, rank images)
+│   ├── android
+│   ├── ios
+│   ├── web
+│   ├── linux
+│   ├── macos
+│   └── windows
+├── backend (FastAPI, PostgreSQL)
+│   ├── auth (user authentication & authorization)
+│   ├── guild (user groups or teams)
+│   ├── leaderboard (performance metrics & ranking)
+│   ├── messages (real-time chat via WebSockets)
+│   ├── routines (exercise management)
+│   ├── user profiles (personalized user data)
+│   └── utils (shared utilities and helpers)
+```
+
+---
+
+## 🚀 Features
+
+### ✅ Authentication & User Profiles
+
+* **Secure Login & Registration** (JWT-based auth)
+* **Profile Customization** (avatar uploads, preferences)
+
+### 📊 Exercise Tracking & Analytics
+
+* **Ranked Lifts**: Squat, Bench Press, Deadlift
+* **Customizable Routines** with tracking and summary results
+* **Energy Metrics**: computed through interpolated energy formulas based on lift standards, user scores, and multipliers.
+
+### 🎯 Leaderboards
+
+* **Energy Leaderboard**: rank users by computed "energy" metric.
+* **Lift-specific Leaderboards**: compare performance across individual lifts.
+
+### 💬 Real-time Chat
+
+* **WebSocket integration** for instant messaging and community interaction.
+
+---
+
+## ⚙️ Tech Stack
+
+* **Frontend**: Flutter, Dart, Riverpod
+* **Backend**: FastAPI, Python, Alembic, PostgreSQL
+* **Real-time communication**: WebSockets
+* **Authentication**: JWT
+* **Deployment**: Containerized environments (Docker compatible)
+
+---
+
+## 📐 Energy and Ranking Logic
+
+GymRank calculates user performance based on a personalized "multiplier" derived from user-specific metrics (e.g., body weight):
+
+```dart
+final adjustedScore = userScore * userMultiplier;
+```
+
+### **Progress Bar Calculation**
+
+```dart
+progress = (adjustedScore - currentThreshold) / (nextThreshold - currentThreshold);
+```
+
+* Thresholds are standard benchmarks retrieved from the backend and adjusted based on the user's multiplier.
+
+### **Interpolated Energy Calculation**
+
+Energy values are interpolated between lift standards to produce meaningful, comparable metrics. Higher lifts and improvements result in higher energy and better ranks.
+
+---
+
+## 🎨 UI and Design
+
+* Clean, minimalist style using dark mode colors.
+* Animated progress bars and intuitive rank icons (SVG assets).
+* Real-time UI updates reflecting user interactions and backend responses.
+
+---
+
+## 📁 File Structure Highlights (Frontend)
+
+* **Auth**: `login_screen.dart`, `register_screen.dart`
+* **Chat**: `chat_screen.dart`, `chat_bubble.dart`
+* **Profile**: `profile_screen.dart`, `energy_graph.dart`
+* **Ranked Exercises**: `ranking_table.dart`, `benchmarks_table.dart`
+* **Routines**: `routine_play_screen.dart`, `exercise_list_screen.dart`
+
+---
+
+## 🛠️ Notable API endpoints (Backend)
+
+* `/auth/login`
+* `/auth/register`
+* `/user/profile`
+* `/leaderboard/energy`
+* `/leaderboard/lifts`
+* `/chat/messages`
+
+---
+
+## 📌 Current Development Status
+
+You are currently refining UI components and backend integrations, specifically addressing issues related to score calculations, progress bar rendering, and accurate energy interpolations. Recent issues involved handling the user's multiplier properly in score computations.
+
+---
+
+## 📖 Planned Features & Enhancements
+
+* Expanded lift scenarios and benchmarks.
+* Enhanced customization for user routines.
+* Additional detailed analytics dashboards.
+* Push notifications for leaderboard and community updates.
+
+---
 
 ![Build Status](https://img.shields.io/github/actions/workflow/status/YOUR_USERNAME/yavasuite/ci-cd.yml?branch=main)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
