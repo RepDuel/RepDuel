@@ -1,8 +1,8 @@
-# backend/app/models/scenario.py
-
 from app.db.base_class import Base
 from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
+from app.models.muscle import Muscle
+from app.models.associations import scenario_muscle_association  # Import association table
 
 def generate_scenario_id(name: str):
     """Generate a scenario ID based on the name, lowercase with spaces replaced by underscores."""
@@ -20,5 +20,11 @@ class Scenario(Base):
     )
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
+    
+    # Many-to-many relationship with Muscle
+    muscles = relationship(
+        "Muscle",
+        secondary=scenario_muscle_association,
+        back_populates="scenarios",
+    )
     scores = relationship("Score", back_populates="scenario")
-
