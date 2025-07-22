@@ -33,42 +33,6 @@ class DotsCalculator:
         
         return coefficient
 
-
-    @staticmethod
-    def get_rank(dots_score: float) -> Dict:
-        """Get rank with metadata"""
-        rank_name = "Iron"
-        for rank, threshold in sorted(
-            DOTS_RANKS.items(), key=lambda x: x[1], reverse=True
-        ):
-            if dots_score >= threshold:
-                rank_name = rank
-                break
-
-        return {
-            "name": rank_name,
-            **RANK_METADATA.get(rank_name, {}),
-            "next_rank": DotsCalculator.get_next_rank(rank_name),
-            "dots_required": DOTS_RANKS[rank_name],
-        }
-
-    @staticmethod
-    def get_next_rank(current_rank: str) -> Optional[Dict]:
-        """Get next rank progression info"""
-        ranks = list(DOTS_RANKS.items())
-        try:
-            current_index = [r[0] for r in ranks].index(current_rank)
-            if current_index > 0:
-                next_rank = ranks[current_index - 1]
-                return {
-                    "name": next_rank[0],
-                    "dots_needed": next_rank[1] - DOTS_RANKS[current_rank],
-                    **RANK_METADATA.get(next_rank[0], {}),
-                }
-        except ValueError:
-            pass
-        return None
-
     @staticmethod
     def get_lift_standards(bodyweight_kg: float, gender: str = "male") -> Dict:
         """Generate comprehensive standards"""
