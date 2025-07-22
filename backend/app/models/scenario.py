@@ -4,7 +4,7 @@ from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from app.models.muscle import Muscle
-from app.models.associations import ScenarioMuscleAssociation, ScenarioEquipmentAssociation
+from app.models.associations import ScenarioPrimaryMuscleAssociation, ScenarioSecondaryMuscleAssociation, ScenarioEquipmentAssociation
 from app.models.equipment import Equipment
 
 class Scenario(Base):
@@ -13,19 +13,18 @@ class Scenario(Base):
     id = Column(String, primary_key=True, unique=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
+    scores = relationship("Score", back_populates="scenario")
 
     primary_muscles = relationship(
         "Muscle",
-        secondary=ScenarioMuscleAssociation.__table__,
+        secondary=ScenarioPrimaryMuscleAssociation.__table__,
         back_populates="primary_scenarios",
-        primaryjoin="and_(ScenarioMuscleAssociation.c.scenario_id == Scenario.id, ScenarioMuscleAssociation.c.muscle_type == 'primary')",
     )
 
     secondary_muscles = relationship(
         "Muscle",
-        secondary=ScenarioMuscleAssociation.__table__,
+        secondary=ScenarioSecondaryMuscleAssociation.__table__,
         back_populates="secondary_scenarios",
-        primaryjoin="and_(ScenarioMuscleAssociation.c.scenario_id == Scenario.id, ScenarioMuscleAssociation.c.muscle_type == 'secondary')",
     )
 
     equipment = relationship(

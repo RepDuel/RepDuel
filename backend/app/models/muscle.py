@@ -3,7 +3,7 @@
 from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
-from app.models.associations import ScenarioMuscleAssociation
+from app.models.associations import ScenarioPrimaryMuscleAssociation, ScenarioSecondaryMuscleAssociation
 
 class Muscle(Base):
     __tablename__ = "muscles"
@@ -13,14 +13,12 @@ class Muscle(Base):
 
     primary_scenarios = relationship(
         "Scenario",
-        secondary=ScenarioMuscleAssociation.__table__,
+        secondary=ScenarioPrimaryMuscleAssociation.__table__,
         back_populates="primary_muscles",
-        primaryjoin="and_(ScenarioMuscleAssociation.c.muscle_id == Muscle.id, ScenarioMuscleAssociation.c.muscle_type == 'primary')",
     )
 
     secondary_scenarios = relationship(
         "Scenario",
-        secondary=ScenarioMuscleAssociation.__table__,
+        secondary=ScenarioSecondaryMuscleAssociation.__table__,
         back_populates="secondary_muscles",
-        primaryjoin="and_(ScenarioMuscleAssociation.c.muscle_id == Muscle.id, ScenarioMuscleAssociation.c.muscle_type == 'secondary')",
     )
