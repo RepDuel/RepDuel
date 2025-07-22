@@ -1,5 +1,6 @@
-// frontend/lib/core/providers/auth_provider.dart
-
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
@@ -162,8 +163,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         updates: {
           if (gender != null) 'gender': gender,
           if (weight != null) 'weight': weight,
-          if (weightMultiplier != null)
-            'weight_multiplier': weightMultiplier, // Handle weight multiplier
+          if (weightMultiplier != null) 'weight_multiplier': weightMultiplier,
         },
       );
 
@@ -179,5 +179,52 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
+  }
+
+  Future<bool> updateProfilePicture(File imageFile) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final token = state.token;
+      if (token == null) throw Exception("No auth token found.");
+
+      final updatedUser =
+          await _authApi.uploadProfilePicture(token: token, file: imageFile);
+
+      if (updatedUser != null) {
+        state = state.copyWith(user: updatedUser, isLoading: false);
+        return true;
+      } else {
+        state = state.copyWith(
+            isLoading: false, error: 'Failed to upload profile picture');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('[❌] Profile picture upload error: $e');
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> updateProfilePictureFromBytes(
+      Uint8List bytes, String filename, String mimeType) async {
+    try {
+      final token = state.token;
+      if (token == null) return false;
+
+      final updatedUser = await _authApi.uploadProfilePictureFromBytes(
+        token: token,
+        bytes: bytes,
+        filename: filename,
+        mimeType: mimeType,
+      );
+
+      if (updatedUser != null) {
+        state = state.copyWith(user: updatedUser);
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[❌] Exception during upload: $e');
+    }
+    return false;
   }
 }
