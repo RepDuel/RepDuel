@@ -13,3 +13,13 @@ class ScenarioMuscleAssociation(Base):
 
     scenario = relationship("Scenario", back_populates="muscles")
     muscle = relationship("Muscle", back_populates="scenarios")
+
+
+class ScenarioEquipmentAssociation(Base):
+    __tablename__ = 'scenario_equipment_association'
+
+    scenario_id = Column(String, ForeignKey('scenarios.id'), primary_key=True)
+    equipment_id = Column(String, ForeignKey('equipment.id'), primary_key=True)
+
+    scenario = relationship("Scenario", back_populates="equipment")
+    equipment = relationship("Equipment", back_populates="scenarios")

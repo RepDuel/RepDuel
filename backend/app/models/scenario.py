@@ -4,7 +4,8 @@ from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from app.models.muscle import Muscle
-from app.models.associations import ScenarioMuscleAssociation
+from app.models.associations import ScenarioMuscleAssociation, ScenarioEquipmentAssociation
+from app.models.equipment import Equipment
 
 class Scenario(Base):
     __tablename__ = "scenarios"
@@ -13,7 +14,6 @@ class Scenario(Base):
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
 
-    # Many-to-many relationship with Muscle for primary muscles
     primary_muscles = relationship(
         "Muscle",
         secondary=ScenarioMuscleAssociation.__table__,
@@ -21,10 +21,15 @@ class Scenario(Base):
         primaryjoin="and_(ScenarioMuscleAssociation.c.scenario_id == Scenario.id, ScenarioMuscleAssociation.c.muscle_type == 'primary')",
     )
 
-    # Many-to-many relationship with Muscle for secondary muscles
     secondary_muscles = relationship(
         "Muscle",
         secondary=ScenarioMuscleAssociation.__table__,
         back_populates="secondary_scenarios",
         primaryjoin="and_(ScenarioMuscleAssociation.c.scenario_id == Scenario.id, ScenarioMuscleAssociation.c.muscle_type == 'secondary')",
+    )
+
+    equipment = relationship(
+        "Equipment",
+        secondary=ScenarioEquipmentAssociation.__table__,
+        back_populates="scenarios",
     )

@@ -11,7 +11,6 @@ class Muscle(Base):
     id = Column(String, primary_key=True, index=True, unique=True)
     name = Column(String, index=True, nullable=False)
 
-    # Define the relationship to Scenario through the association table for primary muscles
     primary_scenarios = relationship(
         "Scenario",
         secondary=ScenarioMuscleAssociation.__table__,
@@ -19,7 +18,6 @@ class Muscle(Base):
         primaryjoin="and_(ScenarioMuscleAssociation.c.muscle_id == Muscle.id, ScenarioMuscleAssociation.c.muscle_type == 'primary')",
     )
 
-    # Define the relationship to Scenario through the association table for secondary muscles
     secondary_scenarios = relationship(
         "Scenario",
         secondary=ScenarioMuscleAssociation.__table__,
