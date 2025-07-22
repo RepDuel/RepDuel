@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from app.core.dots_constants import (DOTS_COEFFICIENTS, DOTS_RANKS,
+from app.core.dots_constants import (DOTS_RANKS,
                                      LIFT_RATIOS, RANK_METADATA)
 
 
@@ -12,20 +12,27 @@ def round_to_nearest_5(x: float) -> float:
 class DotsCalculator:
     @staticmethod
     def get_coefficient(bodyweight_kg: float, gender: str = "male") -> float:
-        """Get DOTs coefficient for given bodyweight and gender"""
-        gender_coeffs = DOTS_COEFFICIENTS.get(gender, DOTS_COEFFICIENTS["male"])
-        closest_weight = min(
-            gender_coeffs.keys(), key=lambda x: abs(float(x) - bodyweight_kg)
-        )
-        return gender_coeffs[closest_weight]
+        """Get DOTs coefficient for given bodyweight and gender using polynomial function"""
+        
+        if gender == "male":
+            coefficient = 500 / (-0.000001093 * bodyweight_kg**4 + 
+                                0.0007391293 * bodyweight_kg**3 - 
+                                0.1918759221 * bodyweight_kg**2 + 
+                                24.0900756 * bodyweight_kg - 
+                                307.75076)
+        
+        elif gender == "female":
+            coefficient = 500 / (-0.0000010706 * bodyweight_kg**4 + 
+                                0.0005158568 * bodyweight_kg**3 - 
+                                0.1126655495 * bodyweight_kg**2 + 
+                                13.6175032 * bodyweight_kg - 
+                                57.96288)
+        
+        else:
+            raise ValueError("Gender must be either 'male' or 'female'")
+        
+        return coefficient
 
-    @staticmethod
-    def calculate_dots(
-        total_kg: float, bodyweight_kg: float, gender: str = "male"
-    ) -> float:
-        """Calculate DOTs score with gender support"""
-        coeff = DotsCalculator.get_coefficient(bodyweight_kg, gender)
-        return round(total_kg * coeff, 2)
 
     @staticmethod
     def get_rank(dots_score: float) -> Dict:
