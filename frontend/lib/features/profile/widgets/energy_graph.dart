@@ -1,10 +1,11 @@
 // frontend/lib/features/profile/widgets/energy_graph.dart
 
 import 'dart:convert';
-import 'package:fl_chart/fl_chart.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:fl_chart/fl_chart.dart';
 
 class DailyEnergyEntry {
   final String date; // Format: "2025-07-11"

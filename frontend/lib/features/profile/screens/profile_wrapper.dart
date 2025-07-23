@@ -2,8 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:frontend/features/profile/screens/profile_screen.dart';
 import 'package:frontend/features/auth/screens/register_screen.dart';
+
 import 'package:frontend/core/providers/auth_provider.dart';
 
 class ProfileWrapper extends ConsumerWidget {

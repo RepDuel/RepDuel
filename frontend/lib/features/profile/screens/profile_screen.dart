@@ -1,14 +1,18 @@
+// frontend/lib/features/profile/screens/profile_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/energy_providers.dart';
+import '../../../core/services/secure_storage_service.dart';
+
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../widgets/energy_graph.dart';
-import '../../../core/providers/energy_providers.dart';
 import '../widgets/workout_history_list.dart';
-import 'package:http/http.dart' as http;
-import '../../../core/services/secure_storage_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});

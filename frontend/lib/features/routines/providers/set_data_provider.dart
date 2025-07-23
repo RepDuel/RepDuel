@@ -1,6 +1,7 @@
+// frontend/lib/features/routines/providers/set_data_provider.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// A set entry for a specific scenario
 class RoutineSet {
   final String scenarioId;
   final int sets;

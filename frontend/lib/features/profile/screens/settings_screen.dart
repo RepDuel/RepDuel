@@ -1,6 +1,9 @@
+// frontend/lib/features/profile/screens/settings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../../core/providers/auth_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {

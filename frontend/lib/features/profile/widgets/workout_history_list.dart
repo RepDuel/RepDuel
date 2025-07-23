@@ -1,5 +1,8 @@
+// frontend/lib/features/profile/widgets/workout_history_list.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/providers/workout_history_provider.dart';
 
 class WorkoutHistoryList extends ConsumerWidget {

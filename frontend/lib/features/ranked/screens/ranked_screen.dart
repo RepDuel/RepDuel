@@ -1,14 +1,18 @@
+// frontend/lib/features/ranked/screens/ranked_screen.dart
+
+import 'dart:convert';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'dart:async';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../../scenario/screens/scenario_screen.dart';
 import '../../leaderboard/screens/leaderboard_screen.dart';
 import '../../leaderboard/screens/energy_leaderboard_screen.dart';
+
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
 

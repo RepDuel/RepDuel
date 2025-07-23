@@ -1,17 +1,21 @@
 // frontend/lib/features/chat/screens/chat_screen.dart
 
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../core/models/message.dart';
 import '../../../core/models/user.dart';
 import '../../../core/providers/auth_provider.dart';
+
 import '../widgets/chat_bubble.dart';
 import '../widgets/message_input_bar.dart';
+
 import '../../../widgets/main_bottom_nav_bar.dart';
-import 'package:go_router/go_router.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});

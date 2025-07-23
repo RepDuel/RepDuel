@@ -1,11 +1,12 @@
 // frontend/lib/features/normal/screens/normal_screen.dart
 
-import 'package:flutter/material.dart';
-import 'package:frontend/widgets/main_bottom_nav_bar.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import 'package:frontend/features/scenario/screens/scenario_screen.dart';
 import 'package:frontend/features/leaderboard/screens/leaderboard_screen.dart';
+import 'package:frontend/widgets/main_bottom_nav_bar.dart';
 
 class NormalScreen extends StatefulWidget {
   const NormalScreen({super.key});

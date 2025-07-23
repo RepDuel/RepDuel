@@ -1,9 +1,12 @@
+// frontend/lib/features/chat/widgets/chat_bubble.dart
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../../core/models/message.dart';
-import '../../../core/models/user.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
+
+import '../../../core/models/message.dart';
+import '../../../core/models/user.dart';
 
 class ChatBubble extends ConsumerWidget {
   final Message message;
