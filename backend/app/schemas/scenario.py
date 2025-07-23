@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -33,3 +33,16 @@ class ScenarioOut(ScenarioInDBBase):
     description: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ScenarioRead(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    multiplier: Optional[float] = None
+    primary_muscles: List[str]  # You can change this to a more detailed model of Muscle if needed
+    secondary_muscles: List[str]  # Same here
+    equipment: List[str]  # Change this to a detailed model of Equipment if necessary
+
+    class Config:
+        orm_mode = True
