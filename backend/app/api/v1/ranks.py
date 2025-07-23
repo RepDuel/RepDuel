@@ -1,3 +1,5 @@
+import httpx
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from app.models.scenario import Scenario
 from app.models.score import Score
@@ -55,6 +57,34 @@ def get_rank_color(rank: str) -> str:
     return rank_colors.get(rank, '#FFFFFF')  # Default to white if not found
 
 
+def get_rank_icon_path(rank: str) -> str:
+    # Path to the icons folder
+    icon_path = "C:/Users/lalov/GymRank/frontend/assets/images/ranks/"
+
+    # Match the rank to its respective icon file
+    icon_files = {
+        'Iron': 'iron.svg',
+        'Bronze': 'bronze.svg',
+        'Silver': 'silver.svg',
+        'Gold': 'gold.svg',
+        'Platinum': 'platinum.svg',
+        'Diamond': 'diamond.svg',
+        'Jade': 'jade.svg',
+        'Master': 'master.svg',
+        'Grandmaster': 'grandmaster.svg',
+        'Nova': 'nova.svg',
+        'Astra': 'astra.svg',
+        'Celestial': 'celestial.svg'
+    }
+
+    # Get the file name for the rank
+    icon_file = icon_files.get(rank)
+    if icon_file:
+        return os.path.join(icon_path, icon_file)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid rank name")
+
+
 # API that returns the rank as a string based on the energy value
 @router.get("/rank_from_energy/{energy}", response_model=str)
 async def rank_from_energy(energy: int):
@@ -69,3 +99,28 @@ async def rank_color(rank: str):
     if color == '#FFFFFF':  # Color is white if the rank isn't valid
         raise HTTPException(status_code=400, detail="Invalid rank name")
     return color
+
+async def get_user_energy(user_id: str) -> int:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f'http://localhost:8000/api/v1/energy/latest/{user_id}')
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('energy', 0)  # Assuming the response contains energy in the field 'energy'
+        raise HTTPException(status_code=404, detail="Energy not found for user")
+
+
+# API that returns the color associated with the rank name
+@router.get("/rank_color/{user_id}", response_model=str)
+async def rank_color(user_id: str):
+    energy = await get_user_energy(user_id)
+    rank = get_rank_from_energy(energy)
+    color = get_rank_color(rank)
+    return color
+
+# API that returns the path to the rank icon associated with the user
+@router.get("/rank_icon/{user_id}", response_model=str)
+async def rank_icon(user_id: str):
+    energy = await get_user_energy(user_id)  # Get the user's latest energy using the external API
+    rank = get_rank_from_energy(energy)  # Get the rank from the energy
+    icon_path = get_rank_icon_path(rank)  # Get the icon path for the rank
+    return icon_path
