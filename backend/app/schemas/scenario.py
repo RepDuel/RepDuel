@@ -1,3 +1,5 @@
+# backend/app/schemas/scenario.py
+
 from typing import List, Optional
 from uuid import UUID
 
@@ -45,4 +47,4 @@ class ScenarioRead(BaseModel):
     equipment: List[str]  # Change this to a detailed model of Equipment if necessary
 
     class Config:
-        orm_mode = True
+        from_attributes = True

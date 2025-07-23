@@ -89,6 +89,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         builder: (_) => ResultScreen(
           finalScore: adjustedScore.round(),
           previousBest: previousBest,
+          scenarioId: widget.scenarioId,
         ),
       ),
     );

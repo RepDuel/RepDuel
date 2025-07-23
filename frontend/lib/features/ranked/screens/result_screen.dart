@@ -1,3 +1,5 @@
+// frontend/lib/features/ranked/screens/result_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -5,11 +7,13 @@ import '../../../core/providers/auth_provider.dart';
 class ResultScreen extends ConsumerWidget {
   final int finalScore;
   final int previousBest;
+  final String scenarioId;
 
   const ResultScreen({
     super.key,
     required this.finalScore,
     required this.previousBest,
+    required this.scenarioId,
   });
 
   @override
