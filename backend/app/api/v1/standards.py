@@ -5,10 +5,10 @@ from typing import Optional
 from app.services.dots_service import DotsCalculator
 from fastapi import APIRouter, HTTPException
 
-router = APIRouter()
+router = APIRouter(prefix="/standards", tags=["Standards"])
 
 
-@router.get("/standards/{bodyweight_kg}")
+@router.get("/{bodyweight_kg}")
 async def get_standards(bodyweight_kg: float, gender: Optional[str] = "male"):
     if bodyweight_kg <= 0:
         raise HTTPException(status_code=400, detail="Bodyweight must be positive")
