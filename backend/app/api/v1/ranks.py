@@ -1,3 +1,5 @@
+# backend/app/api/v1/ranks.py
+
 import httpx
 import os
 from fastapi import APIRouter, Depends, HTTPException
@@ -59,7 +61,7 @@ def get_rank_color(rank: str) -> str:
 
 def get_rank_icon_path(rank: str) -> str:
     # Path to the icons folder
-    icon_path = "C:/Users/lalov/GymRank/frontend/assets/images/ranks/"
+    icon_path = '../../../frontend/assets/images/ranks/'
 
     # Match the rank to its respective icon file
     icon_files = {
@@ -82,7 +84,7 @@ def get_rank_icon_path(rank: str) -> str:
     if icon_file:
         return os.path.join(icon_path, icon_file)
     else:
-        raise HTTPException(status_code=400, detail="Invalid rank name")
+        raise HTTPException(status_code=400, detail=f"Invalid rank name: {rank}")
 
 
 # API that returns the rank as a string based on the energy value
@@ -92,21 +94,17 @@ async def rank_from_energy(energy: int):
     return rank
 
 
-# API that returns the color associated with the rank name
-@router.get("/rank_color/{rank}", response_model=str)
-async def rank_color(rank: str):
-    color = get_rank_color(rank)
-    if color == '#FFFFFF':  # Color is white if the rank isn't valid
-        raise HTTPException(status_code=400, detail="Invalid rank name")
-    return color
-
-async def get_user_energy(user_id: str) -> int:
+async def get_user_energy(user_id: str) -> float:
     async with httpx.AsyncClient() as client:
+        # Make a request to your API to get the user's latest energy
         response = await client.get(f'http://localhost:8000/api/v1/energy/latest/{user_id}')
+        
+        # Check if the response status is 200 (OK)
         if response.status_code == 200:
-            data = response.json()
-            return data.get('energy', 0)  # Assuming the response contains energy in the field 'energy'
-        raise HTTPException(status_code=404, detail="Energy not found for user")
+            # If the response is just a number (not a dictionary), directly return it
+            return float(response.json())  # Assuming the response body is just the energy value
+        # If the response is not OK, raise an HTTPException
+        raise HTTPException(status_code=response.status_code, detail="Failed to fetch energy")
 
 
 # API that returns the color associated with the rank name
@@ -114,8 +112,11 @@ async def get_user_energy(user_id: str) -> int:
 async def rank_color(user_id: str):
     energy = await get_user_energy(user_id)
     rank = get_rank_from_energy(energy)
+    if rank not in ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Jade', 'Master', 'Grandmaster', 'Nova', 'Astra', 'Celestial']:
+        raise HTTPException(status_code=400, detail=f"Invalid rank name: {rank}")
     color = get_rank_color(rank)
     return color
+
 
 # API that returns the path to the rank icon associated with the user
 @router.get("/rank_icon/{user_id}", response_model=str)
