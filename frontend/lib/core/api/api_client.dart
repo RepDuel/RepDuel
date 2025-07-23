@@ -20,13 +20,15 @@ class ApiClient {
     return http.get(url, headers: headers);
   }
 
-  Future<http.Response> post(String endpoint, Map<String, dynamic> body, {bool auth = true}) async {
+  Future<http.Response> post(String endpoint, Map<String, dynamic> body,
+      {bool auth = true}) async {
     final headers = await _buildHeaders(auth);
     final url = Uri.parse('$baseUrl$endpoint');
     return http.post(url, headers: headers, body: jsonEncode(body));
   }
 
-  Future<http.Response> put(String endpoint, Map<String, dynamic> body, {bool auth = true}) async {
+  Future<http.Response> put(String endpoint, Map<String, dynamic> body,
+      {bool auth = true}) async {
     final headers = await _buildHeaders(auth);
     final url = Uri.parse('$baseUrl$endpoint');
     return http.put(url, headers: headers, body: jsonEncode(body));
