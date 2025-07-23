@@ -44,17 +44,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         Uri.parse('ws://localhost:8000/api/v1/ws/chat/global?token=$token'),
       );
 
-      channel!.stream.listen((text) {
-        final now = DateTime.now();
-        final msg = Message(
-          id: 'remote-${now.millisecondsSinceEpoch}',
-          content: text,
-          authorId: 'other-user',
-          channelId: 'global',
-          createdAt: now,
-          updatedAt: now,
-        );
-        setState(() => messages.add(msg));
+      channel!.stream.listen((data) {
+        try {
+          // Expecting a complete JSON-formatted message
+          final messageData = jsonDecode(data);
+          final msg =
+              Message.fromJson(messageData); // Convert JSON to Message object
+
+          setState(() => messages.add(msg)); // Update UI with the new message
+        } catch (e) {
+          debugPrint('Error parsing WebSocket message: $e');
+        }
       }, onError: (e) {
         debugPrint('WebSocket error: $e');
         if (mounted) {
@@ -91,51 +91,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<User> _fetchUser(String authorId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/users/$authorId'),
-      );
-      if (response.statusCode == 200) {
-        final userJson = jsonDecode(response.body);
-        final user = User.fromJson({
-          'id': userJson['id'],
-          'username': userJson['username'],
-          'email': userJson['email'] ?? 'Unknown',
-          'is_active': userJson['is_active'] ?? true,
-          'created_at': userJson['created_at'],
-          'updated_at': userJson['updated_at'],
-          'avatar_url': userJson['avatar_url'] ?? '',
-        });
-        return user;
-      } else {
-        return User(
-          id: authorId,
-          username: 'Unknown',
-          email: 'Unknown',
-          isActive: true,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          avatarUrl: '',
-        );
-      }
-    } catch (e) {
-      return User(
-        id: authorId,
-        username: 'Unknown',
-        email: 'Unknown',
-        isActive: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        avatarUrl: '',
-      );
-    }
-  }
-
   void _sendMessage() {
-    final c = _controller.text.trim();
-    if (c.isNotEmpty && channel != null) {
-      channel!.sink.add(c);
+    final content = _controller.text.trim();
+    if (content.isNotEmpty && channel != null) {
+      final message = {
+        'id':
+            'remote-${DateTime.now().millisecondsSinceEpoch}', // Generate a unique message ID
+        'content': content, // The message content typed by the user
+        'authorId':
+            ref.read(authStateProvider).user?.id, // Author ID (current user)
+        'channelId': 'global', // Channel ID (default to 'global' here)
+        'createdAt':
+            DateTime.now().toIso8601String(), // Current timestamp for createdAt
+        'updatedAt':
+            DateTime.now().toIso8601String(), // Current timestamp for updatedAt
+      };
+
+      // Send the message as JSON
+      channel!.sink.add(jsonEncode(message));
       _controller.clear();
     }
   }
@@ -169,26 +142,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 final isMe =
                     message.authorId == ref.read(authStateProvider).user?.id;
 
-                return FutureBuilder<User>(
-                  future: _fetchUser(message.authorId),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const CircularProgressIndicator();
-                    }
-                    if (snapshot.hasError) {
-                      return const Text('Error fetching user');
-                    }
-                    final user = snapshot.data!;
-                    return ChatBubble(
-                      message: message.content,
-                      color: '#00ced1', // Placeholder for color
-                      rankIconPath:
-                          'assets/images/ranks/diamond.svg', // Placeholder for rank icon path
-                      displayName: user.username,
-                      avatarUrl: user.avatarUrl ?? '',
-                      isMe: isMe,
-                    );
-                  },
+                return ChatBubble(
+                  message: message.content,
+                  color: '#00ced1', // Placeholder for color
+                  rankIconPath:
+                      'assets/images/ranks/diamond.svg', // Placeholder for rank icon path
+                  displayName:
+                      'Display_Name_Placeholder', // Placeholder for display name
+                  avatarUrl: '', // Placeholder for avatar URL
+                  isMe: isMe,
                 );
               },
             ),

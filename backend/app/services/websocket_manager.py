@@ -1,5 +1,3 @@
-# backend/app/services/websocket_manager.py
-
 import json
 from typing import Dict, List
 from uuid import UUID
