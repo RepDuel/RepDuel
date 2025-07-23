@@ -1,34 +1,29 @@
-// frontend/lib/features/chat/widgets/chat_bubble.dart
-
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/models/message.dart';
-import '../../../core/models/user.dart';
-
-class ChatBubble extends ConsumerWidget {
-  final Message message;
+class ChatBubble extends StatelessWidget {
+  final String message;
+  final String color;
+  final String rankIconPath;
+  final String displayName;
+  final String avatarUrl;
   final bool isMe;
-  final User? author;
-  final int energy;
 
   const ChatBubble({
     super.key,
     required this.message,
+    required this.color,
+    required this.rankIconPath,
+    required this.displayName,
+    required this.avatarUrl,
     required this.isMe,
-    required this.author,
-    required this.energy,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final username = author?.username ?? 'Unknown';
-    final avatarUrl = author?.avatarUrl ?? '';
-    final rank = _getRankFromEnergy(energy);
-    final rankColor = _getRankColor(rank);
-    final rankIconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
+  Widget build(BuildContext context) {
+    final rankColor =
+        Color(int.parse(color.substring(1, 7), radix: 16) + 0xFF000000);
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -56,7 +51,7 @@ class ChatBubble extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Text(username,
+                      Text(displayName,
                           style: TextStyle(
                               fontWeight: FontWeight.bold, color: rankColor)),
                       const SizedBox(width: 6),
@@ -65,7 +60,7 @@ class ChatBubble extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    message.content,
+                    message,
                     style: const TextStyle(color: Colors.white),
                   ),
                 ],
@@ -73,58 +68,12 @@ class ChatBubble extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              DateFormat('h:mm a').format(message.createdAt.toLocal()),
+              DateFormat('h:mm a').format(DateTime.now().toLocal()),
               style: TextStyle(color: Colors.grey[400], fontSize: 11),
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _getRankFromEnergy(int energy) {
-    if (energy >= 1200) return 'Celestial';
-    if (energy >= 1100) return 'Astra';
-    if (energy >= 1000) return 'Nova';
-    if (energy >= 900) return 'Grandmaster';
-    if (energy >= 800) return 'Master';
-    if (energy >= 700) return 'Jade';
-    if (energy >= 600) return 'Diamond';
-    if (energy >= 500) return 'Platinum';
-    if (energy >= 400) return 'Gold';
-    if (energy >= 300) return 'Silver';
-    if (energy >= 200) return 'Bronze';
-    return 'Iron';
-  }
-
-  Color _getRankColor(String rank) {
-    switch (rank) {
-      case 'Iron':
-        return Colors.grey;
-      case 'Bronze':
-        return const Color(0xFFcd7f32);
-      case 'Silver':
-        return const Color(0xFFc0c0c0);
-      case 'Gold':
-        return const Color(0xFFefbf04);
-      case 'Platinum':
-        return const Color(0xFF00ced1);
-      case 'Diamond':
-        return const Color(0xFFb9f2ff);
-      case 'Jade':
-        return const Color(0xFF62f40c);
-      case 'Master':
-        return const Color(0xFFff00ff);
-      case 'Grandmaster':
-        return const Color(0xFFffde21);
-      case 'Nova':
-        return const Color(0xFFa45ee5);
-      case 'Astra':
-        return const Color(0xFFff4040);
-      case 'Celestial':
-        return const Color(0xFF00ffff);
-      default:
-        return Colors.white;
-    }
   }
 }
