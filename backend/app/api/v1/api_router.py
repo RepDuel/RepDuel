@@ -12,6 +12,8 @@ from app.api.v1.score import router as score_router
 from app.api.v1.standards import router as standards_router
 from app.api.v1.users import router as users_router
 from app.api.v1.websockets import router as websockets_router
+from app.api.v1.ranks import router as ranks_router
+
 from fastapi import APIRouter
 
 api_router = APIRouter()
@@ -28,3 +30,4 @@ api_router.include_router(standards_router)
 api_router.include_router(routines_router)
 api_router.include_router(energy_router)
 api_router.include_router(routine_submission_router)
+api_router.include_router(ranks_router)
