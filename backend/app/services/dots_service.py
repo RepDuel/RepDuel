@@ -85,13 +85,16 @@ class DotsCalculator:
         next_rank_threshold = -1
         max_rank = "Celestial"
 
-        for i, (rank, lift_value) in enumerate(standards.items()):
+        # Sort standards from highest to lowest rank (by lift value)
+        sorted_standards = sorted(standards.items(), key=lambda x: x[1], reverse=True)
+
+        for i, (rank, lift_value) in enumerate(sorted_standards):
             if user_lift_score >= lift_value:
                 current_rank = rank
-                if i + 1 < len(standards):
-                    next_rank_threshold = list(standards.values())[i + 1]
+                if i > 0:
+                    next_rank_threshold = sorted_standards[i - 1][1]
                 break
-        
+
         if current_rank == max_rank:
             next_rank_threshold = -1
 
@@ -99,6 +102,7 @@ class DotsCalculator:
             "current_rank": current_rank,
             "next_rank_threshold": next_rank_threshold,
         }
+
     
     @staticmethod
     def get_rank_progress(

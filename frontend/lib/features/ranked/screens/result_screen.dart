@@ -4,6 +4,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../../../core/providers/auth_provider.dart';
+import 'package:logger/logger.dart';
+
+final logger = Logger();
 
 class ResultScreen extends ConsumerWidget {
   final int finalScore;
@@ -42,15 +45,15 @@ class ResultScreen extends ConsumerWidget {
       if (rankProgressResponse.statusCode == 200) {
         return json.decode(rankProgressResponse.body);
       } else {
-        print(
-            'Error: Failed to load rank progress. Status code: ${rankProgressResponse.statusCode}');
-        print('Response body: ${rankProgressResponse.body}');
+        logger.e(
+            'Failed to load rank progress. Status code: ${rankProgressResponse.statusCode}');
+        logger.e('Response body: ${rankProgressResponse.body}');
         throw Exception('Failed to load rank progress');
       }
     } else {
-      print(
-          'Error: Failed to load multiplier. Status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      logger
+          .e('Failed to load multiplier. Status code: ${response.statusCode}');
+      logger.e('Response body: ${response.body}');
       throw Exception('Failed to load multiplier');
     }
   }
