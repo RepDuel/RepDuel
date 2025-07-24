@@ -94,12 +94,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final content = _controller.text.trim();
     if (content.isNotEmpty && channel != null) {
       final message = {
-        'id': 'remote-${DateTime.now().millisecondsSinceEpoch}',
         'content': content,
         'authorId': ref.read(authStateProvider).user?.id,
-        'channelId': 'global',
-        'createdAt': DateTime.now().toIso8601String(),
-        'updatedAt': DateTime.now().toIso8601String(),
+        'channelId': '00000000-0000-0000-0000-000000000000',
       };
 
       channel!.sink.add(jsonEncode(message));

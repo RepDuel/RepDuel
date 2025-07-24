@@ -1,5 +1,8 @@
+# backend/app/api/v1/chat.py
+
+import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from app.api.v1.deps import get_db
@@ -59,21 +62,36 @@ async def websocket_global_chat(
 
     try:
         while True:
-            content = await websocket.receive_text()
-            message = MessageModel(
-                id=uuid.uuid4(),
-                content=content,
-                author_id=user.id,
-                channel_id=global_channel.id,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-            db.add(message)
-            await db.commit()
+            try:
+                raw_data = await websocket.receive_text()
+                data = json.loads(raw_data)
 
-            for conn in active_connections:
-                await conn.send_text(content)
+                message = MessageModel(
+                    id=uuid.uuid4(),
+                    content=data["content"],
+                    author_id=data["authorId"],
+                    channel_id=data["channelId"],
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                )
 
+                db.add(message)
+                await db.commit()
+
+                for conn in active_connections:
+                    await conn.send_text(json.dumps({
+                        "id": str(message.id),
+                        "content": message.content,
+                        "authorId": message.author_id,
+                        "channelId": message.channel_id,
+                        "createdAt": message.created_at.isoformat(),
+                        "updatedAt": message.updated_at.isoformat(),
+                    }))
+
+            except Exception as e:
+                print(f"WebSocket error: {e}")
+                break
+            
     except WebSocketDisconnect:
         active_connections.remove(websocket)
 
