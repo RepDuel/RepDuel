@@ -110,6 +110,8 @@ class ResultScreen extends ConsumerWidget {
     final user = ref.read(authStateProvider).user;
     final userWeight = user?.weight ?? 70.0;
     final userGender = user?.gender ?? 'male';
+    final weightMultiplier = user?.weightMultiplier ?? 1.0;
+
     final scoreToUse = finalScore > previousBest ? finalScore : previousBest;
 
     return FutureBuilder<Map<String, dynamic>>(
@@ -146,6 +148,9 @@ class ResultScreen extends ConsumerWidget {
             ? rankOrder[currentIndex + 1]
             : null;
 
+        // scaled score used ONLY in progress bar and below it
+        final scaledScore = (scoreToUse * weightMultiplier).round();
+
         final progressValue = isMax
             ? 1.0
             : (nextThreshold != null && nextThreshold > 0)
@@ -169,7 +174,7 @@ class ResultScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '$finalScore',
+                  '${(finalScore * weightMultiplier).round()}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 72,
@@ -178,7 +183,7 @@ class ResultScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Previous Best: $previousBest',
+                  'Previous Best: ${(previousBest * weightMultiplier).round()}',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 16,
@@ -251,7 +256,7 @@ class ResultScreen extends ConsumerWidget {
 
                 const SizedBox(height: 16),
 
-                // Progress bar with rectangular edges and rank color
+                // Progress bar using scaled score
                 Container(
                   width: 200,
                   height: 20,
@@ -271,8 +276,8 @@ class ResultScreen extends ConsumerWidget {
                   isMax
                       ? 'MAX RANK'
                       : nextThreshold != null
-                          ? '$scoreToUse / ${nextThreshold.round()}'
-                          : '$scoreToUse',
+                          ? '$scaledScore / ${(nextThreshold * weightMultiplier).round()}'
+                          : '$scaledScore',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
