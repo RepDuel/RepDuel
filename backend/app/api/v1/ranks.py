@@ -61,7 +61,7 @@ def get_rank_color(rank: str) -> str:
 
 def get_rank_icon_path(rank: str) -> str:
     # Path to the icons folder
-    icon_path = '../../../frontend/assets/images/ranks/'
+    icon_path = 'assets/images/ranks/'
 
     # Match the rank to its respective icon file
     icon_files = {
