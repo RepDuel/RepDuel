@@ -25,6 +25,35 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   final TextEditingController _repsController = TextEditingController();
   bool _isSubmitting = false;
 
+  String? _description;
+  bool _isLoadingDescription = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadScenarioDetails();
+  }
+
+  Future<void> _loadScenarioDetails() async {
+    final url = Uri.parse(
+        'http://localhost:8000/api/v1/scenarios/${widget.scenarioId}/details');
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      setState(() {
+        _description = data['description'];
+        _isLoadingDescription = false;
+      });
+    } else {
+      setState(() {
+        _description = 'Failed to load description.';
+        _isLoadingDescription = false;
+      });
+    }
+  }
+
   double _calculateOneRepMax(double weight, int reps) {
     if (reps == 1) {
       return weight;
@@ -76,7 +105,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
     final previousBest = await _fetchPreviousBest(user.id, widget.scenarioId);
 
-    // Get user multiplier from the auth provider and divide the score by it
     final userMultiplier = user.weightMultiplier;
     final adjustedScore = oneRepMax / userMultiplier;
 
@@ -103,6 +131,34 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     });
   }
 
+  List<Widget> _buildBulletDescription(String? description) {
+    if (description == null || description.isEmpty) return [];
+
+    final sentences = description.split(RegExp(r'(?<=[.!?])\s+'));
+    return sentences
+        .where((s) => s.trim().isNotEmpty)
+        .map(
+          (s) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• ',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                Expanded(
+                  child: Text(
+                    s.trim(),
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 14, height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
+        .toList();
+  }
+
   @override
   void dispose() {
     _weightController.dispose();
@@ -121,62 +177,73 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         elevation: 0,
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
-                  children: [
-                    const Text('Weight',
-                        style: TextStyle(color: Colors.white, fontSize: 16)),
-                    SizedBox(
-                      width: 100,
-                      child: TextField(
-                        controller: _weightController,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.grey[900],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_isLoadingDescription)
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('·',
-                      style: TextStyle(color: Colors.white, fontSize: 24)),
-                ),
-                Column(
-                  children: [
-                    const Text('Reps',
-                        style: TextStyle(color: Colors.white, fontSize: 16)),
-                    SizedBox(
-                      width: 100,
-                      child: TextField(
-                        controller: _repsController,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.grey[900],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: CircularProgressIndicator(),
+                )
+              else
+                ..._buildBulletDescription(_description),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    children: [
+                      const Text('Weight',
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                      SizedBox(
+                        width: 100,
+                        child: TextField(
+                          controller: _weightController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.grey[900],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('·',
+                        style: TextStyle(color: Colors.white, fontSize: 24)),
+                  ),
+                  Column(
+                    children: [
+                      const Text('Reps',
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                      SizedBox(
+                        width: 100,
+                        child: TextField(
+                          controller: _repsController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.grey[900],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: Padding(
@@ -184,7 +251,14 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         child: ElevatedButton.icon(
           onPressed: _isSubmitting ? null : _handleSubmit,
           icon: _isSubmitting
-              ? const CircularProgressIndicator(color: Colors.white)
+              ? const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
               : const Icon(Icons.check),
           label: Text(_isSubmitting ? 'Submitting...' : 'Confirm'),
           style: ElevatedButton.styleFrom(
