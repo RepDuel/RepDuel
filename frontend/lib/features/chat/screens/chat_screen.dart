@@ -27,6 +27,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   WebSocketChannel? channel;
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final List<Message> messages = [];
   User? currentUser;
 
@@ -51,6 +52,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           final messageData = jsonDecode(data);
           final msg = Message.fromJson(messageData);
           setState(() => messages.add(msg));
+          _scrollToBottom();
         } catch (e) {
           debugPrint('Error parsing WebSocket message: $e');
         }
@@ -84,6 +86,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             .map((j) => Message.fromJson(j))
             .toList();
         setState(() => messages.insertAll(0, hist));
+        _scrollToBottom();
       }
     } catch (e) {
       debugPrint('Error loading chat history: $e');
@@ -104,10 +107,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
   @override
   void dispose() {
     channel?.sink.close();
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -126,6 +138,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.symmetric(vertical: 12),
               itemCount: messages.length,
               itemBuilder: (context, index) {
