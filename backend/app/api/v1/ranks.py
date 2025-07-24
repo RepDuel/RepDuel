@@ -1,5 +1,3 @@
-# backend/app/api/v1/ranks.py
-
 import httpx
 import os
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from fastapi.responses import JSONResponse
+from app.services.dots_service import DotsCalculator  # Importing the DotsCalculator service
 
 router = APIRouter(prefix="/ranks", tags=["Ranks"])
 
@@ -125,3 +124,46 @@ async def rank_icon(user_id: str):
     rank = get_rank_from_energy(energy)  # Get the rank from the energy
     icon_path = get_rank_icon_path(rank)  # Get the icon path for the rank
     return icon_path
+
+
+# New API to get rank progress based on final score, scenario id, and user info
+@router.get("/get_rank_progress", response_model=dict)
+async def get_rank_progress(
+    scenario_id: str, 
+    final_score: int, 
+    user_weight: float, 
+    user_gender: str = "male"
+):
+    """Calculate current rank and next rank threshold for a user's lift score"""
+    
+    # Step 1: Fetch scenario multiplier
+    response = await httpx.AsyncClient().get(
+        f'http://localhost:8000/api/v1/scenarios/{scenario_id}/multiplier'
+    )
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="Failed to fetch scenario multiplier")
+
+    # Handle response as float if needed
+    scenario_multiplier = response.json()
+
+    if isinstance(scenario_multiplier, float):  # If the response is a float
+        print(f"Multiplier: {scenario_multiplier}")  # Debug print to verify multiplier
+    else:
+        scenario_multiplier = scenario_multiplier.get("multiplier", 1)  # Default to 1 if not found
+        print(f"Multiplier: {scenario_multiplier}")  # Debug print to verify multiplier
+
+    # Step 2: Get the standards from DotsCalculator
+    standards = DotsCalculator.calculate_lift_standards(
+        bodyweight_kg=user_weight,
+        gender=user_gender,
+        lift_ratio=scenario_multiplier
+    )
+
+    # Step 3: Get rank progress based on the final score
+    rank_progress = DotsCalculator.get_current_rank_and_next_rank(
+        user_lift_score=final_score,
+        standards=standards
+    )
+
+    return rank_progress

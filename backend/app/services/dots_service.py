@@ -82,20 +82,18 @@ class DotsCalculator:
     def get_current_rank_and_next_rank(user_lift_score: float, standards: Dict) -> Dict:
         """Calculate current rank and next rank threshold based on user lift score"""
         current_rank = None
-        next_rank_threshold = -1  # Will be set to the next rank threshold or -1 if max rank reached
+        next_rank_threshold = -1
         max_rank = "Celestial"
 
-        # Find current rank based on the user's lift score (e.g., squat score)
         for i, (rank, lift_value) in enumerate(standards.items()):
             if user_lift_score >= lift_value:
                 current_rank = rank
                 if i + 1 < len(standards):
-                    next_rank_threshold = list(standards.values())[i + 1]  # Get the next rank's threshold
+                    next_rank_threshold = list(standards.values())[i + 1]
                 break
         
-        # If the user reached the "Celestial" rank
         if current_rank == max_rank:
-            next_rank_threshold = -1  # No next rank available
+            next_rank_threshold = -1
 
         return {
             "current_rank": current_rank,
@@ -110,7 +108,6 @@ class DotsCalculator:
         user_gender: str = "male"
     ) -> Dict:
         """Get current rank and next rank threshold for a user's lift score"""
-        # Step 1: Fetch scenario multiplier from external API
         response = requests.get(
             f"http://localhost:8000/api/v1/scenarios/{scenario_id}/multiplier"
         )
@@ -122,14 +119,12 @@ class DotsCalculator:
         if scenario_multiplier is None:
             raise ValueError("Multiplier not found in response")
 
-        # Step 2: Calculate standards
         standards = DotsCalculator.calculate_lift_standards(
             bodyweight_kg=user_weight,
             gender=user_gender,
             lift_ratio=scenario_multiplier,
         )
 
-        # Step 3: Determine current and next rank
         result = DotsCalculator.get_current_rank_and_next_rank(
             user_lift_score=final_score,
             standards=standards,
