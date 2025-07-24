@@ -61,7 +61,7 @@ class ResultScreen extends ConsumerWidget {
             ElevatedButton(
               onPressed: () {
                 // Passing `true` to indicate that a new score was entered
-                Navigator.pop(context, true); // <-- This line passes `true`
+                Navigator.pop(context, true);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,

@@ -34,33 +34,32 @@ async def websocket_global_chat(
 
     user = await get_current_user_ws(websocket, token, db)
     if not user:
+        await websocket.close(code=1008)
         return
 
     active_connections.append(websocket)
 
-    # Ensure global guild
-    result = await db.execute(select(Guild).where(Guild.name == "global"))
-    global_guild = result.scalar_one_or_none()
-    if not global_guild:
-        global_guild = Guild(id=uuid.uuid4(), name="global", owner_id=user.id)
-        db.add(global_guild)
-        await db.commit()
-        await db.refresh(global_guild)
-
-    # Ensure global channel
-    result = await db.execute(select(Channel).where(Channel.name == "global"))
-    global_channel = result.scalar_one_or_none()
-    if not global_channel:
-        global_channel = Channel(
-            id=uuid.uuid4(),
-            name="global",
-            guild_id=global_guild.id,
-        )
-        db.add(global_channel)
-        await db.commit()
-        await db.refresh(global_channel)
-
     try:
+        result = await db.execute(select(Guild).where(Guild.name == "global"))
+        global_guild = result.scalar_one_or_none()
+        if not global_guild:
+            global_guild = Guild(id=uuid.uuid4(), name="global", owner_id=user.id)
+            db.add(global_guild)
+            await db.commit()
+            await db.refresh(global_guild)
+
+        result = await db.execute(select(Channel).where(Channel.name == "global"))
+        global_channel = result.scalar_one_or_none()
+        if not global_channel:
+            global_channel = Channel(
+                id=uuid.uuid4(),
+                name="global",
+                guild_id=global_guild.id,
+            )
+            db.add(global_channel)
+            await db.commit()
+            await db.refresh(global_channel)
+
         while True:
             try:
                 raw_data = await websocket.receive_text()
@@ -78,22 +77,35 @@ async def websocket_global_chat(
                 db.add(message)
                 await db.commit()
 
+                payload = {
+                    "id": str(message.id),
+                    "content": message.content,
+                    "authorId": message.author_id,
+                    "channelId": message.channel_id,
+                    "createdAt": message.created_at.isoformat(),
+                    "updatedAt": message.updated_at.isoformat(),
+                }
+
+                disconnected = []
                 for conn in active_connections:
-                    await conn.send_text(json.dumps({
-                        "id": str(message.id),
-                        "content": message.content,
-                        "authorId": message.author_id,
-                        "channelId": message.channel_id,
-                        "createdAt": message.created_at.isoformat(),
-                        "updatedAt": message.updated_at.isoformat(),
-                    }))
+                    try:
+                        await conn.send_text(json.dumps(payload))
+                    except Exception as e:
+                        print(f"Broadcast error: {e}")
+                        disconnected.append(conn)
+
+                for conn in disconnected:
+                    if conn in active_connections:
+                        active_connections.remove(conn)
 
             except Exception as e:
-                print(f"WebSocket error: {e}")
+                print(f"WebSocket receive/send error: {e}")
                 break
-            
-    except WebSocketDisconnect:
-        active_connections.remove(websocket)
+
+    finally:
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+            print("WebSocket connection closed and removed.")
 
 
 @router.get("/history/global", response_model=List[MessageRead])

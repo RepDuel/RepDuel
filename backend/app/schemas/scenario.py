@@ -42,9 +42,9 @@ class ScenarioRead(BaseModel):
     name: str
     description: Optional[str] = None
     multiplier: Optional[float] = None
-    primary_muscles: List[str]  # You can change this to a more detailed model of Muscle if needed
-    secondary_muscles: List[str]  # Same here
-    equipment: List[str]  # Change this to a detailed model of Equipment if necessary
+    primary_muscles: List[str]
+    secondary_muscles: List[str]
+    equipment: List[str]
 
     class Config:
         from_attributes = True
