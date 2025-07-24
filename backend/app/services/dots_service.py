@@ -95,6 +95,16 @@ class DotsCalculator:
                     next_rank_threshold = sorted_standards[i - 1][1]
                 break
 
+        # If score is below the lowest rank
+        if current_rank is None:
+            current_rank = "Unranked"
+            # Iron is the lowest rank, so set next threshold to its lift value
+            iron_standard = standards.get("Iron")
+            if isinstance(iron_standard, dict):  # if full standard dict (from get_lift_standards)
+                next_rank_threshold = iron_standard.get("total", -1)
+            else:
+                next_rank_threshold = iron_standard
+
         if current_rank == max_rank:
             next_rank_threshold = -1
 
