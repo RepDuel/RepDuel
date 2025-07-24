@@ -2,6 +2,8 @@
 
 from typing import Dict, Optional
 
+from fastapi import requests
+
 from app.core.dots_constants import (DOTS_RANKS,
                                      LIFT_RATIOS, RANK_METADATA)
 
@@ -99,3 +101,38 @@ class DotsCalculator:
             "current_rank": current_rank,
             "next_rank_threshold": next_rank_threshold,
         }
+    
+    @staticmethod
+    def get_rank_progress(
+        scenario_id: str,
+        final_score: float,
+        user_weight: float,
+        user_gender: str = "male"
+    ) -> Dict:
+        """Get current rank and next rank threshold for a user's lift score"""
+        # Step 1: Fetch scenario multiplier from external API
+        response = requests.get(
+            f"http://localhost:8000/api/v1/scenarios/{scenario_id}/multiplier"
+        )
+        if response.status_code != 200:
+            raise ValueError("Failed to fetch scenario multiplier")
+
+        data = response.json()
+        scenario_multiplier = data.get("multiplier")
+        if scenario_multiplier is None:
+            raise ValueError("Multiplier not found in response")
+
+        # Step 2: Calculate standards
+        standards = DotsCalculator.calculate_lift_standards(
+            bodyweight_kg=user_weight,
+            gender=user_gender,
+            lift_ratio=scenario_multiplier,
+        )
+
+        # Step 3: Determine current and next rank
+        result = DotsCalculator.get_current_rank_and_next_rank(
+            user_lift_score=final_score,
+            standards=standards,
+        )
+
+        return result
