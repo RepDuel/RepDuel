@@ -6,6 +6,7 @@ from app.schemas.scenario import ScenarioCreate, ScenarioOut, ScenarioRead
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
 
@@ -40,22 +41,18 @@ async def get_scenario_multiplier(scenario_id: str, db: AsyncSession = Depends(g
 
 @router.get("/{scenario_id}/details", response_model=ScenarioRead)
 async def get_scenario_details(scenario_id: str, db: AsyncSession = Depends(get_db)):
-    # Query the database for the scenario by id
-    result = await db.execute(select(Scenario).filter(Scenario.id == scenario_id))
+    result = await db.execute(
+        select(Scenario)
+        .options(
+            selectinload(Scenario.primary_muscles),
+            selectinload(Scenario.secondary_muscles),
+            selectinload(Scenario.equipment),
+        )
+        .filter(Scenario.id == scenario_id)
+    )
     scenario = result.scalars().first()
 
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
 
-    # Construct and return the ScenarioRead model
-    scenario_read = ScenarioRead(
-        id=scenario.id,
-        name=scenario.name,
-        description=scenario.description,
-        multiplier=scenario.multiplier,
-        primary_muscles=scenario.primary_muscles,
-        secondary_muscles=scenario.secondary_muscles,
-        equipment=scenario.equipment
-    )
-    
-    return scenario_read
+    return scenario
