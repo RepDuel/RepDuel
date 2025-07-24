@@ -29,6 +29,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Message> messages = [];
+  final Map<String, User> userCache = {};
+  final Map<String, String> rankColorCache = {};
+  final Map<String, String> rankIconPathCache = {};
   User? currentUser;
 
   @override
@@ -93,6 +96,91 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<User?> _fetchUser(String userId) async {
+    if (userCache.containsKey(userId)) {
+      return userCache[userId];
+    }
+
+    final token = ref.read(authStateProvider).token;
+    if (token == null) return null;
+
+    try {
+      final res = await http.get(
+        Uri.parse('http://localhost:8000/api/v1/users/$userId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body);
+        final user = User.fromJson(json);
+        userCache[userId] = user;
+        return user;
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch user $userId: $e');
+    }
+
+    return null;
+  }
+
+  Future<String?> _fetchRankColor(String userId) async {
+    if (rankColorCache.containsKey(userId)) {
+      return rankColorCache[userId];
+    }
+
+    final token = ref.read(authStateProvider).token;
+    if (token == null) return null;
+
+    try {
+      final res = await http.get(
+        Uri.parse('http://localhost:8000/api/v1/ranks/rank_color/$userId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final color = jsonDecode(res.body);
+        rankColorCache[userId] = color;
+        return color;
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch rank color for $userId: $e');
+    }
+
+    return null;
+  }
+
+  Future<String?> _fetchRankIconPath(String userId) async {
+    if (rankIconPathCache.containsKey(userId)) {
+      return rankIconPathCache[userId];
+    }
+
+    final token = ref.read(authStateProvider).token;
+    if (token == null) return null;
+
+    try {
+      final res = await http.get(
+        Uri.parse('http://localhost:8000/api/v1/ranks/rank_icon/$userId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final path = jsonDecode(res.body);
+        rankIconPathCache[userId] = path;
+        return path;
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch rank icon for $userId: $e');
+    }
+
+    return null;
+  }
+
   void _sendMessage() {
     final content = _controller.text.trim();
     if (content.isNotEmpty && channel != null) {
@@ -143,16 +231,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final message = messages[index];
-                final isMe =
-                    message.authorId == ref.read(authStateProvider).user?.id;
+                return FutureBuilder<User?>(
+                  future: _fetchUser(message.authorId),
+                  builder: (context, userSnapshot) {
+                    final user = userSnapshot.data;
+                    return FutureBuilder<String?>(
+                      future: _fetchRankColor(message.authorId),
+                      builder: (context, colorSnapshot) {
+                        final color = colorSnapshot.data ?? '#00ced1';
+                        return FutureBuilder<String?>(
+                          future: _fetchRankIconPath(message.authorId),
+                          builder: (context, iconSnapshot) {
+                            final iconPath = iconSnapshot.data ??
+                                'assets/images/ranks/unranked.svg';
+                            final isMe = message.authorId ==
+                                ref.read(authStateProvider).user?.id;
 
-                return ChatBubble(
-                  message: message.content,
-                  color: '#00ced1',
-                  rankIconPath: 'assets/images/ranks/diamond.svg',
-                  displayName: 'Display_Name_Placeholder',
-                  avatarUrl: '',
-                  isMe: isMe,
+                            return ChatBubble(
+                              message: message.content,
+                              color: color,
+                              rankIconPath: iconPath,
+                              displayName: user?.username ?? 'Unknown',
+                              avatarUrl: user?.avatarUrl ?? '',
+                              isMe: isMe,
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
                 );
               },
             ),
