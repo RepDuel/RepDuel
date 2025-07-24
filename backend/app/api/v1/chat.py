@@ -7,9 +7,8 @@ from app.core.auth import get_current_user_ws
 from app.models.channel import Channel
 from app.models.guild import Guild
 from app.models.message import Message as MessageModel
-from app.models.user import User
 from app.schemas.message import MessageRead
-from fastapi import (APIRouter, Depends, HTTPException, Query, WebSocket,
+from fastapi import (APIRouter, Depends, HTTPException, WebSocket,
                      WebSocketDisconnect)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select

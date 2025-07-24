@@ -1,3 +1,5 @@
+// frontend/lib/features/chat/screens/chat_screen.dart
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -46,12 +48,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       channel!.stream.listen((data) {
         try {
-          // Expecting a complete JSON-formatted message
           final messageData = jsonDecode(data);
-          final msg =
-              Message.fromJson(messageData); // Convert JSON to Message object
-
-          setState(() => messages.add(msg)); // Update UI with the new message
+          final msg = Message.fromJson(messageData);
+          setState(() => messages.add(msg));
         } catch (e) {
           debugPrint('Error parsing WebSocket message: $e');
         }
@@ -95,19 +94,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final content = _controller.text.trim();
     if (content.isNotEmpty && channel != null) {
       final message = {
-        'id':
-            'remote-${DateTime.now().millisecondsSinceEpoch}', // Generate a unique message ID
-        'content': content, // The message content typed by the user
-        'authorId':
-            ref.read(authStateProvider).user?.id, // Author ID (current user)
-        'channelId': 'global', // Channel ID (default to 'global' here)
-        'createdAt':
-            DateTime.now().toIso8601String(), // Current timestamp for createdAt
-        'updatedAt':
-            DateTime.now().toIso8601String(), // Current timestamp for updatedAt
+        'id': 'remote-${DateTime.now().millisecondsSinceEpoch}',
+        'content': content,
+        'authorId': ref.read(authStateProvider).user?.id,
+        'channelId': 'global',
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
       };
 
-      // Send the message as JSON
       channel!.sink.add(jsonEncode(message));
       _controller.clear();
     }
@@ -144,12 +138,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
                 return ChatBubble(
                   message: message.content,
-                  color: '#00ced1', // Placeholder for color
-                  rankIconPath:
-                      'assets/images/ranks/diamond.svg', // Placeholder for rank icon path
-                  displayName:
-                      'Display_Name_Placeholder', // Placeholder for display name
-                  avatarUrl: '', // Placeholder for avatar URL
+                  color: '#00ced1',
+                  rankIconPath: 'assets/images/ranks/diamond.svg',
+                  displayName: 'Display_Name_Placeholder',
+                  avatarUrl: '',
                   isMe: isMe,
                 );
               },

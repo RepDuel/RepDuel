@@ -45,7 +45,7 @@ async def websocket_chat(
                     author_id=user.id,
                 )
 
-                message_dict = MessageRead.from_orm(message).model_dump(mode="json")
+                message_dict = MessageRead.model_validate(message).model_dump(mode="json")
 
             # Broadcast the dictionary. The manager will handle the final encoding.
             await ws_manager.broadcast(message_dict, channel_id)
