@@ -1,10 +1,12 @@
+// frontend/lib/features/routines/screens/add_exercise_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 
 class AddExerciseScreen extends StatelessWidget {
-  final Logger _logger = Logger(); // Non-constant field
+  final Logger _logger = Logger();
 
-  AddExerciseScreen({super.key}); // Removed 'const' here
+  AddExerciseScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +16,6 @@ class AddExerciseScreen extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            // When the back button is pressed, simply pop this screen
             Navigator.pop(context);
           },
         ),
@@ -22,15 +23,13 @@ class AddExerciseScreen extends StatelessWidget {
       body: Center(
         child: ElevatedButton(
           onPressed: () {
-            // Use logger instead of print
             _logger.i("Exercise added");
 
-            // Optionally, you could return some data here (e.g., the new exercise)
             Navigator.pop(context, {
               'exerciseName': 'New Exercise',
               'sets': [
                 {'weight': 0.0, 'reps': 0}
-              ], // Example data structure
+              ],
             });
           },
           child: const Text('Add New Exercise'),
