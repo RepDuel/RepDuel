@@ -205,7 +205,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
-    channel?.sink.close();
+    channel?.sink.close(1000, 'Client closed connection');
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();

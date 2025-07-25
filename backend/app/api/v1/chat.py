@@ -1,6 +1,7 @@
 # backend/app/api/v1/chat.py
 
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List
@@ -40,6 +41,7 @@ async def websocket_global_chat(
     active_connections.append(websocket)
 
     try:
+        # Ensure global guild exists
         result = await db.execute(select(Guild).where(Guild.name == "global"))
         global_guild = result.scalar_one_or_none()
         if not global_guild:
@@ -48,6 +50,7 @@ async def websocket_global_chat(
             await db.commit()
             await db.refresh(global_guild)
 
+        # Ensure global channel exists
         result = await db.execute(select(Channel).where(Channel.name == "global"))
         global_channel = result.scalar_one_or_none()
         if not global_channel:
@@ -60,6 +63,7 @@ async def websocket_global_chat(
             await db.commit()
             await db.refresh(global_channel)
 
+        # WebSocket message loop
         while True:
             try:
                 raw_data = await websocket.receive_text()
@@ -98,8 +102,11 @@ async def websocket_global_chat(
                     if conn in active_connections:
                         active_connections.remove(conn)
 
+            except WebSocketDisconnect as e:
+                logging.debug(f"WebSocket disconnected: code={e.code}")
+                break
             except Exception as e:
-                print(f"WebSocket receive/send error: {e}")
+                logging.debug(f"Unexpected WebSocket error: {e}")
                 break
 
     finally:
