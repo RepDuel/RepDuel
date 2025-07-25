@@ -105,7 +105,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   void _navigateToAddExercise() async {
     final newExercise = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => AddExerciseScreen()),
+      MaterialPageRoute(builder: (_) => const AddExerciseScreen()),
     );
 
     if (newExercise != null) {
