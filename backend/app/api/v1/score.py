@@ -3,7 +3,6 @@
 from uuid import UUID
 
 from app.api.v1.deps import get_db
-from app.models.scenario import Scenario
 from app.models.score import Score
 from app.schemas.score import ScoreCreate, ScoreOut, ScoreReadWithUser
 from app.services.energy_service import update_energy_if_personal_best

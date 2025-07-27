@@ -57,9 +57,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   }
 
   double _calculateOneRepMax(double weight, int reps) {
-    if (reps == 1) {
-      return weight;
-    }
+    if (reps == 1) return weight;
     return weight * (1 + reps / 30);
   }
 
@@ -75,7 +73,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     return 0;
   }
 
-  Future<void> _submitScore(double score) async {
+  Future<void> _submitScore(double score, int reps) async {
     final user = ref.read(authStateProvider).user;
     if (user == null) return;
 
@@ -84,6 +82,8 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       'user_id': user.id,
       'scenario_id': widget.scenarioId,
       'weight_lifted': score,
+      'reps': reps,
+      'sets': 1, // default 1 set
     };
 
     await http.post(
@@ -106,11 +106,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     });
 
     final previousBest = await _fetchPreviousBest(user.id, widget.scenarioId);
-
     final userMultiplier = user.weightMultiplier;
     final adjustedScore = oneRepMax / userMultiplier;
 
-    await _submitScore(adjustedScore);
+    await _submitScore(adjustedScore, reps);
 
     if (!mounted) return;
 
@@ -218,7 +217,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('·',
+                    child: Text('x',
                         style: TextStyle(color: Colors.white, fontSize: 24)),
                   ),
                   Column(
