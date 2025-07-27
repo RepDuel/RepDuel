@@ -11,10 +11,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/message.dart';
 import '../../../core/models/user.dart';
 import '../../../core/providers/auth_provider.dart';
-
 import '../widgets/chat_bubble.dart';
 import '../widgets/message_input_bar.dart';
-
 import '../../../widgets/main_bottom_nav_bar.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -24,15 +22,29 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
+class ChatDisplayMessage {
+  final Message message;
+  final User? user;
+  final String rankColor;
+  final String rankIconPath;
+
+  ChatDisplayMessage({
+    required this.message,
+    this.user,
+    required this.rankColor,
+    required this.rankIconPath,
+  });
+}
+
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   WebSocketChannel? channel;
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<Message> messages = [];
+  final List<ChatDisplayMessage> displayMessages = [];
   final Map<String, User> userCache = {};
   final Map<String, String> rankColorCache = {};
   final Map<String, String> rankIconPathCache = {};
-  User? currentUser;
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -43,18 +55,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _initChat() async {
     final auth = ref.read(authStateProvider);
     final token = auth.token;
-    currentUser = auth.user;
 
     if (token != null && token.isNotEmpty) {
       channel = WebSocketChannel.connect(
         Uri.parse('ws://localhost:8000/api/v1/ws/chat/global?token=$token'),
       );
 
-      channel!.stream.listen((data) {
+      channel!.stream.listen((data) async {
         try {
           final messageData = jsonDecode(data);
           final msg = Message.fromJson(messageData);
-          setState(() => messages.add(msg));
+          final enriched = await _enrichMessage(msg);
+          setState(() {
+            displayMessages.add(enriched);
+          });
           _scrollToBottom();
         } catch (e) {
           debugPrint('Error parsing WebSocket message: $e');
@@ -73,22 +87,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _loadHistory() async {
     final token = ref.read(authStateProvider).token;
 
-    if (token == null || token.isEmpty) {
-      return;
-    }
+    if (token == null || token.isEmpty) return;
 
     try {
       final res = await http.get(
         Uri.parse('http://localhost:8000/api/v1/history/global'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
+
       if (res.statusCode == 200) {
         final hist = (jsonDecode(res.body) as List)
             .map((j) => Message.fromJson(j))
             .toList();
-        setState(() => messages.insertAll(0, hist));
+
+        final enrichedList = await Future.wait(hist.map(_enrichMessage));
+
+        setState(() {
+          displayMessages.addAll(enrichedList);
+          isLoading = false;
+        });
         _scrollToBottom();
       }
     } catch (e) {
@@ -96,10 +113,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<ChatDisplayMessage> _enrichMessage(Message msg) async {
+    final user = await _fetchUser(msg.authorId);
+    final color = await _fetchRankColor(msg.authorId) ?? '#00ced1';
+    final iconPath = await _fetchRankIconPath(msg.authorId) ??
+        'assets/images/ranks/unranked.svg';
+
+    return ChatDisplayMessage(
+      message: msg,
+      user: user,
+      rankColor: color,
+      rankIconPath: iconPath,
+    );
+  }
+
   Future<User?> _fetchUser(String userId) async {
-    if (userCache.containsKey(userId)) {
-      return userCache[userId];
-    }
+    if (userCache.containsKey(userId)) return userCache[userId];
 
     final token = ref.read(authStateProvider).token;
     if (token == null) return null;
@@ -107,14 +136,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final res = await http.get(
         Uri.parse('http://localhost:8000/api/v1/users/$userId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
-
       if (res.statusCode == 200) {
-        final json = jsonDecode(res.body);
-        final user = User.fromJson(json);
+        final user = User.fromJson(jsonDecode(res.body));
         userCache[userId] = user;
         return user;
       }
@@ -126,9 +151,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<String?> _fetchRankColor(String userId) async {
-    if (rankColorCache.containsKey(userId)) {
-      return rankColorCache[userId];
-    }
+    if (rankColorCache.containsKey(userId)) return rankColorCache[userId];
 
     final token = ref.read(authStateProvider).token;
     if (token == null) return null;
@@ -136,27 +159,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final res = await http.get(
         Uri.parse('http://localhost:8000/api/v1/ranks/rank_color/$userId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
-
       if (res.statusCode == 200) {
         final color = jsonDecode(res.body);
         rankColorCache[userId] = color;
         return color;
       }
     } catch (e) {
-      debugPrint('Failed to fetch rank color for $userId: $e');
+      debugPrint('Failed to fetch rank color: $e');
     }
-
     return null;
   }
 
   Future<String?> _fetchRankIconPath(String userId) async {
-    if (rankIconPathCache.containsKey(userId)) {
-      return rankIconPathCache[userId];
-    }
+    if (rankIconPathCache.containsKey(userId)) return rankIconPathCache[userId];
 
     final token = ref.read(authStateProvider).token;
     if (token == null) return null;
@@ -164,20 +181,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final res = await http.get(
         Uri.parse('http://localhost:8000/api/v1/ranks/rank_icon/$userId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
-
       if (res.statusCode == 200) {
-        final path = jsonDecode(res.body);
-        rankIconPathCache[userId] = path;
-        return path;
+        final iconPath = jsonDecode(res.body);
+        rankIconPathCache[userId] = iconPath;
+        return iconPath;
       }
     } catch (e) {
-      debugPrint('Failed to fetch rank icon for $userId: $e');
+      debugPrint('Failed to fetch rank icon: $e');
     }
-
     return null;
   }
 
@@ -213,6 +226,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(authStateProvider).user;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -222,54 +237,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         centerTitle: true,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                return FutureBuilder<User?>(
-                  future: _fetchUser(message.authorId),
-                  builder: (context, userSnapshot) {
-                    final user = userSnapshot.data;
-                    return FutureBuilder<String?>(
-                      future: _fetchRankColor(message.authorId),
-                      builder: (context, colorSnapshot) {
-                        final color = colorSnapshot.data ?? '#00ced1';
-                        return FutureBuilder<String?>(
-                          future: _fetchRankIconPath(message.authorId),
-                          builder: (context, iconSnapshot) {
-                            final iconPath = iconSnapshot.data ??
-                                'assets/images/ranks/unranked.svg';
-                            final isMe = message.authorId ==
-                                ref.read(authStateProvider).user?.id;
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    itemCount: displayMessages.length,
+                    itemBuilder: (context, index) {
+                      final item = displayMessages[index];
+                      final isMe = item.message.authorId == currentUser?.id;
 
-                            return ChatBubble(
-                              message: message.content,
-                              color: color,
-                              rankIconPath: iconPath,
-                              displayName: user?.username ?? 'Unknown',
-                              avatarUrl: user?.avatarUrl ?? '',
-                              isMe: isMe,
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+                      return ChatBubble(
+                        message: item.message.content,
+                        color: item.rankColor,
+                        rankIconPath: item.rankIconPath,
+                        displayName: item.user?.username ?? 'Unknown',
+                        avatarUrl: item.user?.avatarUrl ?? '',
+                        isMe: isMe,
+                      );
+                    },
+                  ),
+                ),
+                MessageInputBar(
+                  controller: _controller,
+                  onSend: _sendMessage,
+                ),
+              ],
             ),
-          ),
-          MessageInputBar(
-            controller: _controller,
-            onSend: _sendMessage,
-          ),
-        ],
-      ),
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 3,
         onTap: (index) {
