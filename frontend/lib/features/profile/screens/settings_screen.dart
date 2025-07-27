@@ -44,13 +44,19 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
-    final controller =
-        TextEditingController(text: user.weight?.toString() ?? '');
+    final isKg = user.weightMultiplier == 1.0;
+    final unitLabel = isKg ? 'kg' : 'lbs';
+
+    final displayedWeight = user.weight != null
+        ? (user.weight! * user.weightMultiplier).toStringAsFixed(1)
+        : '';
+
+    final controller = TextEditingController(text: displayedWeight);
 
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Edit Weight (kg)"),
+        title: Text("Edit Weight ($unitLabel)"),
         backgroundColor: Colors.grey[900],
         titleTextStyle: const TextStyle(color: Colors.white),
         contentTextStyle: const TextStyle(color: Colors.white),
@@ -58,9 +64,9 @@ class SettingsScreen extends ConsumerWidget {
           controller: controller,
           keyboardType: TextInputType.number,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: "Enter weight in kg",
-            hintStyle: TextStyle(color: Colors.grey),
+          decoration: InputDecoration(
+            hintText: "Enter weight in $unitLabel",
+            hintStyle: const TextStyle(color: Colors.grey),
           ),
         ),
         actions: [
@@ -75,9 +81,11 @@ class SettingsScreen extends ConsumerWidget {
     );
 
     if (result != null) {
-      final weight = double.tryParse(result);
-      if (weight != null) {
-        await ref.read(authProvider.notifier).updateUser(weight: weight);
+      final input = double.tryParse(result);
+      if (input != null) {
+        final storedWeight =
+            input / user.weightMultiplier; // Convert back to kg
+        await ref.read(authProvider.notifier).updateUser(weight: storedWeight);
       }
     }
   }
@@ -252,10 +260,16 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const Divider(color: Colors.grey),
                 ListTile(
-                  title: const Text('Weight (kg)',
+                  title: const Text('Weight',
                       style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.weight?.toStringAsFixed(1) ?? "N/A",
-                      style: const TextStyle(color: Colors.grey)),
+                  subtitle: Text(
+                    user.weight != null
+                        ? (user.weight! * user.weightMultiplier)
+                                .toStringAsFixed(1) +
+                            (user.weightMultiplier == 1.0 ? " kg" : " lbs")
+                        : "N/A",
+                    style: const TextStyle(color: Colors.grey),
+                  ),
                   trailing: const Icon(Icons.edit, color: Colors.white),
                   onTap: () => _editWeight(context, ref),
                 ),
