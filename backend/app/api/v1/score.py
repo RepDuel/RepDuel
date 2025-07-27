@@ -7,7 +7,7 @@ from app.models.scenario import Scenario
 from app.models.score import Score
 from app.schemas.score import ScoreCreate, ScoreOut, ScoreReadWithUser
 from app.services.energy_service import update_energy_if_personal_best
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -118,3 +118,23 @@ async def get_user_high_score(
         )
 
     return score
+
+
+@router.delete("/user/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_all_user_scores(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(Score).where(Score.user_id == user_id)
+    result = await db.execute(stmt)
+    user_scores = result.scalars().all()
+
+    if not user_scores:
+        raise HTTPException(
+            status_code=404, detail="No scores found for this user"
+        )
+
+    for score in user_scores:
+        await db.delete(score)
+
+    await db.commit()
