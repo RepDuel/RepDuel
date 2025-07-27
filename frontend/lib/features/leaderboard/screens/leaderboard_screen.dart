@@ -1,10 +1,11 @@
-// frontend/lib/features/leaderboard/screens/leaderboard_screen.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class LeaderboardScreen extends StatefulWidget {
+import '../../../core/providers/auth_provider.dart';
+
+class LeaderboardScreen extends ConsumerStatefulWidget {
   final String scenarioId;
   final String liftName;
 
@@ -15,10 +16,10 @@ class LeaderboardScreen extends StatefulWidget {
   });
 
   @override
-  State<LeaderboardScreen> createState() => _LeaderboardScreenState();
+  ConsumerState<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
 
-class _LeaderboardScreenState extends State<LeaderboardScreen> {
+class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   List<dynamic> scores = [];
   bool isLoading = true;
   String? error;
@@ -59,6 +60,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).user;
+    final isKg = user?.weightMultiplier == 1.0;
+    final multiplier = user?.weightMultiplier ?? 1.0;
+    final unit = isKg ? 'kg' : 'lbs';
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -117,10 +123,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                           final score = scores[index];
                           final user = score['user'];
                           final username = user?['username'] ?? 'Anonymous';
-                          final weight = score['weight_lifted'] ?? 0;
-                          final formattedWeight = weight % 1 == 0
-                              ? weight.toInt().toString()
-                              : weight.toStringAsFixed(1);
+                          final rawScore = (score['weight_lifted'] ?? 0) as num;
+                          final adjusted = rawScore * multiplier;
+                          final display = adjusted % 1 == 0
+                              ? adjusted.toInt().toString()
+                              : adjusted.toStringAsFixed(1);
 
                           return Padding(
                             padding: const EdgeInsets.symmetric(
@@ -148,7 +155,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '$formattedWeight kg',
+                                  '$display $unit',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
