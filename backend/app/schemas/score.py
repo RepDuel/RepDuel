@@ -9,6 +9,8 @@ class ScoreCreate(BaseModel):
     user_id: UUID
     scenario_id: str
     weight_lifted: float
+    sets: int | None = None
+    reps: int | None = None
 
 
 class ScoreOut(BaseModel):
@@ -17,6 +19,8 @@ class ScoreOut(BaseModel):
     scenario_id: str
     weight_lifted: float
     created_at: datetime
+    sets: int | None = None
+    reps: int | None = None
 
     model_config = {"from_attributes": True}
 

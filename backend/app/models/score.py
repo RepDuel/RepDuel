@@ -15,6 +15,8 @@ class Score(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=False)
     weight_lifted = Column(Float, nullable=False)
+    reps = Column(Integer, nullable=True)
+    sets = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
