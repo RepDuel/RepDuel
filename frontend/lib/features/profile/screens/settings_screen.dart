@@ -1,8 +1,7 @@
-// frontend/lib/features/profile/screens/settings_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/providers/auth_provider.dart';
 
@@ -151,6 +150,50 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _resetProgress(BuildContext context, WidgetRef ref) async {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Reset Progress"),
+        content: const Text(
+            "Are you sure you want to delete all your scores? This cannot be undone."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Confirm")),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final response = await http.delete(
+      Uri.parse('http://localhost:8000/api/v1/scores/user/${user.id}'),
+      headers: {
+        'Authorization': 'Bearer ${ref.read(authProvider).token}',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final success = response.statusCode == 204;
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? 'Progress reset successfully.'
+            : 'Failed to reset progress.'),
+      ),
+    );
+  }
+
   bool _isValidImageUrl(String? url) {
     return url != null &&
         url.isNotEmpty &&
@@ -224,6 +267,14 @@ class SettingsScreen extends ConsumerWidget {
                       style: const TextStyle(color: Colors.grey)),
                   trailing: const Icon(Icons.edit, color: Colors.white),
                   onTap: () => _editWeightUnit(context, ref),
+                ),
+                const Divider(color: Colors.grey),
+                ListTile(
+                  title: const Text('Reset Progress',
+                      style: TextStyle(color: Colors.red)),
+                  trailing:
+                      const Icon(Icons.delete_forever, color: Colors.redAccent),
+                  onTap: () => _resetProgress(context, ref),
                 ),
               ],
             ),
