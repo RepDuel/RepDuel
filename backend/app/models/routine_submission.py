@@ -35,6 +35,7 @@ class RoutineSubmission(Base):
     duration = Column(Float, nullable=False)
     completion_timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
     status = Column(String, nullable=False)
+    title = Column(String, nullable=False)
 
     scenario_submissions = relationship(
         "RoutineScenarioSubmission",

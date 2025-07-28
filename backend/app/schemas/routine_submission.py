@@ -40,6 +40,7 @@ class RoutineSubmissionRead(BaseModel):
     duration: float
     completion_timestamp: datetime
     status: str
+    title: str
     scenarios: List[RoutineScenarioSubmission] = Field(
         ..., alias="scenario_submissions"
     )

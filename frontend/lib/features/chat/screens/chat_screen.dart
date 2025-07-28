@@ -1,7 +1,6 @@
 // frontend/lib/features/chat/screens/chat_screen.dart
 
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -66,6 +65,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           final messageData = jsonDecode(data);
           final msg = Message.fromJson(messageData);
           final enriched = await _enrichMessage(msg);
+          if (!mounted) return;
           setState(() {
             displayMessages.add(enriched);
           });
@@ -101,7 +101,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             .toList();
 
         final enrichedList = await Future.wait(hist.map(_enrichMessage));
-
+        if (!mounted) return;
         setState(() {
           displayMessages.addAll(enrichedList);
           isLoading = false;
@@ -173,7 +173,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<String?> _fetchRankIconPath(String userId) async {
-    if (rankIconPathCache.containsKey(userId)) return rankIconPathCache[userId];
+    if (rankIconPathCache.containsKey(userId)) {
+      return rankIconPathCache[userId];
+    }
 
     final token = ref.read(authStateProvider).token;
     if (token == null) return null;

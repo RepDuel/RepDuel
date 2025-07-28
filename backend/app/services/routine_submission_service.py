@@ -21,6 +21,30 @@ async def get_user_submissions(
     return result.scalars().all()
 
 
+def generate_strava_title(scenarios: List[dict], timestamp: datetime) -> str:
+    """
+    Generates a Strava-style workout title using time of day and the first trained muscle group.
+    """
+    # Determine time of day
+    hour = timestamp.hour
+    if 5 <= hour < 12:
+        time_label = "Morning"
+    elif 12 <= hour < 17:
+        time_label = "Afternoon"
+    elif 17 <= hour < 21:
+        time_label = "Evening"
+    else:
+        time_label = "Night"
+
+    # Find first muscle group from scenario metadata
+    for scenario in scenarios:
+        muscles = getattr(scenario, "primary_muscles", None)
+        if muscles and isinstance(muscles, list) and muscles:
+            return f"{time_label} {muscles[0]} Workout"
+
+    return f"{time_label} Workout"
+
+
 async def create_routine_submission(
     db: AsyncSession,
     routine_submission_data: RoutineSubmissionCreate,
@@ -34,6 +58,12 @@ async def create_routine_submission(
     if not routine:
         raise ValueError("Routine not found.")
 
+    # Compute title based on first scenario with muscles
+    title = generate_strava_title(
+        routine_submission_data.scenarios,
+        routine_submission_data.completion_timestamp or datetime.utcnow()
+    )
+
     # Create the new routine submission record
     routine_submission = RoutineSubmission(
         routine_id=routine_submission_data.routine_id,
@@ -41,6 +71,7 @@ async def create_routine_submission(
         duration=routine_submission_data.duration,
         completion_timestamp=routine_submission_data.completion_timestamp,
         status=routine_submission_data.status,
+        title=title,
     )
 
     # Add associated scenario submissions
