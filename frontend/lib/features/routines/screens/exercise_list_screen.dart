@@ -1,3 +1,5 @@
+// frontend/lib/features/routines/screens/exercise_list_screen.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +23,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   late Future<List<dynamic>> exercises;
   List<dynamic> exercisesList = [];
   num totalVolume = 0;
+  late DateTime startTime;
 
   Future<List<dynamic>> fetchExercises() async {
     final response = await http.get(
@@ -46,6 +49,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   @override
   void initState() {
     super.initState();
+    startTime = DateTime.now();
     exercises = fetchExercises();
   }
 
@@ -63,11 +67,14 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       return;
     }
 
+    final now = DateTime.now();
+    final durationInMinutes = now.difference(startTime).inSeconds / 60.0;
+
     final submissionBody = {
       'routine_id': widget.routineId,
       'user_id': user.id,
-      'duration': 13.0,
-      'completion_timestamp': DateTime.now().toIso8601String(),
+      'duration': durationInMinutes,
+      'completion_timestamp': now.toIso8601String(),
       'status': 'completed',
       'scenarios': sets.map((set) => set.toJson()).toList(),
     };

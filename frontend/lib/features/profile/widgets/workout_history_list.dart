@@ -1,5 +1,3 @@
-// frontend/lib/features/profile/widgets/workout_history_list.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -43,9 +41,11 @@ class WorkoutHistoryList extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Routine ID: ${entry.routineId}',
+                  Text(entry.title,
                       style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Text('Time: ${entry.duration} minutes',
                       style: const TextStyle(color: Colors.white70)),

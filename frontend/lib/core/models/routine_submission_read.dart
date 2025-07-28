@@ -30,6 +30,7 @@ class RoutineSubmissionRead {
   final double duration;
   final String completionTimestamp;
   final String status;
+  final String title;
   final List<RoutineScenarioSubmission> scenarios;
 
   RoutineSubmissionRead({
@@ -38,6 +39,7 @@ class RoutineSubmissionRead {
     required this.duration,
     required this.completionTimestamp,
     required this.status,
+    required this.title,
     required this.scenarios,
   });
 
@@ -48,6 +50,7 @@ class RoutineSubmissionRead {
       duration: (json['duration'] as num).toDouble(),
       completionTimestamp: json['completion_timestamp'],
       status: json['status'],
+      title: json['title'],
       scenarios: (json['scenario_submissions'] as List)
           .map((e) => RoutineScenarioSubmission.fromJson(e))
           .toList(),

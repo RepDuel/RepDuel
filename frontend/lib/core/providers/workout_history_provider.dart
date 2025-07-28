@@ -1,3 +1,5 @@
+// frontend/lib/core/providers/workout_history_provider.dart
+
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/secure_storage_service.dart';
