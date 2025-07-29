@@ -20,6 +20,11 @@ class _NormalScreenState extends State<NormalScreen> {
   bool isLoading = true;
   String? error;
 
+  static const _headerStyle = TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.bold,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -27,6 +32,11 @@ class _NormalScreenState extends State<NormalScreen> {
   }
 
   Future<void> _fetchScenarios() async {
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
+
     try {
       final response = await http.get(
         Uri.parse('http://localhost:8000/api/v1/scenarios/'),
@@ -35,9 +45,10 @@ class _NormalScreenState extends State<NormalScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as List;
         data.sort(
-            (a, b) => (a['name'] ?? '').toString().toLowerCase().compareTo(
-                  (b['name'] ?? '').toString().toLowerCase(),
-                ));
+          (a, b) => (a['name'] ?? '').toString().toLowerCase().compareTo(
+                (b['name'] ?? '').toString().toLowerCase(),
+              ),
+        );
         setState(() {
           scenarios = data;
           isLoading = false;
@@ -92,60 +103,112 @@ class _NormalScreenState extends State<NormalScreen> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : error != null
+          : (error != null)
               ? Center(
-                  child: Text(
-                    error!,
-                    style: const TextStyle(color: Colors.white),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(error!, style: const TextStyle(color: Colors.white)),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _fetchScenarios,
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
                 )
-              : ListView.builder(
-                  itemCount: scenarios.length,
-                  itemBuilder: (context, index) {
-                    final scenario = scenarios[index];
-                    final name = scenario['name'] ?? 'Unnamed Scenario';
-                    final id = scenario['id'];
-
-                    return Container(
+              : Column(
+                  children: [
+                    // Column header
+                    Container(
                       margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
+                          horizontal: 16, vertical: 8),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 0),
+                          horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[900],
+                        color: Colors.black,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                if (id != null) {
-                                  _goToScenario(id, name);
-                                }
-                              },
-                              child: Text(
-                                name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
+                            child: Text('Lift', style: _headerStyle),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.leaderboard,
-                                color: Colors.blue),
-                            onPressed: () {
-                              if (id != null) {
-                                _goToLeaderboard(id, name);
-                              }
-                            },
+                          Expanded(
+                            child: Center(
+                              child: Text('Leaderboard', style: _headerStyle),
+                            ),
                           ),
                         ],
                       ),
-                    );
-                  },
+                    ),
+
+                    // List of scenarios
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: () async => _fetchScenarios(),
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: scenarios.length,
+                          itemBuilder: (context, index) {
+                            final scenario = scenarios[index];
+                            final name =
+                                (scenario['name'] ?? 'Unnamed Scenario')
+                                    .toString();
+                            final id = scenario['id']?.toString();
+
+                            return Container(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 0),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[900],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        if (id != null) {
+                                          _goToScenario(id, name);
+                                        }
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 12.0),
+                                        child: Text(
+                                          name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Center(
+                                      child: IconButton(
+                                        icon: const Icon(Icons.leaderboard,
+                                            color: Colors.blue),
+                                        onPressed: () {
+                                          if (id != null) {
+                                            _goToLeaderboard(id, name);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 0,
