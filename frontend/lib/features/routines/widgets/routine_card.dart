@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 class RoutineCard extends StatelessWidget {
   final String name;
-  final String imageUrl;
+  final String? imageUrl; // nullable now
   final String duration;
-  final int difficultyLevel; // 1 to 4
+  final int difficultyLevel; // 1..4
 
   const RoutineCard({
     super.key,
@@ -32,6 +32,32 @@ class RoutineCard extends StatelessWidget {
     return Colors.grey[800]!;
   }
 
+  Widget _buildThumb() {
+    const placeholder = 'assets/images/placeholder.png';
+
+    // If it's a network URL, try it and fall back to asset on error.
+    if (imageUrl != null &&
+        (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://'))) {
+      return Image.network(
+        imageUrl!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => Image.asset(
+          placeholder,
+          fit: BoxFit.cover,
+          width: double.infinity,
+        ),
+      );
+    }
+
+    // Default to local asset
+    return Image.asset(
+      placeholder,
+      fit: BoxFit.cover,
+      width: double.infinity,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -40,21 +66,14 @@ class RoutineCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thumbnail
           AspectRatio(
-            aspectRatio: 1, // Make it a square
+            aspectRatio: 1,
             child: ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-              ),
+              child: _buildThumb(),
             ),
           ),
-
-          // Info
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -77,7 +96,6 @@ class RoutineCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Difficulty Bars
                 Row(
                   children: List.generate(4, (index) {
                     return Container(
