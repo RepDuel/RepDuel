@@ -11,6 +11,7 @@ import '../widgets/add_routine_card.dart';
 import 'routine_play_screen.dart';
 import 'custom_routine_screen.dart';
 import '../../../core/models/routine.dart';
+import '../../../core/services/secure_storage_service.dart';
 
 class RoutinesScreen extends StatefulWidget {
   const RoutinesScreen({super.key});
@@ -28,14 +29,29 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     _future = _fetchRoutines();
   }
 
+  // Custom error type so we can render a login button on 401s.
+  static const _unauthorizedMessage = 'Unauthorized (401). Please log in.';
+  static const _genericFailMessage = 'Failed to load routines';
+
   Future<List<Routine>> _fetchRoutines() async {
-    final response =
-        await http.get(Uri.parse('http://localhost:8000/api/v1/routines/'));
+    final storage = SecureStorageService();
+    final token = await storage.readToken(); // Must be set after login
+
+    final response = await http.get(
+      Uri.parse('http://localhost:8000/api/v1/routines/'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      },
+    );
+
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
       return data.map((json) => Routine.fromJson(json)).toList();
+    } else if (response.statusCode == 401) {
+      throw Exception(_unauthorizedMessage);
     } else {
-      throw Exception('Failed to load routines');
+      throw Exception('$_genericFailMessage (HTTP ${response.statusCode})');
     }
   }
 
@@ -74,25 +90,43 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
       body: FutureBuilder<List<Routine>>(
         future: _future,
         builder: (context, snapshot) {
+          // Loading
           if (snapshot.connectionState == ConnectionState.waiting &&
               !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
+
+          // Error
           if (snapshot.hasError) {
+            final message = snapshot.error?.toString() ?? _genericFailMessage;
+            final isUnauthorized = message.contains('401');
+
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Error: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.white)),
+                  Text(
+                    message,
+                    style: const TextStyle(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 12),
-                  ElevatedButton(
-                      onPressed: _refresh, child: const Text('Retry')),
+                  if (isUnauthorized)
+                    ElevatedButton(
+                      onPressed: () => context.go('/login'),
+                      child: const Text('Login'),
+                    )
+                  else
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      child: const Text('Retry'),
+                    ),
                 ],
               ),
             );
           }
 
+          // Data
           final routines = snapshot.data ?? <Routine>[];
 
           return RefreshIndicator(
@@ -128,7 +162,8 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                     imageUrl:
                         routine.imageUrl ?? 'https://via.placeholder.com/150',
                     duration: '${routine.totalDurationMinutes} min',
-                    difficultyLevel: 2,
+                    difficultyLevel:
+                        2, // TODO: bind real difficulty when available
                   ),
                 );
               },
