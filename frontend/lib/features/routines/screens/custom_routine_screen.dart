@@ -36,6 +36,26 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
     setState(() => _items.removeAt(index));
   }
 
+  Future<void> _saveRoutine() async {
+    if (_items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add at least one exercise first.')),
+      );
+      return;
+    }
+
+    // TODO: Collect routine metadata (e.g., name, duration, difficulty) if desired.
+    // TODO: POST to backend (e.g., /api/v1/users/me/routines) and send _items as steps.
+
+    // For now, simulate success and pop to previous screen.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Routine saved (local demo).')),
+    );
+
+    // If the caller awaits the result, it can refresh on `true`.
+    Navigator.of(context).pop(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,18 +142,40 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
               ),
       ),
 
-      // Bottom CTA: Add Exercise
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton(
-          onPressed: _addExercise,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            textStyle: const TextStyle(fontSize: 16),
+      // Bottom CTAs: Add Exercise | Save Routine
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _addExercise,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.green),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                  child: const Text('Add Exercise'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _items.isEmpty ? null : _saveRoutine,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                  child: const Text('Save Routine'),
+                ),
+              ),
+            ],
           ),
-          child: const Text('Add Exercise'),
         ),
       ),
     );
