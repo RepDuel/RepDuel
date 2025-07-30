@@ -196,14 +196,13 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
             : Column(
                 children: [
                   // Table headers
-                  Row(
+                  const Row(
                     children: [
                       Expanded(
                           flex: 2, child: Text('Name', style: headerStyle)),
-                      // FIX: remove const because headerStyle is a variable (even if const)
                       Expanded(child: Text('Sets', style: headerStyle)),
                       Expanded(child: Text('Reps', style: headerStyle)),
-                      const SizedBox(width: 40),
+                      SizedBox(width: 40),
                     ],
                   ),
                   const SizedBox(height: 8),

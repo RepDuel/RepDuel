@@ -161,8 +161,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                     name: routine.name,
                     imageUrl: routine.imageUrl,
                     duration: '${routine.totalDurationMinutes} min',
-                    difficultyLevel:
-                        2, // TODO: bind real difficulty when available
+                    difficultyLevel: 2,
                   ),
                 );
               },
