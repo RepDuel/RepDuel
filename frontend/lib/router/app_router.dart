@@ -1,3 +1,4 @@
+// frontend/lib/router/app_router.dart
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,13 +12,18 @@ import '../features/chat/screens/chat_screen.dart';
 import '../features/normal/screens/normal_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
+import '../features/routines/screens/custom_routine_screen.dart';
+import '../features/routines/screens/add_exercise_screen.dart';
 import '../core/providers/auth_provider.dart';
 
+/// Riverpod-backed GoRouter. Rebuilds when [authProvider] changes.
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
 
   return GoRouter(
+    // Change this if you want a different app entry
     initialLocation: '/profile',
+
     routes: [
       GoRoute(
         path: '/normal',
@@ -31,6 +37,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/routines',
         builder: (context, state) => const RoutinesScreen(),
       ),
+
+      // Custom routine flow
+      GoRoute(
+        path: '/routines/custom',
+        builder: (context, state) => const CustomRoutineScreen(),
+      ),
+      GoRoute(
+        path: '/routines/add-exercise',
+        builder: (context, state) => const AddExerciseScreen(),
+      ),
+
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileWrapper(),
@@ -43,6 +60,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
+
+      // Auth
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
@@ -51,6 +70,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
+
+      // Dynamic routes
       GoRoute(
         path: '/exercise_list/:routineId',
         builder: (context, state) {
@@ -70,6 +91,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
     ],
+
+    /// Simple auth guard:
+    /// - Unauthed users are redirected to /login (except on /login or /register).
+    /// - Authed users visiting /login are redirected to /profile.
     redirect: (context, state) {
       final isLoggedIn = auth.user != null;
       final path = state.uri.path;

@@ -9,6 +9,7 @@ import '../../../widgets/main_bottom_nav_bar.dart';
 import '../widgets/routine_card.dart';
 import '../widgets/add_routine_card.dart';
 import 'routine_play_screen.dart';
+import 'custom_routine_screen.dart';
 import '../../../core/models/routine.dart';
 
 class RoutinesScreen extends StatefulWidget {
@@ -46,10 +47,10 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
   }
 
   void _onAddRoutinePressed() {
-    // EITHER: open a creation flow route…
-    context.push('/routines/create'); // TODO: ensure this route exists
-    // OR: show a bottom sheet with options (create/duplicate). If you prefer that,
-    // replace the line above with a call to a sheet function.
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CustomRoutineScreen()),
+    );
   }
 
   @override
@@ -107,10 +108,8 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
               ),
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  // Add tile first
                   return AddRoutineCard(onPressed: _onAddRoutinePressed);
                 }
-
                 final routine = routines[index - 1];
                 return GestureDetector(
                   onTap: () async {
@@ -120,7 +119,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                         builder: (_) => RoutinePlayScreen(routine: routine),
                       ),
                     );
-                    // Optionally refresh when returning from play
+                    // Optional: refresh on return
                     // ignore: use_build_context_synchronously
                     _refresh();
                   },
@@ -129,8 +128,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                     imageUrl:
                         routine.imageUrl ?? 'https://via.placeholder.com/150',
                     duration: '${routine.totalDurationMinutes} min',
-                    difficultyLevel:
-                        2, // TODO: bind real difficulty when available
+                    difficultyLevel: 2,
                   ),
                 );
               },
