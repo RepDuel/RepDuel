@@ -45,22 +45,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final Map<String, String> rankIconPathCache = {};
   bool isLoading = true;
 
+  // Cache auth data so we don't access `ref` from async callbacks after dispose.
+  String? _token;
+  String? _currentUserId;
+
   @override
   void initState() {
     super.initState();
+
+    // Safe to read here; we cache for later async use.
+    final auth = ref.read(authStateProvider);
+    _token = auth.token;
+    _currentUserId = auth.user?.id;
+
     _initChat();
   }
 
   Future<void> _initChat() async {
-    final auth = ref.read(authStateProvider);
-    final token = auth.token;
+    final token = _token;
 
     if (token != null && token.isNotEmpty) {
+      // Open WS using cached token (no ref access here).
       channel = WebSocketChannel.connect(
         Uri.parse('ws://localhost:8000/api/v1/ws/chat/global?token=$token'),
       );
 
       channel!.stream.listen((data) async {
+        // If the widget was disposed while awaiting messages, bail out.
+        if (!mounted) return;
+
         try {
           final messageData = jsonDecode(data);
           final msg = Message.fromJson(messageData);
@@ -76,18 +89,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }, onError: (e) {
         debugPrint('WebSocket error: $e');
         if (mounted) {
+          // Optional: avoid popping if this screen isn't on top.
+          // You can show a SnackBar instead if preferred.
           context.pop();
         }
       });
 
       await _loadHistory();
+    } else {
+      // No token -> not logged in; avoid loading/connecting.
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _loadHistory() async {
-    final token = ref.read(authStateProvider).token;
-
-    if (token == null || token.isEmpty) return;
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+      return;
+    }
 
     try {
       final res = await http.get(
@@ -95,21 +121,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         headers: {'Authorization': 'Bearer $token'},
       );
 
+      if (!mounted) return;
+
       if (res.statusCode == 200) {
         final hist = (jsonDecode(res.body) as List)
             .map((j) => Message.fromJson(j))
             .toList();
 
+        // Enrich without touching `ref` inside the helpers.
         final enrichedList = await Future.wait(hist.map(_enrichMessage));
+
         if (!mounted) return;
         setState(() {
           displayMessages.addAll(enrichedList);
           isLoading = false;
         });
         _scrollToBottom();
+      } else {
+        if (mounted) {
+          setState(() => isLoading = false);
+        }
       }
     } catch (e) {
+      // If disposed during await, `mounted` will be false; no `ref` access here.
       debugPrint('Error loading chat history: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -130,8 +168,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<User?> _fetchUser(String userId) async {
     if (userCache.containsKey(userId)) return userCache[userId];
 
-    final token = ref.read(authStateProvider).token;
-    if (token == null) return null;
+    final token = _token;
+    if (token == null || token.isEmpty) return null;
 
     try {
       final res = await http.get(
@@ -153,8 +191,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<String?> _fetchRankColor(String userId) async {
     if (rankColorCache.containsKey(userId)) return rankColorCache[userId];
 
-    final token = ref.read(authStateProvider).token;
-    if (token == null) return null;
+    final token = _token;
+    if (token == null || token.isEmpty) return null;
 
     try {
       final res = await http.get(
@@ -177,8 +215,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return rankIconPathCache[userId];
     }
 
-    final token = ref.read(authStateProvider).token;
-    if (token == null) return null;
+    final token = _token;
+    if (token == null || token.isEmpty) return null;
 
     try {
       final res = await http.get(
@@ -198,20 +236,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _sendMessage() {
     final content = _controller.text.trim();
-    if (content.isNotEmpty && channel != null) {
-      final message = {
-        'content': content,
-        'authorId': ref.read(authStateProvider).user?.id,
-        'channelId': '00000000-0000-0000-0000-000000000000',
-      };
+    if (content.isEmpty || channel == null) return;
 
+    final message = {
+      'content': content,
+      'authorId': _currentUserId, // use cached id; no `ref.read`
+      'channelId': '00000000-0000-0000-0000-000000000000',
+    };
+
+    try {
       channel!.sink.add(jsonEncode(message));
       _controller.clear();
+    } catch (e) {
+      debugPrint('Failed to send message: $e');
     }
   }
 
   void _scrollToBottom() {
+    if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
@@ -220,7 +264,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
-    channel?.sink.close(1000, 'Client closed connection');
+    // Close WS first to stop incoming stream events.
+    try {
+      channel?.sink.close(1000, 'Client closed connection');
+    } catch (_) {}
+    channel = null;
+
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -228,6 +277,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watching here is safe; build only runs while mounted.
     final currentUser = ref.watch(authStateProvider).user;
 
     return Scaffold(
