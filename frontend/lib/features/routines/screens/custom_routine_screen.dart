@@ -5,10 +5,23 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../screens/add_exercise_screen.dart';
-import '../../../core/services/secure_storage_service.dart'; // adjust if your path differs
+import '../../../core/models/routine.dart';
+import '../../../core/services/secure_storage_service.dart';
+
+enum RoutineEditorMode { create, edit }
 
 class CustomRoutineScreen extends StatefulWidget {
-  const CustomRoutineScreen({super.key});
+  /// Create mode
+  const CustomRoutineScreen({super.key})
+      : mode = RoutineEditorMode.create,
+        initial = null;
+
+  /// Edit mode convenience constructor
+  const CustomRoutineScreen.edit({super.key, required this.initial})
+      : mode = RoutineEditorMode.edit;
+
+  final RoutineEditorMode mode;
+  final Routine? initial;
 
   @override
   State<CustomRoutineScreen> createState() => _CustomRoutineScreenState();
@@ -18,6 +31,39 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
   // Local list of selected exercises
   final List<_CustomExercise> _items = [];
   bool _saving = false;
+
+  // Details fields
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _imgCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefill from initial when editing
+    if (widget.mode == RoutineEditorMode.edit && widget.initial != null) {
+      final r = widget.initial!;
+      _nameCtrl = TextEditingController(text: r.name);
+      _imgCtrl = TextEditingController(text: r.imageUrl ?? '');
+      _items.addAll(
+        r.scenarios.map((s) => _CustomExercise(
+              scenarioId: s.scenarioId,
+              name: s.scenarioId,
+              sets: s.sets,
+              reps: s.reps,
+            )),
+      );
+    } else {
+      _nameCtrl = TextEditingController(text: 'Custom Routine');
+      _imgCtrl = TextEditingController(text: '');
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _imgCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _addExercise() async {
     final result = await Navigator.push<Map<String, dynamic>>(
@@ -65,40 +111,6 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
         _items[index] = _items[index].copyWith(reps: _items[index].reps - 1));
   }
 
-  Future<String?> _promptForName() async {
-    final ctrl = TextEditingController(text: 'Custom Routine');
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text('Name your routine',
-              style: TextStyle(color: Colors.white)),
-          content: TextField(
-            controller: ctrl,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: 'e.g., Push Day',
-              hintStyle: TextStyle(color: Colors.white54),
-            ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel')),
-            TextButton(
-              onPressed: () {
-                final name = ctrl.text.trim();
-                Navigator.pop(ctx, name.isEmpty ? null : name);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _saveRoutine() async {
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -106,14 +118,19 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
       );
       return;
     }
-
-    final name = await _promptForName();
-    if (!mounted || name == null) return;
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a routine name.')),
+      );
+      return;
+    }
 
     setState(() => _saving = true);
 
     final payload = {
       "name": name,
+      "image_url": _imgCtrl.text.trim().isEmpty ? null : _imgCtrl.text.trim(),
       "scenarios": _items
           .map((e) => {
                 "scenario_id": e.scenarioId,
@@ -128,37 +145,65 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
     final token = await storage.readToken();
 
     try {
-      final res = await http.post(
-        Uri.parse('http://localhost:8000/api/v1/routines/'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null && token.isNotEmpty)
-            'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(payload),
-      );
+      late final http.Response res;
 
-      if (res.statusCode == 201) {
+      if (widget.mode == RoutineEditorMode.edit && widget.initial != null) {
+        // PUT /routines/{id}
+        final id = widget.initial!.id;
+        res = await http.put(
+          Uri.parse('http://localhost:8000/api/v1/routines/$id'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(payload),
+        );
+      } else {
+        // POST /routines/
+        res = await http.post(
+          Uri.parse('http://localhost:8000/api/v1/routines/'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(payload),
+        );
+      }
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Routine saved.')),
+          SnackBar(
+            content: Text(widget.mode == RoutineEditorMode.edit
+                ? 'Routine updated.'
+                : 'Routine saved.'),
+          ),
         );
         Navigator.of(context).pop(true); // let caller refresh
       } else if (res.statusCode == 401) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please log in to save routines.')),
+          const SnackBar(content: Text('Please log in.')),
+        );
+      } else if (res.statusCode == 403) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Not allowed to modify this routine (owner only).')),
         );
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save (HTTP ${res.statusCode}).')),
+          SnackBar(content: Text('Failed (HTTP ${res.statusCode}).')),
         );
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save routine: $e')),
+        SnackBar(content: Text('Network error: $e')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -167,14 +212,14 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // FIX: make this const (satisfies prefer_const_declarations)
     const headerStyle = TextStyle(color: Colors.white70, fontSize: 16);
     const cellStyle = TextStyle(color: Colors.white, fontSize: 16);
+    final isEdit = widget.mode == RoutineEditorMode.edit;
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Custom Routine'),
+        title: Text(isEdit ? 'Edit Routine' : 'Custom Routine'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -185,103 +230,145 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: _items.isEmpty
-            ? const Center(
-                child: Text(
-                  'No exercises yet.\nTap "Add Exercise" to start.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-              )
-            : Column(
-                children: [
-                  // Table headers
-                  const Row(
-                    children: [
-                      Expanded(
-                          flex: 2, child: Text('Name', style: headerStyle)),
-                      Expanded(child: Text('Sets', style: headerStyle)),
-                      Expanded(child: Text('Reps', style: headerStyle)),
-                      SizedBox(width: 40),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Rows
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final e = _items[index];
-                        return Row(
-                          children: [
-                            // Name
-                            Expanded(
-                              flex: 2,
-                              child: Text(e.name, style: cellStyle),
-                            ),
-                            // Sets controls
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  IconButton(
-                                    onPressed:
-                                        _saving ? null : () => _decSets(index),
-                                    icon: const Icon(Icons.remove,
-                                        color: Colors.white70),
-                                    tooltip: 'Decrease sets',
-                                  ),
-                                  Text('${e.sets}', style: cellStyle),
-                                  IconButton(
-                                    onPressed:
-                                        _saving ? null : () => _incSets(index),
-                                    icon: const Icon(Icons.add,
-                                        color: Colors.white70),
-                                    tooltip: 'Increase sets',
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Reps controls
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  IconButton(
-                                    onPressed:
-                                        _saving ? null : () => _decReps(index),
-                                    icon: const Icon(Icons.remove,
-                                        color: Colors.white70),
-                                    tooltip: 'Decrease reps',
-                                  ),
-                                  Text('${e.reps}', style: cellStyle),
-                                  IconButton(
-                                    onPressed:
-                                        _saving ? null : () => _incReps(index),
-                                    icon: const Icon(Icons.add,
-                                        color: Colors.white70),
-                                    tooltip: 'Increase reps',
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline,
-                                  color: Colors.redAccent),
-                              tooltip: 'Remove',
-                              onPressed:
-                                  _saving ? null : () => _removeAt(index),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ],
+        child: Column(
+          children: [
+            // Name + Image URL inputs (always visible)
+            TextField(
+              controller: _nameCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Routine name',
+                labelStyle: TextStyle(color: Colors.white70),
+                hintText: 'e.g., Push Day',
+                hintStyle: TextStyle(color: Colors.white54),
+                enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white54)),
               ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _imgCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Image URL (optional)',
+                labelStyle: TextStyle(color: Colors.white70),
+                hintText: 'https://...',
+                hintStyle: TextStyle(color: Colors.white54),
+                enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white54)),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // List of exercises
+            Expanded(
+              child: _items.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No exercises yet.\nTap "Add Exercise" to start.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        const Row(
+                          children: [
+                            Expanded(
+                                flex: 2,
+                                child: Text('Name', style: headerStyle)),
+                            Expanded(child: Text('Sets', style: headerStyle)),
+                            Expanded(child: Text('Reps', style: headerStyle)),
+                            SizedBox(width: 40),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: _items.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final e = _items[index];
+                              return Row(
+                                children: [
+                                  // Name
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(e.name, style: cellStyle),
+                                  ),
+                                  // Sets controls
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          onPressed: _saving
+                                              ? null
+                                              : () => _decSets(index),
+                                          icon: const Icon(Icons.remove,
+                                              color: Colors.white70),
+                                          tooltip: 'Decrease sets',
+                                        ),
+                                        Text('${e.sets}', style: cellStyle),
+                                        IconButton(
+                                          onPressed: _saving
+                                              ? null
+                                              : () => _incSets(index),
+                                          icon: const Icon(Icons.add,
+                                              color: Colors.white70),
+                                          tooltip: 'Increase sets',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Reps controls
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          onPressed: _saving
+                                              ? null
+                                              : () => _decReps(index),
+                                          icon: const Icon(Icons.remove,
+                                              color: Colors.white70),
+                                          tooltip: 'Decrease reps',
+                                        ),
+                                        Text('${e.reps}', style: cellStyle),
+                                        IconButton(
+                                          onPressed: _saving
+                                              ? null
+                                              : () => _incReps(index),
+                                          icon: const Icon(Icons.add,
+                                              color: Colors.white70),
+                                          tooltip: 'Increase reps',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline,
+                                        color: Colors.redAccent),
+                                    tooltip: 'Remove',
+                                    onPressed:
+                                        _saving ? null : () => _removeAt(index),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
 
-      // Bottom CTAs: Add Exercise | Save Routine
+      // Bottom CTAs: Add Exercise | Save
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
@@ -316,7 +403,7 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Save Routine'),
+                      : Text(isEdit ? 'Save Changes' : 'Save Routine'),
                 ),
               ),
             ],

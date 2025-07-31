@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
 
@@ -12,15 +13,16 @@ import 'routine_play_screen.dart';
 import 'custom_routine_screen.dart';
 import '../../../core/models/routine.dart';
 import '../../../core/services/secure_storage_service.dart';
+import '../../../core/providers/auth_provider.dart'; // to get current user id
 
-class RoutinesScreen extends StatefulWidget {
+class RoutinesScreen extends ConsumerStatefulWidget {
   const RoutinesScreen({super.key});
 
   @override
-  State<RoutinesScreen> createState() => _RoutinesScreenState();
+  ConsumerState<RoutinesScreen> createState() => _RoutinesScreenState();
 }
 
-class _RoutinesScreenState extends State<RoutinesScreen> {
+class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
   late Future<List<Routine>> _future;
 
   // Track which routine ids are being deleted to avoid double taps and show progress.
@@ -69,7 +71,9 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CustomRoutineScreen()),
-    );
+    ).then((changed) {
+      if (changed == true && mounted) _refresh();
+    });
   }
 
   Future<void> _confirmAndDeleteRoutine(Routine routine) async {
@@ -171,8 +175,20 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     }
   }
 
-  Widget _buildRoutineTile(Routine routine) {
+  Future<void> _editRoutine(Routine routine) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomRoutineScreen.edit(initial: routine),
+      ),
+    );
+    if (changed == true && mounted) _refresh();
+  }
+
+  Widget _buildRoutineTile(Routine routine, String? currentUserId) {
     final isDeleting = _deletingIds.contains(routine.id);
+    final canEditDelete =
+        routine.userId != null && routine.userId == currentUserId;
 
     return Stack(
       children: [
@@ -188,7 +204,6 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
             if (!mounted) return;
             _refresh();
           },
-          onLongPress: () => _confirmAndDeleteRoutine(routine),
           child: RoutineCard(
             name: routine.name,
             imageUrl:
@@ -198,42 +213,55 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
           ),
         ),
 
-        // Menu button (top-right) with Delete action
-        Positioned(
-          top: 8,
-          right: 8,
-          child: Material(
-            color: Colors.transparent,
-            child: PopupMenuButton<String>(
-              tooltip: 'Options',
-              onSelected: (value) {
-                if (value == 'delete') {
-                  _confirmAndDeleteRoutine(routine);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Delete'),
-                    ],
+        // Menu button (top-right) with Edit/Delete actions for owner only
+        if (canEditDelete)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Material(
+              color: Colors.transparent,
+              child: PopupMenuButton<String>(
+                tooltip: 'Options',
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _editRoutine(routine);
+                  } else if (value == 'delete') {
+                    _confirmAndDeleteRoutine(routine);
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit),
+                        SizedBox(width: 8),
+                        Text('Edit'),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-              icon: const Icon(Icons.more_vert, color: Colors.white70),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete'),
+                      ],
+                    ),
+                  ),
+                ],
+                icon: const Icon(Icons.more_vert, color: Colors.white70),
+              ),
             ),
           ),
-        ),
 
         // Deleting overlay
         if (isDeleting)
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(child: CircularProgressIndicator()),
@@ -245,6 +273,9 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(authStateProvider).user;
+    final currentUserId = currentUser?.id;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -319,7 +350,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                   return AddRoutineCard(onPressed: _onAddRoutinePressed);
                 }
                 final routine = routines[index - 1];
-                return _buildRoutineTile(routine);
+                return _buildRoutineTile(routine, currentUserId);
               },
             ),
           );
@@ -328,11 +359,10 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 2,
         onTap: (index) {
-          // Keep your routing semantics; adjust if needed.
           if (index == 0) {
             context.go('/ranked');
           } else if (index == 1) {
-            // Stay or navigate to routines tab depending on your app map.
+            // stay
           } else if (index == 2) {
             context.go('/profile');
           }

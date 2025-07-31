@@ -18,18 +18,26 @@ class ScenarioSet {
       reps: json['reps'],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'scenario_id': scenarioId,
+        'sets': sets,
+        'reps': reps,
+      };
 }
 
 class Routine {
   final String id;
   final String name;
   final String? imageUrl;
+  final String? userId; // <-- ownership (null => global template)
   final List<ScenarioSet> scenarios;
 
   Routine({
     required this.id,
     required this.name,
     this.imageUrl,
+    this.userId,
     required this.scenarios,
   });
 
@@ -38,6 +46,7 @@ class Routine {
       id: json['id'],
       name: json['name'],
       imageUrl: json['image_url'],
+      userId: json['user_id'], // <-- present on backend RoutineRead
       scenarios: (json['scenarios'] as List)
           .map((e) => ScenarioSet.fromJson(e))
           .toList(),
@@ -45,12 +54,8 @@ class Routine {
   }
 
   /// Total number of sets across all scenarios
-  int get totalSets {
-    return scenarios.fold<int>(0, (sum, s) => sum + s.sets);
-  }
+  int get totalSets => scenarios.fold<int>(0, (sum, s) => sum + s.sets);
 
   /// Estimated duration in minutes (3 min per set)
-  int get totalDurationMinutes {
-    return totalSets * 3;
-  }
+  int get totalDurationMinutes => totalSets * 3;
 }
