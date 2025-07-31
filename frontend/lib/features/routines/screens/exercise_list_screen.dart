@@ -27,8 +27,11 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   /// Locally added exercises (kept separate from server items so we don't overwrite)
   final List<Map<String, dynamic>> _localAddedExercises = [];
 
-  num _totalVolumeKg = 0; // keep the base in kg*reps for consistent math
+  num _totalVolumeKg = 0; // keep base in kg*reps
   late DateTime _startTime;
+
+  bool _isFinishing = false; // prevent double taps
+  bool _scoresSubmitted = false; // submit best-per-scenario once
 
   static const _unauthorizedMessage = 'Unauthorized (401). Please log in.';
   static const _genericFailMessage = 'Failed to load exercises';
@@ -70,9 +73,9 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   }
 
   void _updateVolume(List<Map<String, dynamic>> setData) {
-    // total volume is sum(weight * reps) — keep base in kg
+    // total volume = sum(weight * reps) — weights already in KG
     setState(() {
-      for (var set in setData) {
+      for (final set in setData) {
         final weight = (set['weight'] as num?) ?? 0;
         final reps = (set['reps'] as num?) ?? 0;
         _totalVolumeKg += weight * reps;
@@ -88,16 +91,16 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
     if (newExercise != null) {
       setState(() {
-        // Expecting: { 'scenario_id': ..., 'name': ..., 'sets': int, 'reps': int }
+        // Expect: { 'scenario_id': ..., 'name': ..., 'sets': int, 'reps': int }
         _localAddedExercises.add(Map<String, dynamic>.from(newExercise));
       });
     }
   }
 
-  /// Helpers for unit display based on weight multiplier (kg vs lb)
+  /// Unit helpers based on weight multiplier (kg vs lb)
   bool _isLbs(WidgetRef ref) {
     final wm = ref.read(authStateProvider).user?.weightMultiplier ?? 1.0;
-    return wm > 1.5; // heuristic: ~2.2 => lbs
+    return wm > 1.5; // heuristic (~2.2 => lbs)
   }
 
   String _unitLabel(WidgetRef ref) => _isLbs(ref) ? 'lb' : 'kg';
@@ -112,7 +115,8 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
   /// Submit "best per scenario" to /api/v1/scores/
   Future<void> _submitScoresBestPerScenario() async {
-    final sets = ref.read(routineSetProvider); // list of your set models
+    if (_scoresSubmitted) return;
+    final sets = ref.read(routineSetProvider); // your set models
     if (sets.isEmpty) return;
 
     final token = ref.read(authStateProvider).token;
@@ -123,7 +127,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     for (final s in sets) {
       grouped.putIfAbsent(s.scenarioId, () => []).add({
-        'weight': (s.weight as num).toDouble(), // already KG from ExercisePlay
+        'weight': (s.weight as num).toDouble(), // KG stored in provider
         'reps': s.reps,
       });
     }
@@ -160,7 +164,6 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     // POST each payload to /api/v1/scores/
     for (final body in payloads) {
       try {
-        // No need to assign response to a variable if you don't use it
         await http.post(
           Uri.parse('http://localhost:8000/api/v1/scores/'),
           headers: {
@@ -171,12 +174,29 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
           body: jsonEncode(body),
         );
       } catch (_) {
-        // Optional: log error but don't block the user flow
+        // Optionally log; don't block user flow
       }
     }
+
+    _scoresSubmitted = true;
+  }
+
+  /// Reset local widget state and provider sets
+  void _resetLocalState() {
+    setState(() {
+      _totalVolumeKg = 0;
+      _startTime = DateTime.now();
+      _localAddedExercises.clear();
+      _isFinishing = false;
+      // _scoresSubmitted intentionally left as-is to prevent re-posts if user navigates back.
+    });
+    ref.invalidate(routineSetProvider);
   }
 
   Future<void> _finishRoutine() async {
+    if (_isFinishing) return;
+    setState(() => _isFinishing = true);
+
     final user = ref.read(authStateProvider).user;
     final token = ref.read(authStateProvider).token;
     final sets = ref.read(routineSetProvider);
@@ -188,6 +208,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("User not authenticated.")),
       );
+      setState(() => _isFinishing = false);
       return;
     }
 
@@ -215,21 +236,21 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     if (!mounted) return;
 
     if (response.statusCode == 201) {
-      // After a successful routine submission, submit best-per-scenario scores
+      // After routine submission, submit best-per-scenario scores
       await _submitScoresBestPerScenario();
 
-      // Reset sets so next routine starts clean
-      ref.invalidate(routineSetProvider);
+      // Capture final display volume before resetting state
+      final finalDisplayVolume = _displayVolume(ref).round();
 
-      // Guard before using context after await
+      // Reset for next session
+      _resetLocalState();
+
       if (!mounted) return;
-
-      // Navigate to summary with rounded display volume (kg/lb)
+      // Go to summary with final rounded volume
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              SummaryScreen(totalVolume: _displayVolume(ref).round()),
+          builder: (_) => SummaryScreen(totalVolume: finalDisplayVolume),
         ),
       );
     } else if (response.statusCode == 401) {
@@ -237,21 +258,20 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please log in to finish the routine.")),
       );
-      // Guard before navigation
       if (!mounted) return;
       context.go('/login');
+      setState(() => _isFinishing = false);
     } else {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Submission failed: ${response.body}")),
       );
+      setState(() => _isFinishing = false);
     }
   }
 
   void _quitRoutine() {
-    // Reset the routine sets so leaving doesn't leak state
-    ref.invalidate(routineSetProvider);
-
+    _resetLocalState();
     Navigator.pop(context); // back from ExerciseList
     Navigator.pop(context); // back from RoutinePlay (or previous)
   }
@@ -374,7 +394,8 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
                               if (setData != null) {
                                 _updateVolume(
-                                    List<Map<String, dynamic>>.from(setData));
+                                  List<Map<String, dynamic>>.from(setData),
+                                );
                               }
                             },
                           ),
@@ -397,7 +418,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _finishRoutine,
+                  onPressed: _isFinishing ? null : _finishRoutine,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
@@ -405,7 +426,16 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                         vertical: 14, horizontal: 24),
                     textStyle: const TextStyle(fontSize: 16),
                   ),
-                  child: const Text('Finish Routine'),
+                  child: _isFinishing
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Finish Routine'),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
