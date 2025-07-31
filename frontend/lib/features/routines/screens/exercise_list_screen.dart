@@ -94,6 +94,88 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     }
   }
 
+  /// Helpers for unit display based on weight multiplier (kg vs lb)
+  bool _isLbs(WidgetRef ref) {
+    final wm = ref.read(authStateProvider).user?.weightMultiplier ?? 1.0;
+    return wm > 1.5; // heuristic: ~2.2 => lbs
+  }
+
+  String _unitLabel(WidgetRef ref) => _isLbs(ref) ? 'lb' : 'kg';
+
+  num _displayVolume(WidgetRef ref) =>
+      _isLbs(ref) ? _totalVolumeKg * _kgToLbs : _totalVolumeKg;
+
+  double _calc1RM(double weightKg, int reps) {
+    if (reps <= 1) return weightKg;
+    return weightKg * (1 + reps / 30.0);
+  }
+
+  /// Submit "best per scenario" to /api/v1/scores/
+  Future<void> _submitScoresBestPerScenario() async {
+    final sets = ref.read(routineSetProvider); // list of your set models
+    if (sets.isEmpty) return;
+
+    final token = ref.read(authStateProvider).token;
+    final user = ref.read(authStateProvider).user;
+    if (user == null) return;
+
+    // Group sets by scenarioId
+    final Map<String, List<Map<String, dynamic>>> grouped = {};
+    for (final s in sets) {
+      grouped.putIfAbsent(s.scenarioId, () => []).add({
+        'weight': (s.weight as num).toDouble(), // already KG from ExercisePlay
+        'reps': s.reps,
+      });
+    }
+
+    // Build one payload per scenario using the set with highest 1RM
+    final List<Map<String, dynamic>> payloads = [];
+    grouped.forEach((scenarioId, list) {
+      double best1RM = -1.0;
+      double bestWeightKg = 0.0;
+      int bestReps = 0;
+
+      for (final set in list) {
+        final w = (set['weight'] as num).toDouble();
+        final r = (set['reps'] as num).toInt();
+        final oneRm = _calc1RM(w, r);
+        if (oneRm > best1RM) {
+          best1RM = oneRm;
+          bestWeightKg = w; // RAW WEIGHT (kg) for submission
+          bestReps = r;
+        }
+      }
+
+      if (best1RM >= 0) {
+        payloads.add({
+          'user_id': user.id,
+          'scenario_id': scenarioId,
+          'weight_lifted': bestWeightKg, // raw weight in KG
+          'reps': bestReps,
+          'sets': 1,
+        });
+      }
+    });
+
+    // POST each payload to /api/v1/scores/
+    for (final body in payloads) {
+      try {
+        // No need to assign response to a variable if you don't use it
+        await http.post(
+          Uri.parse('http://localhost:8000/api/v1/scores/'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(body),
+        );
+      } catch (_) {
+        // Optional: log error but don't block the user flow
+      }
+    }
+  }
+
   Future<void> _finishRoutine() async {
     final user = ref.read(authStateProvider).user;
     final token = ref.read(authStateProvider).token;
@@ -102,6 +184,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     if (!mounted) return;
 
     if (user == null || token == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("User not authenticated.")),
       );
@@ -132,22 +215,33 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     if (!mounted) return;
 
     if (response.statusCode == 201) {
-      // Reset the routine sets so next routine starts clean
+      // After a successful routine submission, submit best-per-scenario scores
+      await _submitScoresBestPerScenario();
+
+      // Reset sets so next routine starts clean
       ref.invalidate(routineSetProvider);
 
-      // Navigate to summary with display volume (kg or lb)
+      // Guard before using context after await
+      if (!mounted) return;
+
+      // Navigate to summary with rounded display volume (kg/lb)
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => SummaryScreen(totalVolume: _displayVolume(ref)),
+          builder: (_) =>
+              SummaryScreen(totalVolume: _displayVolume(ref).round()),
         ),
       );
     } else if (response.statusCode == 401) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please log in to finish the routine.")),
       );
+      // Guard before navigation
+      if (!mounted) return;
       context.go('/login');
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Submission failed: ${response.body}")),
       );
@@ -161,18 +255,6 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     Navigator.pop(context); // back from ExerciseList
     Navigator.pop(context); // back from RoutinePlay (or previous)
   }
-
-  /// Unit helpers based on weight multiplier (kg vs lb)
-  bool _isLbs(WidgetRef ref) {
-    final wm = ref.read(authStateProvider).user?.weightMultiplier ?? 1.0;
-    return wm > 1.5; // heuristic: ~2.2 => lbs
-    // Prefer a true unit flag if you add one later.
-  }
-
-  String _unitLabel(WidgetRef ref) => _isLbs(ref) ? 'lb' : 'kg';
-
-  num _displayVolume(WidgetRef ref) =>
-      _isLbs(ref) ? _totalVolumeKg * _kgToLbs : _totalVolumeKg;
 
   @override
   Widget build(BuildContext context) {
