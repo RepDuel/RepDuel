@@ -1,9 +1,13 @@
+// frontend/lib/features/profile/screens/settings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/secure_storage_service.dart';
+import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -202,6 +206,57 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  /// Best-practice logout:
+  /// - Confirm intent
+  /// - Clear auth state via provider (this should also clear SecureStorage)
+  /// - As a safety net, also clear SecureStorage token locally
+  /// - Navigate to /login
+  Future<void> _logout(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Log out'),
+        content: const Text(
+            'You will be signed out of your account on this device. Continue?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Preferred: use your auth provider's logout (clears state & tokens)
+      await ref.read(authProvider.notifier).logout();
+    } catch (e) {
+      // Fallback: ensure local token is cleared even if provider doesn't expose logout
+      try {
+        await SecureStorageService().deleteToken();
+      } catch (_) {}
+      // Also try to reset provider user/token if your notifier exposes such methods
+      // (left as comment since your notifier API may vary)
+      // await ref.read(authProvider.notifier).reset();
+    }
+
+    if (!context.mounted) return;
+
+    // Navigate to login (clears back stack)
+    context.go('/login');
+
+    // Optional: feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Signed out')),
+    );
+  }
+
   bool _isValidImageUrl(String? url) {
     return url != null &&
         url.isNotEmpty &&
@@ -289,6 +344,15 @@ class SettingsScreen extends ConsumerWidget {
                   trailing:
                       const Icon(Icons.delete_forever, color: Colors.redAccent),
                   onTap: () => _resetProgress(context, ref),
+                ),
+                const Divider(color: Colors.grey),
+
+                // ---- Logout at the bottom ----
+                ListTile(
+                  title: const Text('Log out',
+                      style: TextStyle(color: Colors.white)),
+                  trailing: const Icon(Icons.logout, color: Colors.white),
+                  onTap: () => _logout(context, ref),
                 ),
               ],
             ),
