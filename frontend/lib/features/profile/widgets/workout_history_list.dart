@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/workout_history_provider.dart';
 import '../../../core/models/routine_submission_read.dart';
+import '../../../core/providers/auth_provider.dart';
 
 class WorkoutHistoryList extends ConsumerWidget {
   final String userId;
@@ -14,6 +15,16 @@ class WorkoutHistoryList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(workoutHistoryProvider(userId));
+
+    // Read user's preferred unit via weightMultiplier:
+    // ≈1.0 => kg, ≈2.2 => lbs
+    final userMultiplier =
+        ref.watch(authStateProvider).user?.weightMultiplier ?? 1.0;
+    final isLbs = userMultiplier > 1.5; // simple heuristic
+    const kgToLbs = 2.20462;
+    final unit = isLbs ? 'lb' : 'kg';
+
+    num toUserUnit(num kg) => isLbs ? kg * kgToLbs : kg;
 
     String formatNum(num n) =>
         (n % 1 == 0) ? n.toInt().toString() : n.toStringAsFixed(1);
@@ -43,8 +54,12 @@ class WorkoutHistoryList extends ConsumerWidget {
 
         return Column(
           children: entries.map((entry) {
-            final totalVolume = entry.scenarios
-                .fold<double>(0.0, (sum, s) => sum + s.totalVolume);
+            // Convert total volume to user unit.
+            // Volume is weight * reps (and possibly sets); converting weight => multiply by kgToLbs when needed.
+            final totalVolumeUser = entry.scenarios.fold<double>(
+              0.0,
+              (sum, s) => sum + (toUserUnit(s.totalVolume)),
+            );
 
             // Group by scenarioId
             final Map<String, List<RoutineScenarioSubmission>> grouped = {};
@@ -85,10 +100,11 @@ class WorkoutHistoryList extends ConsumerWidget {
                     ];
 
                     for (final s in grp.value) {
-                      // If sets > 1, repeat the same weight x reps line 'sets' times
+                      // Repeat the same line 'sets' times
                       for (int i = 0; i < s.sets; i++) {
+                        final weightUser = toUserUnit(s.weight);
                         items.add(Text(
-                          '${formatNum(s.weight)}kg x ${s.reps}',
+                          '${formatNum(weightUser)}$unit x ${s.reps}',
                           style: const TextStyle(color: Colors.white),
                         ));
                       }
@@ -98,9 +114,9 @@ class WorkoutHistoryList extends ConsumerWidget {
                     return items;
                   }),
 
-                  // Total volume
+                  // Total volume (in user unit * reps)
                   Text(
-                    'Total Volume: ${formatNum(totalVolume)}',
+                    'Total Volume: ${formatNum(totalVolumeUser)}',
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ],
