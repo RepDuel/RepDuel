@@ -23,15 +23,18 @@ class RoutinesScreen extends StatefulWidget {
 class _RoutinesScreenState extends State<RoutinesScreen> {
   late Future<List<Routine>> _future;
 
+  // Track which routine ids are being deleted to avoid double taps and show progress.
+  final Set<String> _deletingIds = {};
+
+  // Messages
+  static const _unauthorizedMessage = 'Unauthorized (401). Please log in.';
+  static const _genericFailMessage = 'Failed to load routines';
+
   @override
   void initState() {
     super.initState();
     _future = _fetchRoutines();
   }
-
-  // Custom error type so we can render a login button on 401s.
-  static const _unauthorizedMessage = 'Unauthorized (401). Please log in.';
-  static const _genericFailMessage = 'Failed to load routines';
 
   Future<List<Routine>> _fetchRoutines() async {
     final storage = SecureStorageService();
@@ -66,6 +69,177 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CustomRoutineScreen()),
+    );
+  }
+
+  Future<void> _confirmAndDeleteRoutine(Routine routine) async {
+    // If already deleting, ignore.
+    if (_deletingIds.contains(routine.id)) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete routine?'),
+        content: Text(
+          'Are you sure you want to delete "${routine.name}"?\nThis cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await _deleteRoutine(routine.id);
+  }
+
+  Future<void> _deleteRoutine(String routineId) async {
+    final storage = SecureStorageService();
+    final token = await storage.readToken();
+
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('You must be logged in to delete routines.')),
+      );
+      context.go('/login');
+      return;
+    }
+
+    setState(() {
+      _deletingIds.add(routineId);
+    });
+
+    try {
+      final res = await http.delete(
+        Uri.parse('http://localhost:8000/api/v1/routines/$routineId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (!mounted) return;
+
+      if (res.statusCode == 204) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Routine deleted.')),
+        );
+        await _refresh();
+      } else if (res.statusCode == 401) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Session expired. Please log in again.')),
+        );
+        context.go('/login');
+      } else if (res.statusCode == 403) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Not allowed to delete this routine.')),
+        );
+      } else if (res.statusCode == 404) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Routine not found (maybe already deleted).')),
+        );
+        await _refresh();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed (HTTP ${res.statusCode}).')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Network error: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _deletingIds.remove(routineId);
+        });
+      }
+    }
+  }
+
+  Widget _buildRoutineTile(Routine routine) {
+    final isDeleting = _deletingIds.contains(routine.id);
+
+    return Stack(
+      children: [
+        // Tap to open / play the routine
+        GestureDetector(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => RoutinePlayScreen(routine: routine),
+              ),
+            );
+            if (!mounted) return;
+            _refresh();
+          },
+          onLongPress: () => _confirmAndDeleteRoutine(routine),
+          child: RoutineCard(
+            name: routine.name,
+            imageUrl:
+                routine.imageUrl ?? 'https://via.placeholder.com/300x300.png',
+            duration: '${routine.totalDurationMinutes} min',
+            difficultyLevel: 2,
+          ),
+        ),
+
+        // Menu button (top-right) with Delete action
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Material(
+            color: Colors.transparent,
+            child: PopupMenuButton<String>(
+              tooltip: 'Options',
+              onSelected: (value) {
+                if (value == 'delete') {
+                  _confirmAndDeleteRoutine(routine);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete'),
+                    ],
+                  ),
+                ),
+              ],
+              icon: const Icon(Icons.more_vert, color: Colors.white70),
+            ),
+          ),
+        ),
+
+        // Deleting overlay
+        if (isDeleting)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+          ),
+      ],
     );
   }
 
@@ -145,25 +319,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                   return AddRoutineCard(onPressed: _onAddRoutinePressed);
                 }
                 final routine = routines[index - 1];
-                return GestureDetector(
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RoutinePlayScreen(routine: routine),
-                      ),
-                    );
-                    // Optional: refresh on return
-                    // ignore: use_build_context_synchronously
-                    _refresh();
-                  },
-                  child: RoutineCard(
-                    name: routine.name,
-                    imageUrl: routine.imageUrl,
-                    duration: '${routine.totalDurationMinutes} min',
-                    difficultyLevel: 2,
-                  ),
-                );
+                return _buildRoutineTile(routine);
               },
             ),
           );
@@ -172,10 +328,11 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 2,
         onTap: (index) {
+          // Keep your routing semantics; adjust if needed.
           if (index == 0) {
             context.go('/ranked');
           } else if (index == 1) {
-            // Already on this screen
+            // Stay or navigate to routines tab depending on your app map.
           } else if (index == 2) {
             context.go('/profile');
           }
