@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:go_router/go_router.dart';
+
 import '../providers/set_data_provider.dart';
 import 'exercise_play_screen.dart';
 import 'summary_screen.dart';
@@ -20,40 +22,80 @@ class ExerciseListScreen extends ConsumerStatefulWidget {
 }
 
 class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
-  late Future<List<dynamic>> exercises;
-  List<dynamic> exercisesList = [];
-  num totalVolume = 0;
-  late DateTime startTime;
+  late Future<List<dynamic>> _futureExercises;
 
-  Future<List<dynamic>> fetchExercises() async {
+  /// Locally added exercises (kept separate from server items so we don't overwrite)
+  final List<Map<String, dynamic>> _localAddedExercises = [];
+
+  num _totalVolumeKg = 0; // keep the base in kg*reps for consistent math
+  late DateTime _startTime;
+
+  static const _unauthorizedMessage = 'Unauthorized (401). Please log in.';
+  static const _genericFailMessage = 'Failed to load exercises';
+
+  @override
+  void initState() {
+    super.initState();
+    _startTime = DateTime.now();
+    _futureExercises = _fetchExercises();
+  }
+
+  Future<List<dynamic>> _fetchExercises() async {
+    final token = ref.read(authStateProvider).token;
+
     final response = await http.get(
       Uri.parse('http://localhost:8000/api/v1/routines/${widget.routineId}'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      },
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return List.from(data['scenarios']);
+    } else if (response.statusCode == 401) {
+      throw Exception(_unauthorizedMessage);
     } else {
-      throw Exception('Failed to load exercises');
+      throw Exception('$_genericFailMessage (HTTP ${response.statusCode})');
     }
   }
 
+  Future<void> _refresh() async {
+    setState(() {
+      _futureExercises = _fetchExercises();
+    });
+    await _futureExercises;
+  }
+
   void _updateVolume(List<Map<String, dynamic>> setData) {
+    // total volume is sum(weight * reps) — keep base in kg
+    // If ExercisePlayScreen is already in kg, this is correct.
+    // If you ever let users enter lbs there, convert to kg before adding.
     setState(() {
       for (var set in setData) {
-        totalVolume += set['weight'] * set['reps'];
+        final weight = (set['weight'] as num?) ?? 0;
+        final reps = (set['reps'] as num?) ?? 0;
+        _totalVolumeKg += weight * reps;
       }
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    startTime = DateTime.now();
-    exercises = fetchExercises();
+  void _navigateToAddExercise() async {
+    final newExercise = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddExerciseScreen()),
+    );
+
+    if (newExercise != null) {
+      setState(() {
+        // Expecting: { 'scenario_id': ..., 'name': ..., 'sets': int, 'reps': int }
+        _localAddedExercises.add(Map<String, dynamic>.from(newExercise));
+      });
+    }
   }
 
-  void _finishRoutine() async {
+  Future<void> _finishRoutine() async {
     final user = ref.read(authStateProvider).user;
     final token = ref.read(authStateProvider).token;
     final sets = ref.read(routineSetProvider);
@@ -68,7 +110,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     }
 
     final now = DateTime.now();
-    final durationInMinutes = now.difference(startTime).inSeconds / 60.0;
+    final durationInMinutes = now.difference(_startTime).inSeconds / 60.0;
 
     final submissionBody = {
       'routine_id': widget.routineId,
@@ -94,9 +136,14 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => SummaryScreen(totalVolume: totalVolume),
+          builder: (_) => SummaryScreen(totalVolume: _displayVolume(ref)),
         ),
       );
+    } else if (response.statusCode == 401) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please log in to finish the routine.")),
+      );
+      context.go('/login');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Submission failed: ${response.body}")),
@@ -109,22 +156,23 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     Navigator.pop(context);
   }
 
-  void _navigateToAddExercise() async {
-    final newExercise = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddExerciseScreen()),
-    );
+  /// Helpers for unit display based on weight multiplier (kg vs lb)
+  static const _kgToLbs = 2.20462;
 
-    if (newExercise != null) {
-      setState(() {
-        exercisesList.add(newExercise);
-      });
-    }
+  bool _isLbs(WidgetRef ref) {
+    final wm = ref.read(authStateProvider).user?.weightMultiplier ?? 1.0;
+    return wm > 1.5; // heuristic: ~2.2 => lbs
+    // If you have a dedicated unit flag, prefer that instead of this heuristic.
   }
+
+  String _unitLabel(WidgetRef ref) => _isLbs(ref) ? 'lb' : 'kg';
+
+  num _displayVolume(WidgetRef ref) =>
+      _isLbs(ref) ? _totalVolumeKg * _kgToLbs : _totalVolumeKg;
 
   @override
   Widget build(BuildContext context) {
-    final setData = ref.watch(routineSetProvider);
+    final unit = _unitLabel(ref);
 
     return Scaffold(
       appBar: AppBar(
@@ -132,124 +180,162 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
+      backgroundColor: Colors.black,
       body: FutureBuilder<List<dynamic>>(
-        future: exercises,
+        future: _futureExercises,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          // Loading state
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else {
-            if (snapshot.hasData) {
-              exercisesList = snapshot.data!;
-            }
+          }
 
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
+          // Error state
+          if (snapshot.hasError) {
+            final message = snapshot.error?.toString() ?? _genericFailMessage;
+            final isUnauthorized = message.contains('401');
+
+            return Center(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Total Volume: $totalVolume kg',
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                    message,
+                    style: const TextStyle(color: Colors.white),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: exercisesList.length,
-                      itemBuilder: (context, index) {
-                        final exercise = exercisesList[index];
-                        final scenarioId = exercise['scenario_id'];
-                        final scenarioName =
-                            exercise['name'] ?? 'Unnamed Exercise';
-                        final sets = exercise['sets'] ?? 0;
-                        final reps = exercise['reps'] ?? 0;
-
-                        final isCompleted = setData
-                                .where((s) => s.scenarioId == scenarioId)
-                                .length >=
-                            sets;
-
-                        return Card(
-                          color:
-                              isCompleted ? Colors.green[800] : Colors.white12,
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: ListTile(
-                            title: Text(
-                              scenarioName,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 18),
-                            ),
-                            subtitle: Text(
-                              'Sets: $sets | Reps: $reps',
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 14),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.play_arrow,
-                                  color: Colors.green),
-                              onPressed: () async {
-                                final setData = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ExercisePlayScreen(
-                                      exerciseId: scenarioId,
-                                      exerciseName: scenarioName,
-                                      sets: sets,
-                                      reps: reps,
-                                    ),
-                                  ),
-                                );
-
-                                if (setData != null) {
-                                  _updateVolume(setData);
-                                }
-                              },
-                            ),
-                          ),
-                        );
-                      },
+                  const SizedBox(height: 12),
+                  if (isUnauthorized)
+                    ElevatedButton(
+                      onPressed: () => context.go('/login'),
+                      child: const Text('Login'),
+                    )
+                  else
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      child: const Text('Retry'),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _navigateToAddExercise,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 24),
-                      textStyle: const TextStyle(fontSize: 16),
-                    ),
-                    child: const Text('Add Exercise'),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _finishRoutine,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 24),
-                      textStyle: const TextStyle(fontSize: 16),
-                    ),
-                    child: const Text('Finish Routine'),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _quitRoutine,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 24),
-                      textStyle: const TextStyle(fontSize: 16),
-                    ),
-                    child: const Text('Quit Routine'),
-                  ),
                 ],
               ),
             );
           }
+
+          // Data ready
+          final serverExercises = snapshot.data ?? <dynamic>[];
+
+          // Combine server exercises with locally added ones (without mutating state here)
+          final combined = <Map<String, dynamic>>[
+            ...serverExercises.cast<Map<String, dynamic>>(),
+            ..._localAddedExercises,
+          ];
+
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Text(
+                  'Total Volume: ${_displayVolume(ref)} $unit',
+                  style: const TextStyle(fontSize: 16, color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: combined.length,
+                    itemBuilder: (context, index) {
+                      final exercise = combined[index];
+                      final scenarioId = exercise['scenario_id'];
+                      final scenarioName =
+                          exercise['name'] ?? 'Unnamed Exercise';
+                      final sets = exercise['sets'] ?? 0;
+                      final reps = exercise['reps'] ?? 0;
+
+                      final completedSets = ref
+                          .watch(routineSetProvider)
+                          .where((s) => s.scenarioId == scenarioId)
+                          .length;
+
+                      final isCompleted = completedSets >= sets;
+
+                      return Card(
+                        color: isCompleted ? Colors.green[800] : Colors.white12,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          title: Text(
+                            scenarioName,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 18),
+                          ),
+                          subtitle: Text(
+                            'Sets: $sets | Reps: $reps',
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 14),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.play_arrow,
+                                color: Colors.green),
+                            onPressed: () async {
+                              final setData = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ExercisePlayScreen(
+                                    exerciseId: scenarioId,
+                                    exerciseName: scenarioName,
+                                    sets: sets,
+                                    reps: reps,
+                                  ),
+                                ),
+                              );
+
+                              if (setData != null) {
+                                _updateVolume(
+                                    List<Map<String, dynamic>>.from(setData));
+                              }
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _navigateToAddExercise,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 14, horizontal: 24),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                  child: const Text('Add Exercise'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _finishRoutine,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 14, horizontal: 24),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                  child: const Text('Finish Routine'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _quitRoutine,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 14, horizontal: 24),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                  child: const Text('Quit Routine'),
+                ),
+              ],
+            ),
+          );
         },
       ),
     );

@@ -2,7 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../providers/set_data_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 
 class ExercisePlayScreen extends ConsumerWidget {
   final String exerciseId;
@@ -18,30 +20,73 @@ class ExercisePlayScreen extends ConsumerWidget {
     required this.reps,
   });
 
+  static const double _kgToLbs = 2.20462;
+
+  bool _isLbs(WidgetRef ref) {
+    // Heuristic: weightMultiplier ~1.0 => kg, ~2.2 => lbs
+    final wm = ref.watch(authStateProvider).user?.weightMultiplier ?? 1.0;
+    return wm > 1.5;
+  }
+
+  String _unit(WidgetRef ref) => _isLbs(ref) ? 'lb' : 'kg';
+
+  double _toDisplayUnit(WidgetRef ref, double kg) =>
+      _isLbs(ref) ? kg * _kgToLbs : kg;
+
+  double _toKg(WidgetRef ref, double valueInUserUnit) =>
+      _isLbs(ref) ? valueInUserUnit / _kgToLbs : valueInUserUnit;
+
+  String _fmt(num n) =>
+      (n % 1 == 0) ? n.toInt().toString() : n.toStringAsFixed(1);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final unit = _unit(ref);
+
+    // Previously entered sets for this exercise (stored in KG in the provider)
     final previousSets = ref
         .watch(routineSetProvider)
         .where((set) => set.scenarioId == exerciseId)
         .toList();
 
-    List<TextEditingController> weightControllers = List.generate(
+    // Build controllers with values converted to the user's preferred unit
+    final weightControllers = List<TextEditingController>.generate(
       sets,
-      (index) => TextEditingController(
-        text: index < previousSets.length
-            ? previousSets[index].weight.toString()
-            : '',
-      ),
+      (index) {
+        String text = '';
+        if (index < previousSets.length) {
+          final kg = previousSets[index].weight;
+          if (kg > 0) text = _fmt(_toDisplayUnit(ref, kg));
+        }
+        return TextEditingController(text: text);
+      },
     );
 
-    List<TextEditingController> repControllers = List.generate(
+    final repControllers = List<TextEditingController>.generate(
       sets,
-      (index) => TextEditingController(
-        text: index < previousSets.length
-            ? previousSets[index].reps.toString()
-            : reps.toString(),
-      ),
+      (index) {
+        String text = reps.toString();
+        if (index < previousSets.length) {
+          final r = previousSets[index].reps;
+          if (r > 0) text = r.toString();
+        }
+        return TextEditingController(text: text);
+      },
     );
+
+    InputDecoration _dec(String label) => InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.white70),
+          border: const OutlineInputBorder(),
+          enabledBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.white24),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.white54),
+          ),
+          fillColor: Colors.white10,
+          filled: true,
+        );
 
     return Scaffold(
       appBar: AppBar(
@@ -49,14 +94,15 @@ class ExercisePlayScreen extends ConsumerWidget {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
+      backgroundColor: Colors.black,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
             children: [
-              const Text(
-                'Enter the weights and reps for each set',
-                style: TextStyle(color: Colors.white, fontSize: 18),
+              Text(
+                'Enter the weights ($unit) and reps for each set',
+                style: const TextStyle(color: Colors.white, fontSize: 18),
               ),
               const SizedBox(height: 20),
               ...List.generate(sets, (index) {
@@ -68,12 +114,12 @@ class ExercisePlayScreen extends ConsumerWidget {
                         flex: 2,
                         child: TextField(
                           controller: weightControllers[index],
-                          decoration: const InputDecoration(
-                            labelText: 'Weight (kg)',
-                            labelStyle: TextStyle(color: Colors.white70),
-                            border: OutlineInputBorder(),
+                          decoration: _dec('Weight ($unit)'),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: false,
                           ),
-                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -81,12 +127,12 @@ class ExercisePlayScreen extends ConsumerWidget {
                         flex: 1,
                         child: TextField(
                           controller: repControllers[index],
-                          decoration: const InputDecoration(
-                            labelText: 'Reps',
-                            labelStyle: TextStyle(color: Colors.white70),
-                            border: OutlineInputBorder(),
+                          decoration: _dec('Reps'),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: false,
+                            signed: false,
                           ),
-                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
                     ],
@@ -96,17 +142,26 @@ class ExercisePlayScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  List<Map<String, dynamic>> setData = [];
+                  final setData = <Map<String, dynamic>>[];
+
                   for (int i = 0; i < sets; i++) {
-                    double weight =
-                        double.tryParse(weightControllers[i].text) ?? 0;
-                    int reps = int.tryParse(repControllers[i].text) ?? 0;
-                    setData.add({'weight': weight, 'reps': reps});
+                    final weightText = weightControllers[i].text.trim();
+                    final repsText = repControllers[i].text.trim();
+
+                    final weightUser = double.tryParse(weightText) ?? 0.0;
+                    final weightKg = _toKg(
+                        ref, weightUser); // convert to KG for storage/backend
+
+                    final repsVal = int.tryParse(repsText) ?? 0;
+
+                    setData.add({'weight': weightKg, 'reps': repsVal});
                   }
 
+                  // Persist to provider in KG so the rest of the app/back-end stays consistent
                   ref
                       .read(routineSetProvider.notifier)
                       .addSets(exerciseId, setData);
+
                   Navigator.pop(context, setData);
                 },
                 style: ElevatedButton.styleFrom(
