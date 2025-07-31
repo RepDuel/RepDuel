@@ -32,6 +32,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
   static const _unauthorizedMessage = 'Unauthorized (401). Please log in.';
   static const _genericFailMessage = 'Failed to load exercises';
+  static const _kgToLbs = 2.20462;
 
   @override
   void initState() {
@@ -70,8 +71,6 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
   void _updateVolume(List<Map<String, dynamic>> setData) {
     // total volume is sum(weight * reps) — keep base in kg
-    // If ExercisePlayScreen is already in kg, this is correct.
-    // If you ever let users enter lbs there, convert to kg before adding.
     setState(() {
       for (var set in setData) {
         final weight = (set['weight'] as num?) ?? 0;
@@ -133,6 +132,10 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     if (!mounted) return;
 
     if (response.statusCode == 201) {
+      // Reset the routine sets so next routine starts clean
+      ref.invalidate(routineSetProvider);
+
+      // Navigate to summary with display volume (kg or lb)
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -152,17 +155,18 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   }
 
   void _quitRoutine() {
-    Navigator.pop(context);
-    Navigator.pop(context);
+    // Reset the routine sets so leaving doesn't leak state
+    ref.invalidate(routineSetProvider);
+
+    Navigator.pop(context); // back from ExerciseList
+    Navigator.pop(context); // back from RoutinePlay (or previous)
   }
 
-  /// Helpers for unit display based on weight multiplier (kg vs lb)
-  static const _kgToLbs = 2.20462;
-
+  /// Unit helpers based on weight multiplier (kg vs lb)
   bool _isLbs(WidgetRef ref) {
     final wm = ref.read(authStateProvider).user?.weightMultiplier ?? 1.0;
     return wm > 1.5; // heuristic: ~2.2 => lbs
-    // If you have a dedicated unit flag, prefer that instead of this heuristic.
+    // Prefer a true unit flag if you add one later.
   }
 
   String _unitLabel(WidgetRef ref) => _isLbs(ref) ? 'lb' : 'kg';
@@ -234,7 +238,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
             child: Column(
               children: [
                 Text(
-                  'Total Volume: ${_displayVolume(ref)} $unit',
+                  'Total Volume: ${_displayVolume(ref).round()} $unit',
                   style: const TextStyle(fontSize: 16, color: Colors.white),
                 ),
                 const SizedBox(height: 16),

@@ -74,7 +74,7 @@ class ExercisePlayScreen extends ConsumerWidget {
       },
     );
 
-    InputDecoration _dec(String label) => InputDecoration(
+    InputDecoration dec(String label) => InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(color: Colors.white70),
           border: const OutlineInputBorder(),
@@ -114,7 +114,7 @@ class ExercisePlayScreen extends ConsumerWidget {
                         flex: 2,
                         child: TextField(
                           controller: weightControllers[index],
-                          decoration: _dec('Weight ($unit)'),
+                          decoration: dec('Weight ($unit)'),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                             signed: false,
@@ -127,7 +127,7 @@ class ExercisePlayScreen extends ConsumerWidget {
                         flex: 1,
                         child: TextField(
                           controller: repControllers[index],
-                          decoration: _dec('Reps'),
+                          decoration: dec('Reps'),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: false,
                             signed: false,
