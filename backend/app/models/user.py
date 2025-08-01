@@ -23,6 +23,13 @@ class User(Base):
 
     display_name = Column(String(255), nullable=True)
 
+    subscription_level = Column(  # New field for subscription tier
+        String(32),
+        nullable=False,
+        default="free",  # Default level for new users
+        server_default="free",
+    )
+
     guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
 
     messages = relationship(

@@ -10,6 +10,7 @@ class UserBase(BaseModel):
     username: str
     email: EmailStr
     avatar_url: str | None = None
+    subscription_level: str = "free"
 
 
 class UserCreate(UserBase):
@@ -25,6 +26,7 @@ class UserRead(UserBase):
     weight: float | None = None
     gender: str | None = None
     weight_multiplier: float = 1.0
+    subscription_level: str = "free"
 
     model_config = {"from_attributes": True}
 
@@ -37,8 +39,10 @@ class UserUpdate(BaseModel):
     gender: str | None = None
     password: str | None = None
     weight_multiplier: float | None = None
+    subscription_level: str | None = None
 
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+

@@ -1,3 +1,5 @@
+# backend/app/services/user_service.py
+
 from uuid import UUID
 
 from app.core.security import hash_password, verify_password
@@ -30,6 +32,7 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
         email=user_in.email,
         hashed_password=hash_password(user_in.password),
         avatar_url=user_in.avatar_url,
+        subscription_level="free",
     )
     db.add(user)
     await db.commit()
