@@ -5,10 +5,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 
 from app.api.v1.deps import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
+from app.models.routine import Routine
 from app.schemas.routine import RoutineCreate, RoutineRead, RoutineUpdate
 from app.services import routine_service
 
@@ -29,7 +31,19 @@ async def create_routine(
     """
     Creates a routine owned by the authenticated user.
     Ownership is encoded via `Routine.user_id`.
+    Users with 'free' subscription are limited to 3 custom routines.
     """
+    if current_user.subscription_level == "free":
+        result = await db.execute(
+            select(func.count()).select_from(Routine).where(Routine.user_id == current_user.id)
+        )
+        routine_count = result.scalar()
+        if routine_count >= 3:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Free users are limited to 3 custom routines. Upgrade to create more."
+            )
+
     created = await routine_service.create_routine(db, payload, current_user.id)
     return created
 
@@ -58,7 +72,7 @@ async def list_user_routines(
 async def get_routine_by_id(
     routine_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),  # kept for parity / future auth rules
+    current_user: User = Depends(get_current_user),
 ):
     """
     Fetch a single routine.
@@ -116,4 +130,3 @@ async def delete_routine_by_id(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this routine")
 
     await routine_service.delete_routine(db, routine_orm)
-    # 204 No Content → return nothing

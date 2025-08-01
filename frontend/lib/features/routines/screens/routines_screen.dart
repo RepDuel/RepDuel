@@ -13,7 +13,7 @@ import 'routine_play_screen.dart';
 import 'custom_routine_screen.dart';
 import '../../../core/models/routine.dart';
 import '../../../core/services/secure_storage_service.dart';
-import '../../../core/providers/auth_provider.dart'; // to get current user id
+import '../../../core/providers/auth_provider.dart';
 
 class RoutinesScreen extends ConsumerStatefulWidget {
   const RoutinesScreen({super.key});
@@ -24,11 +24,8 @@ class RoutinesScreen extends ConsumerStatefulWidget {
 
 class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
   late Future<List<Routine>> _future;
-
-  // Track which routine ids are being deleted to avoid double taps and show progress.
   final Set<String> _deletingIds = {};
 
-  // Messages
   static const _unauthorizedMessage = 'Unauthorized (401). Please log in.';
   static const _genericFailMessage = 'Failed to load routines';
 
@@ -40,7 +37,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
 
   Future<List<Routine>> _fetchRoutines() async {
     final storage = SecureStorageService();
-    final token = await storage.readToken(); // Must be set after login
+    final token = await storage.readToken();
 
     final response = await http.get(
       Uri.parse('http://localhost:8000/api/v1/routines/'),
@@ -67,7 +64,38 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
     await _future;
   }
 
-  void _onAddRoutinePressed() {
+  void _onAddRoutinePressed(List<Routine> routines) {
+    final currentUser = ref.read(authStateProvider).user;
+    final isFree = currentUser?.subscriptionLevel == null ||
+        currentUser!.subscriptionLevel == 'free';
+    final hasReachedLimit =
+        routines.where((r) => r.userId == currentUser?.id).length >= 3;
+
+    if (isFree && hasReachedLimit) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Upgrade Required'),
+          content: const Text(
+              'Free users can only create up to 3 custom routines. Upgrade to unlock more.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                context.push('/paywall');
+              },
+              child: const Text('Upgrade'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CustomRoutineScreen()),
@@ -77,7 +105,6 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
   }
 
   Future<void> _confirmAndDeleteRoutine(Routine routine) async {
-    // If already deleting, ignore.
     if (_deletingIds.contains(routine.id)) return;
 
     final confirmed = await showDialog<bool>(
@@ -85,18 +112,14 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete routine?'),
         content: Text(
-          'Are you sure you want to delete "${routine.name}"?\nThis cannot be undone.',
-        ),
+            'Are you sure you want to delete "${routine.name}"?\nThis cannot be undone.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
+                backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Delete'),
           ),
@@ -136,9 +159,8 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
       if (!mounted) return;
 
       if (res.statusCode == 204) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Routine deleted.')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Routine deleted.')));
         await _refresh();
       } else if (res.statusCode == 401) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -179,8 +201,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
     final changed = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => CustomRoutineScreen.edit(initial: routine),
-      ),
+          builder: (_) => CustomRoutineScreen.edit(initial: routine)),
     );
     if (changed == true && mounted) _refresh();
   }
@@ -192,14 +213,12 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
 
     return Stack(
       children: [
-        // Tap to open / play the routine
         GestureDetector(
           onTap: () async {
             await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => RoutinePlayScreen(routine: routine),
-              ),
+                  builder: (_) => RoutinePlayScreen(routine: routine)),
             );
             if (!mounted) return;
             _refresh();
@@ -212,8 +231,6 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
             difficultyLevel: 2,
           ),
         ),
-
-        // Menu button (top-right) with Edit/Delete actions for owner only
         if (canEditDelete)
           Positioned(
             top: 8,
@@ -231,37 +248,29 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                 },
                 itemBuilder: (context) => const [
                   PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
+                      value: 'edit',
+                      child: Row(children: [
                         Icon(Icons.edit),
                         SizedBox(width: 8),
-                        Text('Edit'),
-                      ],
-                    ),
-                  ),
+                        Text('Edit')
+                      ])),
                   PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
+                      value: 'delete',
+                      child: Row(children: [
                         Icon(Icons.delete_outline, color: Colors.red),
                         SizedBox(width: 8),
-                        Text('Delete'),
-                      ],
-                    ),
-                  ),
+                        Text('Delete')
+                      ])),
                 ],
                 icon: const Icon(Icons.more_vert, color: Colors.white70),
               ),
             ),
           ),
-
-        // Deleting overlay
         if (isDeleting)
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: Colors.black.withAlpha(102), // fixed opacity
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(child: CircularProgressIndicator()),
@@ -284,24 +293,16 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Create routine',
-            onPressed: _onAddRoutinePressed,
-          ),
-        ],
+        actions: const [],
       ),
       body: FutureBuilder<List<Routine>>(
         future: _future,
         builder: (context, snapshot) {
-          // Loading
           if (snapshot.connectionState == ConnectionState.waiting &&
               !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Error
           if (snapshot.hasError) {
             final message = snapshot.error?.toString() ?? _genericFailMessage;
             final isUnauthorized = message.contains('401');
@@ -310,35 +311,29 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    message,
-                    style: const TextStyle(color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
+                  Text(message,
+                      style: const TextStyle(color: Colors.white),
+                      textAlign: TextAlign.center),
                   const SizedBox(height: 12),
                   if (isUnauthorized)
                     ElevatedButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text('Login'),
-                    )
+                        onPressed: () => context.go('/login'),
+                        child: const Text('Login'))
                   else
                     ElevatedButton(
-                      onPressed: _refresh,
-                      child: const Text('Retry'),
-                    ),
+                        onPressed: _refresh, child: const Text('Retry')),
                 ],
               ),
             );
           }
 
-          // Data
           final routines = snapshot.data ?? <Routine>[];
 
           return RefreshIndicator(
             onRefresh: _refresh,
             child: GridView.builder(
               padding: const EdgeInsets.all(12),
-              itemCount: routines.length + 1, // +1 for the Add tile
+              itemCount: routines.length + 1,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
@@ -347,7 +342,8 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
               ),
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return AddRoutineCard(onPressed: _onAddRoutinePressed);
+                  return AddRoutineCard(
+                      onPressed: () => _onAddRoutinePressed(routines));
                 }
                 final routine = routines[index - 1];
                 return _buildRoutineTile(routine, currentUserId);

@@ -189,10 +189,9 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
         );
       } else if (res.statusCode == 403) {
         if (!mounted) return;
+        final errorMsg = jsonDecode(res.body)['detail'] ?? 'Forbidden.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content:
-                  Text('Not allowed to modify this routine (owner only).')),
+          SnackBar(content: Text(errorMsg)),
         );
       } else {
         if (!mounted) return;
