@@ -11,6 +11,7 @@ class User {
   final double? weight;
   final String? gender;
   final double weightMultiplier;
+  final String subscriptionLevel; // New field
 
   User({
     required this.id,
@@ -22,7 +23,8 @@ class User {
     this.avatarUrl,
     this.weight,
     this.gender,
-    this.weightMultiplier = 1.0, // Default to 1.0
+    this.weightMultiplier = 1.0,
+    this.subscriptionLevel = 'free', // Default value
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -37,8 +39,8 @@ class User {
       weight:
           json['weight'] != null ? (json['weight'] as num).toDouble() : null,
       gender: json['gender'] as String?,
-      weightMultiplier: (json['weight_multiplier'] as num?)?.toDouble() ??
-          1.0, // Set weight multiplier
+      weightMultiplier: (json['weight_multiplier'] as num?)?.toDouble() ?? 1.0,
+      subscriptionLevel: json['subscription_level'] as String? ?? 'free',
     );
   }
 
@@ -54,6 +56,7 @@ class User {
       'weight': weight,
       'gender': gender,
       'weight_multiplier': weightMultiplier,
+      'subscription_level': subscriptionLevel,
     };
   }
 }

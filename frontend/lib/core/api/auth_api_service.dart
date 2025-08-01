@@ -1,3 +1,5 @@
+// frontend/lib/core/api/auth_api_service.dart
+
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
@@ -129,10 +131,14 @@ class AuthApiService {
     required String token,
     String? gender,
     double? weight,
+    String? subscriptionLevel,
   }) async {
     final data = <String, dynamic>{};
     if (gender != null) data['gender'] = gender;
     if (weight != null) data['weight'] = weight;
+    if (subscriptionLevel != null) {
+      data['subscription_level'] = subscriptionLevel;
+    }
 
     final response = await _privateClient.patch(
       '/users/me',

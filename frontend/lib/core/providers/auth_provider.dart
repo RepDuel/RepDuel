@@ -1,3 +1,5 @@
+// frontend/lib/core/providers/auth_provider.dart
+
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -130,13 +132,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> updateProfile({String? gender, double? weight}) async {
+  Future<bool> updateProfile({
+    String? gender,
+    double? weight,
+    String? subscriptionLevel,
+  }) async {
     if (state.token == null) return false;
     try {
       final updatedUser = await _authApi.updateMe(
         token: state.token!,
         gender: gender,
         weight: weight,
+        subscriptionLevel: subscriptionLevel,
       );
       if (updatedUser != null) {
         state = state.copyWith(user: updatedUser);
@@ -150,6 +157,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? gender,
     double? weight,
     double? weightMultiplier,
+    String? subscriptionLevel,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -164,6 +172,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           if (gender != null) 'gender': gender,
           if (weight != null) 'weight': weight,
           if (weightMultiplier != null) 'weight_multiplier': weightMultiplier,
+          if (subscriptionLevel != null)
+            'subscription_level': subscriptionLevel,
         },
       );
 
@@ -206,7 +216,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<bool> updateProfilePictureFromBytes(
-      Uint8List bytes, String filename, String mimeType) async {
+    Uint8List bytes,
+    String filename,
+    String mimeType,
+  ) async {
     try {
       final token = state.token;
       if (token == null) return false;
