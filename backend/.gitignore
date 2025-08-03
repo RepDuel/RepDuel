@@ -1,0 +1,42 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Python egg metadata
+*.egg-info/
+.eggs/
+
+# Environment variables
+.env
+.env.*
+
+# VSCode settings
+.vscode/
+
+# Pytest cache
+.pytest_cache/
+
+# MyPy cache
+.mypy_cache/
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Logs and local debug files
+*.log
+*.db
+*.sqlite3
+
+# Render build files
+render.yaml
+
+# Mac and system files
+.DS_Store
+Thumbs.db
