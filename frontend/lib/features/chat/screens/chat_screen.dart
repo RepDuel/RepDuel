@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/config/env.dart';
 
 import '../../../core/models/message.dart';
 import '../../../core/models/user.dart';
@@ -117,7 +118,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     try {
       final res = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/history/global'),
+        Uri.parse('${Env.baseUrl}/api/v1/history/global'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -173,7 +174,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     try {
       final res = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/users/$userId'),
+        Uri.parse('${Env.baseUrl}/api/v1/users/$userId'),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (res.statusCode == 200) {
@@ -196,7 +197,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     try {
       final res = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/ranks/rank_color/$userId'),
+        Uri.parse('${Env.baseUrl}/api/v1/ranks/rank_color/$userId'),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (res.statusCode == 200) {
@@ -220,7 +221,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     try {
       final res = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/ranks/rank_icon/$userId'),
+        Uri.parse('${Env.baseUrl}/api/v1/ranks/rank_icon/$userId'),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (res.statusCode == 200) {

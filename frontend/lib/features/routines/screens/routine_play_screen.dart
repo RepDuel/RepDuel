@@ -4,7 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
-import 'package:flutter/foundation.dart'; // For kDebugMode
+import 'package:flutter/foundation.dart';
+import 'package:frontend/core/config/env.dart';
 
 import '../../../core/models/routine.dart';
 
@@ -28,7 +29,7 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
 
   Future<void> fetchScenarioNames() async {
     final response =
-        await http.get(Uri.parse('http://localhost:8000/api/v1/scenarios/'));
+        await http.get(Uri.parse('${Env.baseUrl}/api/v1/scenarios/'));
     if (response.statusCode == 200) {
       final List scenarios = jsonDecode(response.body);
       setState(() {

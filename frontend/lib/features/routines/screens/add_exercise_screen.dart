@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:frontend/core/config/env.dart';
 
 class AddExerciseScreen extends StatefulWidget {
   const AddExerciseScreen({super.key});
@@ -25,7 +26,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   Future<void> _fetchScenarios() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/scenarios/'),
+        Uri.parse('${Env.baseUrl}/api/v1/scenarios/'),
       );
 
       if (response.statusCode == 200) {

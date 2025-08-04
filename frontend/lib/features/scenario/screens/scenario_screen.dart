@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/config/env.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -38,7 +39,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
   Future<void> _loadScenarioDetails() async {
     final url = Uri.parse(
-        'http://localhost:8000/api/v1/scenarios/${widget.scenarioId}/details');
+        '${Env.baseUrl}/api/v1/scenarios/${widget.scenarioId}/details');
 
     final response = await http.get(url);
 
@@ -63,7 +64,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
   Future<int> _fetchPreviousBest(String userId, String scenarioId) async {
     final url = Uri.parse(
-        'http://localhost:8000/api/v1/scores/user/$userId/scenario/$scenarioId/highscore');
+        '${Env.baseUrl}/api/v1/scores/user/$userId/scenario/$scenarioId/highscore');
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -77,7 +78,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     final user = ref.read(authStateProvider).user;
     if (user == null) return;
 
-    final url = Uri.parse('http://localhost:8000/api/v1/scores/');
+    final url = Uri.parse('${Env.baseUrl}/api/v1/scores/');
     final body = {
       'user_id': user.id,
       'scenario_id': widget.scenarioId,

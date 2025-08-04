@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:frontend/core/config/env.dart';
 import 'dart:convert';
 
 import '../../../core/providers/auth_provider.dart';
@@ -75,7 +76,7 @@ class ResultScreen extends ConsumerWidget {
     required String userGender,
   }) async {
     final scenarioRes = await http.get(Uri.parse(
-        'http://localhost:8000/api/v1/scenarios/$scenarioId/details'));
+        '${Env.baseUrl}/api/v1/scenarios/$scenarioId/details'));
 
     if (scenarioRes.statusCode != 200) {
       throw Exception("Failed to load scenario");
@@ -84,7 +85,7 @@ class ResultScreen extends ConsumerWidget {
     final scenario = json.decode(scenarioRes.body);
 
     final rankRes = await http.get(
-      Uri.parse('http://localhost:8000/api/v1/ranks/get_rank_progress')
+      Uri.parse('${Env.baseUrl}/api/v1/ranks/get_rank_progress')
           .replace(queryParameters: {
         'scenario_id': scenarioId,
         'final_score': scoreToUse.toString(),

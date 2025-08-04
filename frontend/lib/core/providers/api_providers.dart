@@ -1,6 +1,7 @@
 // frontend/lib/core/providers/api_providers.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/config/env.dart';
 import 'package:dio/dio.dart';
 
 import '../api/auth_api_service.dart';
@@ -20,7 +21,7 @@ final secureStorageProvider = Provider<SecureStorageService>((ref) {
 });
 
 final dioBaseOptionsProvider = Provider<BaseOptions>((ref) => BaseOptions(
-      baseUrl: 'http://localhost:8000/api/v1',
+      baseUrl: '${Env.baseUrl}/api/v1',
       connectTimeout: const Duration(seconds: 5),
       receiveTimeout: const Duration(seconds: 3),
     ));
