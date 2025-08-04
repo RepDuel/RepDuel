@@ -94,8 +94,8 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     final user = ref.read(authStateProvider).user;
     if (user == null) return;
 
-    final baseUrl =
-        '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario';
+    // ignore: prefer_const_declarations
+    final baseUrl = '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario';
 
     final results = await Future.wait([
       _fetchHighScore('$baseUrl/$squatId/highscore'),
