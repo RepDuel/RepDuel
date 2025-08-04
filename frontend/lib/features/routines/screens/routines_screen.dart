@@ -1,6 +1,7 @@
 // frontend/lib/features/routines/screens/routines_screen.dart
 
 import 'dart:convert';
+import 'package:frontend/core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -40,7 +41,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
     final token = await storage.readToken();
 
     final response = await http.get(
-      Uri.parse('http://localhost:8000/api/v1/routines/'),
+      Uri.parse('${Env.baseUrl}/api/v1/routines/'),
       headers: {
         'Content-Type': 'application/json',
         if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
@@ -152,7 +153,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
 
     try {
       final res = await http.delete(
-        Uri.parse('http://localhost:8000/api/v1/routines/$routineId'),
+        Uri.parse('${Env.baseUrl}/api/v1/routines/$routineId'),
         headers: {'Authorization': 'Bearer $token'},
       );
 

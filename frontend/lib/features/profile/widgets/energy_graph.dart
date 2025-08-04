@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 
+import 'package:frontend/core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -24,7 +25,7 @@ class DailyEnergyEntry {
 final energyGraphProvider =
     FutureProvider.family<List<DailyEnergyEntry>, String>((ref, userId) async {
   final res = await http.get(
-    Uri.parse('http://localhost:8000/api/v1/energy/daily/$userId'),
+    Uri.parse('${Env.baseUrl}/api/v1/energy/daily/$userId'),
     headers: {
       'Content-Type': 'application/json',
     },

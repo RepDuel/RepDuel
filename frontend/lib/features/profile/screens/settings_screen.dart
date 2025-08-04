@@ -1,5 +1,6 @@
 // frontend/lib/features/profile/screens/settings_screen.dart
 
+import 'package:frontend/core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -186,7 +187,7 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed != true) return;
 
     final response = await http.delete(
-      Uri.parse('http://localhost:8000/api/v1/scores/user/${user.id}'),
+      Uri.parse('${Env.baseUrl}/api/v1/scores/user/${user.id}'),
       headers: {
         'Authorization': 'Bearer ${ref.read(authProvider).token}',
         'Content-Type': 'application/json',

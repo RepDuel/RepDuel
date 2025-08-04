@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:frontend/core/config/env.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
@@ -68,7 +69,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://localhost:8000/api/v1/standards/$bodyweightKg?gender=$gender'),
+            '${Env.baseUrl}/api/v1/standards/$bodyweightKg?gender=$gender'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
@@ -94,7 +95,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     if (user == null) return;
 
     final baseUrl =
-        'http://localhost:8000/api/v1/scores/user/${user.id}/scenario';
+        '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario';
 
     final results = await Future.wait([
       _fetchHighScore('$baseUrl/$squatId/highscore'),
@@ -178,7 +179,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
     final user = ref.read(authStateProvider).user;
     if (user == null) return;
 
-    final url = Uri.parse('http://localhost:8000/api/v1/energy/submit');
+    final url = Uri.parse('${Env.baseUrl}/api/v1/energy/submit');
     final body = json.encode({
       'user_id': user.id,
       'energy': energy,

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:frontend/core/config/env.dart';
 
 class EnergyLeaderboardScreen extends StatefulWidget {
   const EnergyLeaderboardScreen({super.key});
@@ -29,7 +30,7 @@ class _EnergyLeaderboardScreenState extends State<EnergyLeaderboardScreen> {
       error = null;
     });
 
-    const url = 'http://localhost:8000/api/v1/energy/leaderboard';
+    const url = '${Env.baseUrl}/api/v1/energy/leaderboard';
 
     try {
       final res = await http.get(Uri.parse(url));

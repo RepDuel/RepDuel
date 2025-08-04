@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:frontend/core/config/env.dart';
 import 'package:frontend/features/scenario/screens/scenario_screen.dart';
 import 'package:frontend/features/leaderboard/screens/leaderboard_screen.dart';
 import 'package:frontend/widgets/main_bottom_nav_bar.dart';
@@ -39,7 +40,7 @@ class _NormalScreenState extends State<NormalScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:8000/api/v1/scenarios/'),
+        Uri.parse('${Env.baseUrl}/api/v1/scenarios/'),
       );
 
       if (response.statusCode == 200) {

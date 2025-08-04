@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../../../core/providers/auth_provider.dart';
+import 'package:frontend/core/config/env.dart';
 
 class LeaderboardScreen extends ConsumerStatefulWidget {
   final String scenarioId;
@@ -37,7 +38,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     });
 
     final url =
-        'http://localhost:8000/api/v1/scores/scenario/${widget.scenarioId}/leaderboard';
+        '${Env.baseUrl}/api/v1/scores/scenario/${widget.scenarioId}/leaderboard';
 
     try {
       final res = await http.get(Uri.parse(url));

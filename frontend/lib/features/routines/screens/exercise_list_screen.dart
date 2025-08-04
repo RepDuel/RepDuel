@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/config/env.dart';
 
 import '../providers/set_data_provider.dart';
 import 'exercise_play_screen.dart';
@@ -48,7 +49,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     final token = ref.read(authStateProvider).token;
 
     final response = await http.get(
-      Uri.parse('http://localhost:8000/api/v1/routines/${widget.routineId}'),
+      Uri.parse('${Env.baseUrl}/api/v1/routines/${widget.routineId}'),
       headers: {
         'Content-Type': 'application/json',
         if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
@@ -165,7 +166,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     for (final body in payloads) {
       try {
         await http.post(
-          Uri.parse('http://localhost:8000/api/v1/scores/'),
+          Uri.parse('${Env.baseUrl}/api/v1/scores/'),
           headers: {
             'Content-Type': 'application/json',
             if (token != null && token.isNotEmpty)
@@ -225,7 +226,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     };
 
     final response = await http.post(
-      Uri.parse('http://localhost:8000/api/v1/routine_submission'),
+      Uri.parse('${Env.baseUrl}/api/v1/routine_submission'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
