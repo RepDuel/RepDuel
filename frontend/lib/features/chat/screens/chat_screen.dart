@@ -1,6 +1,7 @@
 // frontend/lib/features/chat/screens/chat_screen.dart
 
 import 'dart:convert';
+import 'package:frontend/core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -67,8 +68,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     if (token != null && token.isNotEmpty) {
       // Open WS using cached token (no ref access here).
+      final wsBaseUrl = Env.baseUrl.replaceFirst('http', 'ws');
       channel = WebSocketChannel.connect(
-        Uri.parse('ws://localhost:8000/api/v1/ws/chat/global?token=$token'),
+        Uri.parse('$wsBaseUrl/api/v1/ws/chat/global?token=$token'),
       );
 
       channel!.stream.listen((data) async {
