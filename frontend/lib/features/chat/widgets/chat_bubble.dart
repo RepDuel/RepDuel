@@ -8,6 +8,7 @@ class ChatBubble extends StatelessWidget {
   final String rankIconPath;
   final String displayName;
   final String avatarUrl;
+  final DateTime createdAt;
   final bool isMe;
 
   const ChatBubble({
@@ -17,8 +18,24 @@ class ChatBubble extends StatelessWidget {
     required this.rankIconPath,
     required this.displayName,
     required this.avatarUrl,
+    required this.createdAt,
     required this.isMe,
   });
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final local = timestamp.toLocal();
+
+    final isToday = now.year == local.year &&
+        now.month == local.month &&
+        now.day == local.day;
+
+    if (isToday) {
+      return DateFormat('h:mm a').format(local); // 2:45 PM
+    } else {
+      return DateFormat('MMM d, h:mm a').format(local); // Aug 5, 2:45 PM
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,9 +68,13 @@ class ChatBubble extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(displayName,
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, color: rankColor)),
+                      Text(
+                        displayName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: rankColor,
+                        ),
+                      ),
                       const SizedBox(width: 6),
                       SvgPicture.asset(rankIconPath, height: 18, width: 18),
                     ],
@@ -68,7 +89,7 @@ class ChatBubble extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              DateFormat('h:mm a').format(DateTime.now().toLocal()),
+              _formatTimestamp(createdAt),
               style: TextStyle(color: Colors.grey[400], fontSize: 11),
             ),
           ],

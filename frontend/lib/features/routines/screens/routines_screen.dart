@@ -335,8 +335,9 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
             child: GridView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: routines.length + 1,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount:
+                    (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6),
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
                 childAspectRatio: 0.7,

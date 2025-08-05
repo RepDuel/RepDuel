@@ -135,11 +135,7 @@ class _NormalScreenState extends State<NormalScreen> {
                           Expanded(
                             child: Text('Lift', style: _headerStyle),
                           ),
-                          Expanded(
-                            child: Center(
-                              child: Text('Leaderboard', style: _headerStyle),
-                            ),
-                          ),
+                          Text('Leaderboard', style: _headerStyle),
                         ],
                       ),
                     ),
@@ -189,18 +185,14 @@ class _NormalScreenState extends State<NormalScreen> {
                                       ),
                                     ),
                                   ),
-                                  Expanded(
-                                    child: Center(
-                                      child: IconButton(
-                                        icon: const Icon(Icons.leaderboard,
-                                            color: Colors.blue),
-                                        onPressed: () {
-                                          if (id != null) {
-                                            _goToLeaderboard(id, name);
-                                          }
-                                        },
-                                      ),
-                                    ),
+                                  IconButton(
+                                    icon: const Icon(Icons.leaderboard,
+                                        color: Colors.blue),
+                                    onPressed: () {
+                                      if (id != null) {
+                                        _goToLeaderboard(id, name);
+                                      }
+                                    },
                                   ),
                                 ],
                               ),

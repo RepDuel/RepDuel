@@ -1,5 +1,3 @@
-// frontend/lib/features/profile/widgets/workout_history_list.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,11 +14,9 @@ class WorkoutHistoryList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(workoutHistoryProvider(userId));
 
-    // Read user's preferred unit via weightMultiplier:
-    // ≈1.0 => kg, ≈2.2 => lbs
     final userMultiplier =
         ref.watch(authStateProvider).user?.weightMultiplier ?? 1.0;
-    final isLbs = userMultiplier > 1.5; // simple heuristic
+    final isLbs = userMultiplier > 1.5;
     const kgToLbs = 2.20462;
     final unit = isLbs ? 'lb' : 'kg';
 
@@ -30,7 +26,6 @@ class WorkoutHistoryList extends ConsumerWidget {
         (n % 1 == 0) ? n.toInt().toString() : n.toStringAsFixed(1);
 
     String scenarioTitle(String id) {
-      // Convert "barbell_bench_press" -> "Barbell Bench Press"
       return id
           .split('_')
           .where((p) => p.isNotEmpty)
@@ -52,74 +47,81 @@ class WorkoutHistoryList extends ConsumerWidget {
           );
         }
 
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isWide = screenWidth > 700;
+        const minWidth = 300.0;
+        const maxWidth = 600.0;
+
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: entries.map((entry) {
-            // Convert total volume to user unit.
-            // Volume is weight * reps (and possibly sets); converting weight => multiply by kgToLbs when needed.
             final totalVolumeUser = entry.scenarios.fold<double>(
               0.0,
-              (sum, s) => sum + (toUserUnit(s.totalVolume)),
+              (sum, s) => sum + toUserUnit(s.totalVolume),
             );
 
-            // Group by scenarioId
             final Map<String, List<RoutineScenarioSubmission>> grouped = {};
             for (final s in entry.scenarios) {
               grouped.putIfAbsent(s.scenarioId, () => []).add(s);
             }
 
             return Container(
+              alignment: Alignment.centerLeft,
               margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title and meta
-                  Text(entry.title,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('Time: ${formatNum(entry.duration)} minutes',
-                      style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 8),
-
-                  // Per-exercise blocks
-                  ...grouped.entries.expand((grp) {
-                    final scenarioName = scenarioTitle(grp.key);
-                    final items = <Widget>[
-                      Text(
-                        '$scenarioName:',
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w600),
-                      ),
-                    ];
-
-                    for (final s in grp.value) {
-                      // Repeat the same line 'sets' times
-                      for (int i = 0; i < s.sets; i++) {
-                        final weightUser = toUserUnit(s.weight);
-                        items.add(Text(
-                          '${formatNum(weightUser)}$unit x ${s.reps}',
-                          style: const TextStyle(color: Colors.white),
-                        ));
-                      }
-                    }
-
-                    items.add(const SizedBox(height: 8)); // spacing after block
-                    return items;
-                  }),
-
-                  // Total volume (in user unit * reps)
-                  Text(
-                    'Total Volume: ${formatNum(totalVolumeUser)}',
-                    style: const TextStyle(color: Colors.white70),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: isWide ? minWidth : double.infinity,
+                  maxWidth: isWide ? maxWidth : double.infinity,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[900],
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(entry.title,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text('Time: ${formatNum(entry.duration)} minutes',
+                          style: const TextStyle(color: Colors.white70)),
+                      const SizedBox(height: 8),
+                      ...grouped.entries.expand((grp) {
+                        final scenarioName = scenarioTitle(grp.key);
+                        final items = <Widget>[
+                          Text(
+                            '$scenarioName:',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ];
+
+                        for (final s in grp.value) {
+                          for (int i = 0; i < s.sets; i++) {
+                            final weightUser = toUserUnit(s.weight);
+                            items.add(Text(
+                              '${formatNum(weightUser)}$unit x ${s.reps}',
+                              style: const TextStyle(color: Colors.white),
+                            ));
+                          }
+                        }
+
+                        items.add(const SizedBox(height: 8));
+                        return items;
+                      }),
+                      Text(
+                        'Total Volume: ${formatNum(totalVolumeUser)}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           }).toList(),
