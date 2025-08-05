@@ -6,7 +6,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:logger/logger.dart';
 
 import '../services/secure_storage_service.dart';
-import 'api_providers.dart';
+import '../config/env.dart';
 
 final logger = Logger();
 
@@ -34,15 +34,15 @@ class WebSocketService {
       return;
     }
 
-    final uri = Uri.parse('ws://localhost:8000/api/v1/ws/$channelId')
+    final wsBase = Env.baseUrl.replaceFirst('http', 'ws');
+    final uri = Uri.parse('$wsBase/api/v1/ws/$channelId')
         .replace(queryParameters: {'token': token});
     logger.i('Connecting to WebSocket URL: $uri');
 
     try {
       _channel = WebSocketChannel.connect(uri);
     } catch (e, stackTrace) {
-      logger.e('Failed to connect to WebSocket',
-          error: e, stackTrace: stackTrace);
+      logger.e('Failed to connect to WebSocket', error: e, stackTrace: stackTrace);
       return;
     }
 

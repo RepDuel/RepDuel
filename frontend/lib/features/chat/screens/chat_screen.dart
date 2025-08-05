@@ -1,276 +1,151 @@
 // frontend/lib/features/chat/screens/chat_screen.dart
 
 import 'dart:convert';
+import 'package:frontend/core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:frontend/core/config/env.dart';
+import 'package:frontend/core/providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/models/message.dart';
 import '../../../core/models/user.dart';
-import '../../../core/providers/auth_provider.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/message_input_bar.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 
-class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
-
-  @override
-  ConsumerState<ChatScreen> createState() => _ChatScreenState();
-}
-
+// Message wrapper with all fields enriched (matches backend broadcast format)
 class ChatDisplayMessage {
   final Message message;
-  final User? user;
+  final User user;
   final String rankColor;
   final String rankIconPath;
 
   ChatDisplayMessage({
     required this.message,
-    this.user,
+    required this.user,
     required this.rankColor,
     required this.rankIconPath,
   });
+
+  factory ChatDisplayMessage.fromJson(Map<String, dynamic> json) {
+    return ChatDisplayMessage(
+      message: Message.fromJson(json['message']),
+      user: User.fromJson(json['user']),
+      rankColor: json['rankColor'] ?? '#00ced1',
+      rankIconPath: json['rankIconPath'] ?? 'assets/images/ranks/unranked.svg',
+    );
+  }
+}
+
+// Provider to load message history once on app start
+final chatHistoryProvider =
+    FutureProvider<List<ChatDisplayMessage>>((ref) async {
+  final auth = ref.read(authStateProvider);
+  final token = auth.token;
+
+  final res = await http.get(
+    Uri.parse('${Env.baseUrl}/api/v1/history/global'),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (res.statusCode != 200) throw Exception('Failed to load chat history');
+
+  final List raw = jsonDecode(res.body);
+  return raw.map((e) => ChatDisplayMessage.fromJson(e)).toList();
+});
+
+class ChatScreen extends ConsumerStatefulWidget {
+  const ChatScreen({super.key});
+  @override
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
-  WebSocketChannel? channel;
-  final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final List<ChatDisplayMessage> displayMessages = [];
-  final Map<String, User> userCache = {};
-  final Map<String, String> rankColorCache = {};
-  final Map<String, String> rankIconPathCache = {};
-  bool isLoading = true;
+  late WebSocketChannel channel;
+  final _controller = TextEditingController();
+  final _scrollController = ScrollController();
 
-  // Cache auth data so we don't access `ref` from async callbacks after dispose.
-  String? _token;
-  String? _currentUserId;
+  final List<ChatDisplayMessage> _messages = [];
+
+  // Cache auth data (so we don’t use ref after dispose)
+  late final String? _token;
+  late final String? _userId;
+
+  bool _connected = false;
 
   @override
   void initState() {
     super.initState();
-
-    // Safe to read here; we cache for later async use.
     final auth = ref.read(authStateProvider);
     _token = auth.token;
-    _currentUserId = auth.user?.id;
-
-    _initChat();
+    _userId = auth.user?.id;
+    _initChatWebSocket();
   }
 
-  Future<void> _initChat() async {
+  void _initChatWebSocket() {
     final token = _token;
+    if (token == null || token.isEmpty) return;
 
-    if (token != null && token.isNotEmpty) {
-      // Open WS using cached token (no ref access here).
-      channel = WebSocketChannel.connect(
-        Uri.parse('ws://localhost:8000/api/v1/ws/chat/global?token=$token'),
-      );
+    channel = WebSocketChannel.connect(
+      Uri.parse('ws://localhost:8000/api/v1/ws/chat/global?token=$token'),
+    );
 
-      channel!.stream.listen((data) async {
-        // If the widget was disposed while awaiting messages, bail out.
-        if (!mounted) return;
-
-        try {
-          final messageData = jsonDecode(data);
-          final msg = Message.fromJson(messageData);
-          final enriched = await _enrichMessage(msg);
-          if (!mounted) return;
-          setState(() {
-            displayMessages.add(enriched);
-          });
-          _scrollToBottom();
-        } catch (e) {
-          debugPrint('Error parsing WebSocket message: $e');
-        }
-      }, onError: (e) {
-        debugPrint('WebSocket error: $e');
-        if (mounted) {
-          // Optional: avoid popping if this screen isn't on top.
-          // You can show a SnackBar instead if preferred.
-          context.pop();
-        }
-      });
-
-      await _loadHistory();
-    } else {
-      // No token -> not logged in; avoid loading/connecting.
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadHistory() async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
-      return;
-    }
-
-    try {
-      final res = await http.get(
-        Uri.parse('${Env.baseUrl}/api/v1/history/global'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
+    channel.stream.listen((data) {
       if (!mounted) return;
-
-      if (res.statusCode == 200) {
-        final hist = (jsonDecode(res.body) as List)
-            .map((j) => Message.fromJson(j))
-            .toList();
-
-        // Enrich without touching `ref` inside the helpers.
-        final enrichedList = await Future.wait(hist.map(_enrichMessage));
-
-        if (!mounted) return;
+      try {
+        final json = jsonDecode(data);
+        final message = ChatDisplayMessage.fromJson(json);
         setState(() {
-          displayMessages.addAll(enrichedList);
-          isLoading = false;
+          _messages.add(message);
         });
         _scrollToBottom();
-      } else {
-        if (mounted) {
-          setState(() => isLoading = false);
-        }
+      } catch (e) {
+        debugPrint('WS parse error: $e');
       }
-    } catch (e) {
-      // If disposed during await, `mounted` will be false; no `ref` access here.
-      debugPrint('Error loading chat history: $e');
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
-    }
-  }
+    }, onError: (err) {
+      debugPrint('WebSocket error: $err');
+      if (mounted) context.pop();
+    }, onDone: () {
+      debugPrint('WebSocket closed');
+    });
 
-  Future<ChatDisplayMessage> _enrichMessage(Message msg) async {
-    final user = await _fetchUser(msg.authorId);
-    final color = await _fetchRankColor(msg.authorId) ?? '#00ced1';
-    final iconPath = await _fetchRankIconPath(msg.authorId) ??
-        'assets/images/ranks/unranked.svg';
-
-    return ChatDisplayMessage(
-      message: msg,
-      user: user,
-      rankColor: color,
-      rankIconPath: iconPath,
-    );
-  }
-
-  Future<User?> _fetchUser(String userId) async {
-    if (userCache.containsKey(userId)) return userCache[userId];
-
-    final token = _token;
-    if (token == null || token.isEmpty) return null;
-
-    try {
-      final res = await http.get(
-        Uri.parse('${Env.baseUrl}/api/v1/users/$userId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (res.statusCode == 200) {
-        final user = User.fromJson(jsonDecode(res.body));
-        userCache[userId] = user;
-        return user;
-      }
-    } catch (e) {
-      debugPrint('Failed to fetch user $userId: $e');
-    }
-
-    return null;
-  }
-
-  Future<String?> _fetchRankColor(String userId) async {
-    if (rankColorCache.containsKey(userId)) return rankColorCache[userId];
-
-    final token = _token;
-    if (token == null || token.isEmpty) return null;
-
-    try {
-      final res = await http.get(
-        Uri.parse('${Env.baseUrl}/api/v1/ranks/rank_color/$userId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (res.statusCode == 200) {
-        final color = jsonDecode(res.body);
-        rankColorCache[userId] = color;
-        return color;
-      }
-    } catch (e) {
-      debugPrint('Failed to fetch rank color: $e');
-    }
-    return null;
-  }
-
-  Future<String?> _fetchRankIconPath(String userId) async {
-    if (rankIconPathCache.containsKey(userId)) {
-      return rankIconPathCache[userId];
-    }
-
-    final token = _token;
-    if (token == null || token.isEmpty) return null;
-
-    try {
-      final res = await http.get(
-        Uri.parse('${Env.baseUrl}/api/v1/ranks/rank_icon/$userId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (res.statusCode == 200) {
-        final iconPath = jsonDecode(res.body);
-        rankIconPathCache[userId] = iconPath;
-        return iconPath;
-      }
-    } catch (e) {
-      debugPrint('Failed to fetch rank icon: $e');
-    }
-    return null;
-  }
-
-  void _sendMessage() {
-    final content = _controller.text.trim();
-    if (content.isEmpty || channel == null) return;
-
-    final message = {
-      'content': content,
-      'authorId': _currentUserId, // use cached id; no `ref.read`
-      'channelId': '00000000-0000-0000-0000-000000000000',
-    };
-
-    try {
-      channel!.sink.add(jsonEncode(message));
-      _controller.clear();
-    } catch (e) {
-      debugPrint('Failed to send message: $e');
-    }
+    _connected = true;
   }
 
   void _scrollToBottom() {
-    if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
   }
 
+  void _sendMessage() {
+    final text = _controller.text.trim();
+    if (text.isEmpty || !_connected) return;
+
+    final payload = {
+      'content': text,
+      'authorId': _userId,
+      'channelId': '00000000-0000-0000-0000-000000000000',
+    };
+
+    try {
+      channel.sink.add(jsonEncode(payload));
+      _controller.clear();
+    } catch (e) {
+      debugPrint('Send error: $e');
+    }
+  }
+
   @override
   void dispose() {
-    // Close WS first to stop incoming stream events.
     try {
-      channel?.sink.close(1000, 'Client closed connection');
+      channel.sink.close(1000, 'Client closed');
     } catch (_) {}
-    channel = null;
-
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -278,7 +153,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watching here is safe; build only runs while mounted.
     final currentUser = ref.watch(authStateProvider).user;
 
     return Scaffold(
@@ -290,40 +164,47 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         centerTitle: true,
         elevation: 0,
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    itemCount: displayMessages.length,
-                    itemBuilder: (context, index) {
-                      final item = displayMessages[index];
-                      final isMe = item.message.authorId == currentUser?.id;
+      body: ref.watch(chatHistoryProvider).when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('Error loading chat: $e')),
+            data: (initialMessages) {
+              // Load only once, then append live
+              if (_messages.isEmpty) _messages.addAll(initialMessages);
 
-                      return ChatBubble(
-                        message: item.message.content,
-                        color: item.rankColor,
-                        rankIconPath: item.rankIconPath,
-                        displayName: item.user?.username ?? 'Unknown',
-                        avatarUrl: item.user?.avatarUrl ?? '',
-                        isMe: isMe,
-                      );
-                    },
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final m = _messages[index];
+                        final isMe = m.message.authorId == currentUser?.id;
+                        return ChatBubble(
+                          message: m.message.content,
+                          color: m.rankColor,
+                          rankIconPath: m.rankIconPath,
+                          displayName: m.user.username,
+                          avatarUrl: m.user.avatarUrl ?? '',
+                          isMe: isMe,
+                          createdAt: m.message.createdAt,
+                        );
+                      },
+                    ),
                   ),
-                ),
-                MessageInputBar(
-                  controller: _controller,
-                  onSend: _sendMessage,
-                ),
-              ],
-            ),
+                  MessageInputBar(
+                    controller: _controller,
+                    onSend: _sendMessage,
+                  ),
+                ],
+              );
+            },
+          ),
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 3,
-        onTap: (index) {
-          switch (index) {
+        onTap: (i) {
+          switch (i) {
             case 0:
               context.go('/normal');
               break;
@@ -332,8 +213,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               break;
             case 2:
               context.go('/routines');
-              break;
-            case 3:
               break;
             case 4:
               context.go('/profile');

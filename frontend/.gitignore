@@ -37,8 +37,11 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+# Ignore all build directories except web
 build/
+!build/web/
 **/build/
+!**/build/web/
 
 # -------------------------
 # Flutter Generated Platform Files (ignore)

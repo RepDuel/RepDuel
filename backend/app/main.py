@@ -4,9 +4,9 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1.api_router import api_router
 
 app = FastAPI(
-    title="GymRank API",
+    title="RepDuel API",
     version="1.0.0",
-    description="Backend for the GymRank app"
+    description="Backend for the RepDuel app"
 )
 
 app.add_middleware(

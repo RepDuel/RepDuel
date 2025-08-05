@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "--- Starting GymRank Backend ---"
+echo "--- Starting RepDuel Backend ---"
 
 # Determine script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

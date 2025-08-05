@@ -1,4 +1,4 @@
-Write-Host "--- Starting GymRank Backend ---"
+Write-Host "--- Starting RepDuel Backend ---"
 
 # Activate virtual environment (Windows path)
 if (Test-Path ".venv\Scripts\Activate.ps1") {
