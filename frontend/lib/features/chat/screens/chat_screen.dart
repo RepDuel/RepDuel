@@ -187,6 +187,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           displayName: m.user.username,
                           avatarUrl: m.user.avatarUrl ?? '',
                           isMe: isMe,
+                          createdAt: m.message.createdAt,
                         );
                       },
                     ),
