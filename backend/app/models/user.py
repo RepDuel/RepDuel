@@ -20,6 +20,7 @@ class User(Base):
     weight = Column(Float, nullable=True)
     gender = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    energy = Column(Float, nullable=True)
 
     display_name = Column(String(255), nullable=True)
 

@@ -1,21 +1,20 @@
-# backend/app/api/v1/chat.py
-
 import json
 import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List
 
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
 from app.api.v1.deps import get_db
 from app.core.auth import get_current_user_ws
 from app.models.channel import Channel
 from app.models.guild import Guild
 from app.models.message import Message as MessageModel
-from app.schemas.message import MessageRead
-from fastapi import (APIRouter, Depends, HTTPException, WebSocket,
-                     WebSocketDisconnect)
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from app.services.chat_service import enrich_message
 
 router = APIRouter(tags=["chat"])
 active_connections: List[WebSocket] = []
@@ -80,22 +79,19 @@ async def websocket_global_chat(
 
                 db.add(message)
                 await db.commit()
+                await db.refresh(message)
 
-                payload = {
-                    "id": str(message.id),
-                    "content": message.content,
-                    "authorId": message.author_id,
-                    "channelId": message.channel_id,
-                    "createdAt": message.created_at.isoformat(),
-                    "updatedAt": message.updated_at.isoformat(),
-                }
+                enriched_payload = await enrich_message(db, message)
+
+                # Fix: safely encode UUID, datetime, etc.
+                serialized = jsonable_encoder(enriched_payload)
 
                 disconnected = []
                 for conn in active_connections:
                     try:
-                        await conn.send_text(json.dumps(payload))
+                        await conn.send_text(json.dumps(serialized))
                     except Exception as e:
-                        print(f"Broadcast error: {e}")
+                        logging.warning(f"Broadcast error: {e}")
                         disconnected.append(conn)
 
                 for conn in disconnected:
@@ -115,7 +111,7 @@ async def websocket_global_chat(
             print("WebSocket connection closed and removed.")
 
 
-@router.get("/history/global", response_model=List[MessageRead])
+@router.get("/history/global")
 async def get_history(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Channel).where(Channel.name == "global"))
     global_channel = result.scalar_one_or_none()
@@ -127,4 +123,7 @@ async def get_history(db: AsyncSession = Depends(get_db)):
         .where(MessageModel.channel_id == global_channel.id)
         .order_by(MessageModel.created_at.asc())
     )
-    return result.scalars().all()
+
+    messages = result.scalars().all()
+    enriched = [await enrich_message(db, msg) for msg in messages]
+    return enriched
