@@ -37,6 +37,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       error = null;
     });
 
+    // ignore: prefer_const_declarations
     final url =
         '${Env.baseUrl}/api/v1/scores/scenario/${widget.scenarioId}/leaderboard';
 
