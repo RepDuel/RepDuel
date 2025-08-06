@@ -4,7 +4,7 @@ echo "--- Starting RepDuel Backend ---"
 
 # Determine script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$SCRIPT_DIR/.."
+PROJECT_ROOT="$SCRIPT_DIR"
 
 # Activate the virtual environment from the root project folder
 if [ -f "$PROJECT_ROOT/.venv/bin/activate" ]; then
