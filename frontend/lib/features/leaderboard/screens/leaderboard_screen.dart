@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../../../core/providers/auth_provider.dart';
-import 'package:frontend/core/config/env.dart';
+import '../../../core/config/env.dart';
 
 class LeaderboardScreen extends ConsumerStatefulWidget {
   final String scenarioId;

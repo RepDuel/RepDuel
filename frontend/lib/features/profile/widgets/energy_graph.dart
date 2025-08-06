@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 
-import 'package:frontend/core/config/env.dart';
+import '../../../core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;

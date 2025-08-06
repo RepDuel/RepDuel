@@ -1,7 +1,7 @@
 // frontend/lib/core/api/message_api_service.dart
 
-import 'package:frontend/core/models/message.dart';
-import 'package:frontend/core/utils/http_client.dart';
+import '../models/message.dart';
+import '../utils/http_client.dart';
 
 class MessageApiService {
   final HttpClient _client;

@@ -2,8 +2,8 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:frontend/core/models/message.dart';
-import 'package:frontend/core/providers/api_providers.dart';
+import '../../../core/models/message.dart';
+import '../../../core/providers/api_providers.dart';
 
 final messageListProvider = StateNotifierProvider.family<MessageListNotifier,
     AsyncValue<List<Message>>, String>((ref, channelId) {

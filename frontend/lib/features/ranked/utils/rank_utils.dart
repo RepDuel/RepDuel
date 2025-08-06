@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:frontend/core/providers/auth_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/api_providers.dart';
 
 class RankUtils {

@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:frontend/core/config/env.dart';
+import '../../../core/config/env.dart';
 
 import '../screens/add_exercise_screen.dart';
 import '../../../core/models/routine.dart';

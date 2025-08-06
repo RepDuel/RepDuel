@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:frontend/core/config/env.dart';
+import '../../../core/config/env.dart';
 import 'dart:convert';
 
 import '../../../core/providers/auth_provider.dart';

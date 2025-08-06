@@ -1,6 +1,6 @@
 // frontend/lib/core/models/channel.dart
 
-import 'package:frontend/core/models/message.dart';
+import 'message.dart';
 
 class Channel {
   final String id;

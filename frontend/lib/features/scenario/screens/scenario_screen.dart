@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/core/config/env.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../ranked/screens/result_screen.dart';
 

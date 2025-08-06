@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
-import 'package:frontend/core/config/env.dart';
 
 import '../providers/set_data_provider.dart';
 import 'exercise_play_screen.dart';
 import 'summary_screen.dart';
 import 'add_exercise_screen.dart';
+
+import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
 
 class ExerciseListScreen extends ConsumerStatefulWidget {

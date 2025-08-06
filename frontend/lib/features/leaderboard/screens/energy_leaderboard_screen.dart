@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:frontend/core/config/env.dart';
+import '../../../core/config/env.dart';
 
 class EnergyLeaderboardScreen extends StatefulWidget {
   const EnergyLeaderboardScreen({super.key});

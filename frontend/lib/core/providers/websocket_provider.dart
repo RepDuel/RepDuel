@@ -3,9 +3,9 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:frontend/core/providers/secure_storage_provider.dart';
 import 'package:logger/logger.dart';
 
+import 'secure_storage_provider.dart';
 import '../services/secure_storage_service.dart';
 import '../config/env.dart';
 

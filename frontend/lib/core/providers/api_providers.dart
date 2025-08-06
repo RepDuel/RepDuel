@@ -1,12 +1,12 @@
 // frontend/lib/core/providers/api_providers.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/core/config/env.dart';
 import 'package:dio/dio.dart';
 
 import '../api/auth_api_service.dart';
 import '../api/guild_api_service.dart';
 import '../api/energy_api_service.dart';
+import '../config/env.dart';
 import '../services/secure_storage_service.dart';
 import '../api/message_api_service.dart';
 import '../utils/http_client.dart';

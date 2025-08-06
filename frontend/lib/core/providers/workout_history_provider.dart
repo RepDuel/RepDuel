@@ -2,10 +2,11 @@
 
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/services/secure_storage_service.dart';
-import '../models/routine_submission_read.dart';
 import 'package:http/http.dart' as http;
-import 'package:frontend/core/config/env.dart';
+
+import '../config/env.dart';
+import '../services/secure_storage_service.dart';
+import '../models/routine_submission_read.dart';
 
 final workoutHistoryProvider =
     FutureProvider.family<List<RoutineSubmissionRead>, String>(

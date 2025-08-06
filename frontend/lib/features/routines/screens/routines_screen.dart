@@ -1,7 +1,6 @@
 // frontend/lib/features/routines/screens/routines_screen.dart
 
 import 'dart:convert';
-import 'package:frontend/core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -12,6 +11,7 @@ import '../widgets/routine_card.dart';
 import '../widgets/add_routine_card.dart';
 import 'routine_play_screen.dart';
 import 'custom_routine_screen.dart';
+import '../../../core/config/env.dart';
 import '../../../core/models/routine.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../../../core/providers/auth_provider.dart';

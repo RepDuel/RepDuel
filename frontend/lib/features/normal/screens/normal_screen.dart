@@ -4,10 +4,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:frontend/core/config/env.dart';
-import 'package:frontend/features/scenario/screens/scenario_screen.dart';
-import 'package:frontend/features/leaderboard/screens/leaderboard_screen.dart';
-import 'package:frontend/widgets/main_bottom_nav_bar.dart';
+import '../../../core/config/env.dart';
+import '../../scenario/screens/scenario_screen.dart';
+import '../../leaderboard/screens/leaderboard_screen.dart';
+import '../../../widgets/main_bottom_nav_bar.dart';
 
 class NormalScreen extends StatefulWidget {
   const NormalScreen({super.key});
