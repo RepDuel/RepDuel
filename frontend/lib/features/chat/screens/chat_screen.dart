@@ -89,7 +89,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (token == null || token.isEmpty) return;
 
     channel = WebSocketChannel.connect(
-      Uri.parse('ws://localhost:8000/api/v1/ws/chat/global?token=$token'),
+      Uri.parse('${Env.baseUrl.replaceFirst('http', 'ws')}/api/v1/ws/chat/global?token=$token'),
     );
 
     channel.stream.listen((data) {
