@@ -24,7 +24,7 @@ class MyApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'YavaSuite',
+      title: 'RepDuel',
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
       routerConfig: router, // Connect GoRouter here
