@@ -1,15 +1,22 @@
-# backend/app/core/config.py
-
+from pydantic import AnyHttpUrl, PostgresDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
+    BASE_URL: str
+    DATABASE_URL: PostgresDsn
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8"
+    )
 
+    @model_validator(mode="after")
+    def normalize_base_url(self) -> "Settings":
+        self.BASE_URL = self.BASE_URL.rstrip("/")
+        return self
 
 settings = Settings()
