@@ -213,6 +213,22 @@ Ranks are based on energy scores:
 * [ ] Teams (Guilds) and challenges
 * [ ] Performance badges and streaks
 
+### Deployment Commands
+
+```bash
+git checkout -b web-deploy
+cd frontend
+flutter clean
+flutter build web --release --dart-define=BACKEND_URL=https://repduel-backend.onrender.com
+cd ..
+mkdir -p deploy/public
+rsync -av --exclude='.*' frontend/build/web/ deploy/public/
+echo 'echo "Using pre-built files"' > deploy/build.sh
+chmod +x deploy/build.sh
+git add deploy/
+git commit -m "Built production web assets"
+git push origin web-deploy
+
 ---
 
 ## 📄 License
