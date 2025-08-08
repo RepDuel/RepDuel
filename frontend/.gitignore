@@ -35,8 +35,7 @@ lib/generated_plugin_registrant.dart
 /ios/.symlinks/
 /ios/DerivedData/
 /ios/build/
-/ios/Runner.xcworkspace/xcshareddata/
-/ios/Runner.xcworkspace/xcuserdata/
+/ios/Runner.xcworkspace/
 
 /linux/flutter/ephemeral/
 /linux/build/
