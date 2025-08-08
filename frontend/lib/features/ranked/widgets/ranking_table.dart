@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 
 import '../utils/rank_utils.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -305,7 +306,7 @@ class _RankingRow extends StatelessWidget {
             Expanded(
                 flex: 1,
                 child: Center(
-                    child: Text('$energy',
+                    child: Text(NumberFormat("###0").format(energy),
                         style: const TextStyle(color: Colors.white)))),
             Expanded(
                 flex: 1,

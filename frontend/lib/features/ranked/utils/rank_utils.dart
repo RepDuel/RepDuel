@@ -1,6 +1,7 @@
 // frontend/lib/features/ranked/utils/rank_utils.dart
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/auth_provider.dart';
@@ -175,7 +176,8 @@ class RankUtils {
   }
 
   static String formatKg(num value) {
-    return value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
+    final formatter = NumberFormat("0.#");
+    return formatter.format(value);
   }
 
   /// Compute total from user's best lifts
