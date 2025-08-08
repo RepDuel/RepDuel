@@ -340,7 +340,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                     (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6),
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 0.7,
+                childAspectRatio: 0.6,
               ),
               itemBuilder: (context, index) {
                 if (index == 0) {
