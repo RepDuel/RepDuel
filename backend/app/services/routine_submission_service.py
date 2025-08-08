@@ -48,18 +48,6 @@ async def create_routine_submission(
     routine_submission_data: RoutineSubmissionCreate,
     current_user: User,
 ) -> RoutineSubmission:
-    # Enforce paywall: limit free users to 3 custom routine submissions
-    if current_user.subscription_level == "free":
-        existing_submissions = await db.execute(
-            select(RoutineSubmission)
-            .where(RoutineSubmission.user_id == current_user.id)
-        )
-        if len(existing_submissions.scalars().all()) >= 3:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Upgrade required to submit more than 3 custom routines."
-            )
-
     # Check if the routine exists
     routine_result = await db.execute(
         select(Routine).where(Routine.id == routine_submission_data.routine_id)

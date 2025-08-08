@@ -263,7 +263,14 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       if (!mounted) return;
       context.go('/login');
       setState(() => _isFinishing = false);
-    } else {
+    } else if (response.statusCode == 404) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("**Invalid data submitted. Please check and try again.**")),
+      );
+      setState(() => _isFinishing = false);
+    }
+    else {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Submission failed: ${response.body}")),
