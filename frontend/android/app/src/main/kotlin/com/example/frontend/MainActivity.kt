@@ -1,4 +1,4 @@
-package com.example.frontend
+package io.repduel.app
 
 import io.flutter.embedding.android.FlutterActivity
 
