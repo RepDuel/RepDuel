@@ -26,7 +26,7 @@ class ExerciseListScreen extends ConsumerStatefulWidget {
 class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   late Future<List<dynamic>> _futureExercises;
 
-  /// Locally added exercises (kept separate from server items so we don't overwrite)
+  // Locally added exercises (kept separate from server items so we don't overwrite)
   final List<Map<String, dynamic>> _localAddedExercises = [];
 
   num _totalVolumeKg = 0; // keep base in kg*reps
@@ -99,7 +99,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     }
   }
 
-  /// Unit helpers based on weight multiplier (kg vs lb)
+  // Unit helpers based on weight multiplier (kg vs lb)
   bool _isLbs(WidgetRef ref) {
     final wm = ref.read(authStateProvider).user?.weightMultiplier ?? 1.0;
     return wm > 1.5; // heuristic (~2.2 => lbs)
@@ -115,7 +115,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     return weightKg * (1 + reps / 30.0);
   }
 
-  /// Submit "best per scenario" to /api/v1/scores/
+  // Submit "best per scenario" to /api/v1/scores/
   Future<void> _submitScoresBestPerScenario() async {
     if (_scoresSubmitted) return;
     final sets = ref.read(routineSetProvider); // your set models
@@ -183,7 +183,7 @@ class ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     _scoresSubmitted = true;
   }
 
-  /// Reset local widget state and provider sets
+  // Reset local widget state and provider sets
   void _resetLocalState() {
     setState(() {
       _totalVolumeKg = 0;
