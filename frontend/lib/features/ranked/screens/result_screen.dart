@@ -149,7 +149,6 @@ class ResultScreen extends ConsumerWidget {
             ? rankOrder[currentIndex + 1]
             : null;
 
-        // scaled score used ONLY in progress bar and below it
         final scaledScore = (scoreToUse * weightMultiplier).round();
 
         final progressValue = isMax
@@ -159,145 +158,139 @@ class ResultScreen extends ConsumerWidget {
                 : 0.0;
 
         return _buildScaffold(
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 24),
-                const Text(
-                  'FINAL SCORE',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '${(finalScore * weightMultiplier).round()}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 72,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Previous Best: ${(previousBest * weightMultiplier).round()}',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  scenarioName.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'CURRENT RANK',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (leftRank != null)
-                      Opacity(
-                        opacity: 0.3,
-                        child: SvgPicture.asset(
-                          'assets/images/ranks/${leftRank.toLowerCase()}.svg',
-                          height: 56,
-                        ),
-                      )
-                    else
-                      const SizedBox(width: 56),
-                    const SizedBox(width: 12),
-                    SvgPicture.asset(
-                      'assets/images/ranks/${currentRank.toLowerCase()}.svg',
-                      height: 72,
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 24),
+                  const Text(
+                    'FINAL SCORE',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 12),
-                    if (rightRank != null)
-                      Opacity(
-                        opacity: 0.3,
-                        child: SvgPicture.asset(
-                          'assets/images/ranks/${rightRank.toLowerCase()}.svg',
-                          height: 56,
-                        ),
-                      )
-                    else
-                      const SizedBox(width: 56),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                Text(
-                  currentRank,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 1.2,
                   ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Progress bar using scaled score
-                Container(
-                  width: 200,
-                  height: 20,
-                  color: Colors.grey[800],
-                  child: LinearProgressIndicator(
-                    value: progressValue,
-                    backgroundColor: Colors.transparent,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      getRankColor(currentRank),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${(finalScore * weightMultiplier).round()}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 72,
+                      fontWeight: FontWeight.bold,
                     ),
-                    minHeight: 24,
                   ),
-                ),
-
-                const SizedBox(height: 12),
-                Text(
-                  isMax
-                      ? 'MAX RANK'
-                      : nextThreshold != null
-                          ? '$scaledScore / ${(nextThreshold * weightMultiplier).round()}'
-                          : '$scaledScore',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Previous Best: ${(previousBest * weightMultiplier).round()}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-
-                const Spacer(),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 14),
+                  const SizedBox(height: 24),
+                  Text(
+                    scenarioName.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.1,
+                    ),
                   ),
-                  child: const Text('Back to Menu'),
-                ),
-                const SizedBox(height: 24),
-              ],
+                  const SizedBox(height: 32),
+                  const Text(
+                    'CURRENT RANK',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (leftRank != null)
+                        Opacity(
+                          opacity: 0.3,
+                          child: SvgPicture.asset(
+                            'assets/images/ranks/${leftRank.toLowerCase()}.svg',
+                            height: 56,
+                          ),
+                        )
+                      else
+                        const SizedBox(width: 56),
+                      const SizedBox(width: 12),
+                      SvgPicture.asset(
+                        'assets/images/ranks/${currentRank.toLowerCase()}.svg',
+                        height: 72,
+                      ),
+                      const SizedBox(width: 12),
+                      if (rightRank != null)
+                        Opacity(
+                          opacity: 0.3,
+                          child: SvgPicture.asset(
+                            'assets/images/ranks/${rightRank.toLowerCase()}.svg',
+                            height: 56,
+                          ),
+                        )
+                      else
+                        const SizedBox(width: 56),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    currentRank,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: 200,
+                    height: 20,
+                    color: Colors.grey[800],
+                    child: LinearProgressIndicator(
+                      value: progressValue,
+                      backgroundColor: Colors.transparent,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        getRankColor(currentRank),
+                      ),
+                      minHeight: 24,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    isMax
+                        ? 'MAX RANK'
+                        : nextThreshold != null
+                            ? '$scaledScore / ${(nextThreshold * weightMultiplier).round()}'
+                            : '$scaledScore',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 14),
+                    ),
+                    child: const Text('Back to Menu'),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
         );
