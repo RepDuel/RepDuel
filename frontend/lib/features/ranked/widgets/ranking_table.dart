@@ -174,8 +174,9 @@ class _RankingTableHeader extends StatelessWidget {
         Expanded(
             flex: 2, child: Center(child: Text('Rank', style: _headerStyle))),
         Expanded(
-            flex: 1, child: Center(child: Text('Energy', style: _headerStyle))),
-        Expanded(flex: 1, child: Center(child: Text('', style: _headerStyle))),
+          flex: 2,
+          child: Text('Energy', style: _headerStyle),
+        ),
       ],
     );
   }
