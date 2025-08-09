@@ -17,9 +17,9 @@ class MainBottomNavBar extends StatelessWidget {
       backgroundColor: Colors.black,
       selectedItemColor: Colors.white,
       unselectedItemColor: Colors.grey,
+      type: BottomNavigationBarType.fixed,
       currentIndex: currentIndex,
       onTap: (index) {
-        // Use GoRouter for navigation
         switch (index) {
           case 0:
             context.go('/normal');
@@ -31,14 +31,9 @@ class MainBottomNavBar extends StatelessWidget {
             context.go('/routines');
             break;
           case 3:
-            context.go('/chat');
-            break;
-          case 4:
             context.go('/profile');
             break;
         }
-
-        // Notify parent widget about index change
         onTap(index);
       },
       items: const [
@@ -53,10 +48,6 @@ class MainBottomNavBar extends StatelessWidget {
         BottomNavigationBarItem(
           icon: Icon(Icons.fitness_center),
           label: 'Routines',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat),
-          label: 'Chat',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person),

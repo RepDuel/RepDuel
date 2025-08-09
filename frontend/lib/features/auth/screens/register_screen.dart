@@ -124,7 +124,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
       ),
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 4,
+        currentIndex: 3,
         onTap: (_) {},
       ),
     );

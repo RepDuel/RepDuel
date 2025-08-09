@@ -8,7 +8,6 @@ import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/profile/screens/profile_wrapper.dart';
 import '../features/profile/screens/settings_screen.dart';
-import '../features/chat/screens/chat_screen.dart';
 import '../features/normal/screens/normal_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
@@ -51,10 +50,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileWrapper(),
-      ),
-      GoRoute(
-        path: '/chat',
-        builder: (context, state) => const ChatScreen(),
       ),
       GoRoute(
         path: '/settings',
