@@ -276,14 +276,22 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                     )
                   : Column(
                       children: [
+                        // FIXED HEADER
                         const Row(
                           children: [
                             Expanded(
-                                flex: 2,
-                                child: Text('Name', style: headerStyle)),
-                            Expanded(child: Text('Sets', style: headerStyle)),
-                            Expanded(child: Text('Reps', style: headerStyle)),
-                            SizedBox(width: 40),
+                              flex: 3,
+                              child: Text('Name', style: headerStyle),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text('Sets', style: headerStyle),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text('Reps', style: headerStyle),
+                            ),
+                            SizedBox(width: 48),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -294,18 +302,28 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                                 const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final e = _items[index];
+                              // FIXED DATA ROW
                               return Row(
                                 children: [
                                   // Name
                                   Expanded(
-                                    flex: 2,
-                                    child: Text(e.name, style: cellStyle),
+                                    flex: 3,
+                                    child: Text(
+                                      e.name,
+                                      style: cellStyle,
+                                      softWrap: false,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                   // Sets controls
                                   Expanded(
+                                    flex: 2,
                                     child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         IconButton(
+                                          visualDensity: VisualDensity.compact,
                                           onPressed: _saving
                                               ? null
                                               : () => _decSets(index),
@@ -315,6 +333,7 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                                         ),
                                         Text('${e.sets}', style: cellStyle),
                                         IconButton(
+                                          visualDensity: VisualDensity.compact,
                                           onPressed: _saving
                                               ? null
                                               : () => _incSets(index),
@@ -327,9 +346,13 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                                   ),
                                   // Reps controls
                                   Expanded(
+                                    flex: 2,
                                     child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         IconButton(
+                                          visualDensity: VisualDensity.compact,
                                           onPressed: _saving
                                               ? null
                                               : () => _decReps(index),
@@ -339,6 +362,7 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                                         ),
                                         Text('${e.reps}', style: cellStyle),
                                         IconButton(
+                                          visualDensity: VisualDensity.compact,
                                           onPressed: _saving
                                               ? null
                                               : () => _incReps(index),
