@@ -1,5 +1,3 @@
-// frontend/lib/features/routines/screens/routines_screen.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,38 +63,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
     await _future;
   }
 
-  void _onAddRoutinePressed(List<Routine> routines) {
-    final currentUser = ref.read(authStateProvider).user;
-    final isFree = currentUser?.subscriptionLevel == null ||
-        currentUser!.subscriptionLevel == 'free';
-    final hasReachedLimit =
-        routines.where((r) => r.userId == currentUser?.id).length >= 3;
-
-    if (isFree && hasReachedLimit) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Upgrade Required'),
-          content: const Text(
-              'Free users can only create up to 3 custom routines. Upgrade to unlock more.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                context.push('/paywall');
-              },
-              child: const Text('Upgrade'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
+  void _onAddRoutinePressed() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CustomRoutineScreen()),
@@ -271,7 +238,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withAlpha(102), // fixed opacity
+                color: Colors.black.withAlpha(102),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(child: CircularProgressIndicator()),
@@ -345,7 +312,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return AddRoutineCard(
-                      onPressed: () => _onAddRoutinePressed(routines));
+                      onPressed: _onAddRoutinePressed);
                 }
                 final routine = routines[index - 1];
                 return _buildRoutineTile(routine, currentUserId);
@@ -357,12 +324,19 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
       bottomNavigationBar: MainBottomNavBar(
         currentIndex: 2,
         onTap: (index) {
-          if (index == 0) {
-            context.go('/ranked');
-          } else if (index == 1) {
-            // stay
-          } else if (index == 2) {
-            context.go('/profile');
+          switch (index) {
+            case 0:
+              context.go('/normal');
+              break;
+            case 1:
+              context.go('/ranked');
+              break;
+            case 2:
+              // Current screen, do nothing.
+              break;
+            case 3:
+              context.go('/profile');
+              break;
           }
         },
       ),
