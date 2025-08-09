@@ -31,18 +31,7 @@ async def create_routine(
     """
     Creates a routine owned by the authenticated user.
     Ownership is encoded via `Routine.user_id`.
-    Users with 'free' subscription are limited to 3 custom routines.
     """
-    if current_user.subscription_level == "free":
-        result = await db.execute(
-            select(func.count()).select_from(Routine).where(Routine.user_id == current_user.id)
-        )
-        routine_count = result.scalar()
-        if routine_count >= 3:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Free users are limited to 3 custom routines. Upgrade to create more."
-            )
 
     created = await routine_service.create_routine(db, payload, current_user.id)
     return created
