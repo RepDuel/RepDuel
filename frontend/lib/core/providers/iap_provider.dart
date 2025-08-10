@@ -7,14 +7,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
-// TODO: Replace with your actual RevenueCat API key for Apple.
-// It's best practice to load this from an environment variable.
-const String _appleApiKey = "appl_YOUR_REVENUE_CAT_APPLE_KEY"; 
+// TODO: Replace 'your_app' with your actual project name from pubspec.yaml
+import 'package:repduel/core/config/env.dart';
+
+// --- Configuration ---
+
+// TODO: Replace 'premium' with the actual Entitlement ID you set up in RevenueCat.
+// This is the identifier for your premium subscription tier.
+const String _premiumEntitlementId = 'premium';
 
 // --- Data Models ---
 
 // Defines the subscription tiers in your app.
-// These should correspond to Entitlements you set up in RevenueCat.
 enum SubscriptionTier {
   free,
   premium,
@@ -62,16 +66,17 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
     try {
       await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.info);
       
-      // IMPORTANT: Initialize Purchases for the correct platform.
+      // Initialize Purchases for the correct platform using the key from our Env class.
       if (Platform.isIOS || Platform.isMacOS) {
-        await Purchases.configure(PurchasesConfiguration(_appleApiKey));
+        await Purchases.configure(PurchasesConfiguration(Env.revenueCatAppleKey));
       } 
       // else if (Platform.isAndroid) {
-      //   await Purchases.configure(PurchasesConfiguration(_googleApiKey));
+      //   await Purchases.configure(PurchasesConfiguration(Env.revenueCatGoogleKey));
       // }
       
-      // IMPORTANT: Associate purchases with the logged-in user.
-      // This assumes you have an authProvider that holds the user state.
+      // TODO: IMPORTANT! Associate purchases with the logged-in user.
+      // This is critical for tying purchases to an account.
+      // Uncomment and adapt this code to work with your auth provider.
       // final userId = _ref.read(authProvider).user?.id;
       // if (userId != null) {
       //   await Purchases.logIn(userId);
@@ -87,8 +92,8 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
 
   // This is the core logic that maps a RevenueCat entitlement to your app's tier.
   void _onCustomerInfoUpdated(CustomerInfo customerInfo) {
-    // TODO: Replace 'premium' with your actual Entitlement ID from RevenueCat.
-    final bool isPremium = customerInfo.entitlements.active['premium'] != null;
+    // Check if the entitlement we defined is active.
+    final bool isPremium = customerInfo.entitlements.active[_premiumEntitlementId] != null;
 
     if (isPremium) {
       state = const AsyncValue.data(SubscriptionTier.premium);
@@ -117,7 +122,6 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
     try {
       final customerInfo = await Purchases.restorePurchases();
       _onCustomerInfoUpdated(customerInfo);
-      // Let the user know if their purchases were restored.
     } on PlatformException catch (e) {
       throw Exception("Failed to restore purchases: ${e.message}");
     }
