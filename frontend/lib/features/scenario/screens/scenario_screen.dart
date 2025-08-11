@@ -7,7 +7,7 @@ import 'dart:convert';
 
 import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../ranked/screens/result_screen.dart';
+import '../../ranked/screens/result_screen.dart'; // We need the provider from here
 
 class ScenarioScreen extends ConsumerStatefulWidget {
   final String liftName;
@@ -38,22 +38,19 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   }
 
   Future<void> _loadScenarioDetails() async {
-    final url = Uri.parse(
-        '${Env.baseUrl}/api/v1/scenarios/${widget.scenarioId}/details');
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      setState(() {
-        _description = data['description'];
-        _isLoadingDescription = false;
-      });
-    } else {
-      setState(() {
-        _description = 'Failed to load description.';
-        _isLoadingDescription = false;
-      });
+    final url = Uri.parse('${Env.baseUrl}/api/v1/scenarios/${widget.scenarioId}/details');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) setState(() => _description = data['description']);
+      } else {
+        if (mounted) setState(() => _description = 'Failed to load description.');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _description = 'Failed to load description.');
+    } finally {
+      if (mounted) setState(() => _isLoadingDescription = false);
     }
   }
 
@@ -63,48 +60,53 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   }
 
   Future<int> _fetchPreviousBest(String userId, String scenarioId) async {
-    final url = Uri.parse(
-        '${Env.baseUrl}/api/v1/scores/user/$userId/scenario/$scenarioId/highscore');
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return (data['weight_lifted'] as num?)?.round() ?? 0;
+    final url = Uri.parse('${Env.baseUrl}/api/v1/scores/user/$userId/scenario/$scenarioId/highscore');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return (data['weight_lifted'] as num?)?.round() ?? 0;
+      }
+    } catch (e) {
+      // Ignore errors here, just return 0 if fetching previous best fails
     }
     return 0;
   }
 
   Future<void> _submitScore(double score, int reps) async {
-    final user = ref.read(authStateProvider).user;
+    final user = ref.read(authProvider).user;
     if (user == null) return;
 
-    final url = Uri.parse('${Env.baseUrl}/api/v1/scores/');
+    final url = Uri.parse('${Env.baseUrl}/api/v1/scores/scenario/${widget.scenarioId}/');
+    final token = ref.read(authProvider).token;
     final body = {
       'user_id': user.id,
-      'scenario_id': widget.scenarioId,
       'weight_lifted': score,
       'reps': reps,
-      'sets': 1, // default 1 set
+      'sets': 1,
     };
-
+    
     await http.post(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        // 'Authorization': 'Bearer $token', // Example if you need auth
+      },
       body: json.encode(body),
     );
   }
 
   Future<void> _handleSubmit() async {
-    final user = ref.read(authStateProvider).user;
+    final user = ref.read(authProvider).user;
     if (user == null) return;
 
     final weight = double.tryParse(_weightController.text) ?? 0;
     final reps = int.tryParse(_repsController.text) ?? 0;
+    if (weight <= 0 || reps <= 0) return; // Basic validation
+
     final oneRepMax = _calculateOneRepMax(weight, reps);
 
-    setState(() {
-      _isSubmitting = true;
-    });
+    setState(() => _isSubmitting = true);
 
     final previousBest = await _fetchPreviousBest(user.id, widget.scenarioId);
     final userMultiplier = user.weightMultiplier;
@@ -114,28 +116,35 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
     if (!mounted) return;
 
+    // --- THIS IS THE CRITICAL FIX ---
+    // We navigate to a ProviderScope that overrides the provider's value.
     final shouldRefresh = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ResultScreen(
-          finalScore: adjustedScore.round(),
-          previousBest: previousBest,
-          scenarioId: widget.scenarioId,
+        builder: (_) => ProviderScope(
+          overrides: [
+            // Provide the real score to the provider.
+            currentScoreProvider.overrideWithValue(adjustedScore.round()),
+          ],
+          child: ResultScreen(
+            // Pass the props to the widget as before.
+            finalScore: adjustedScore.round(),
+            previousBest: previousBest,
+            scenarioId: widget.scenarioId,
+          ),
         ),
       ),
     );
+    // --- END OF FIX ---
 
     if (shouldRefresh == true && mounted) {
       Navigator.of(context).pop(true);
     }
 
-    setState(() {
-      _isSubmitting = false;
-    });
+    setState(() => _isSubmitting = false);
   }
 
   List<Widget> _buildBulletDescription(String? description) {
     if (description == null || description.isEmpty) return [];
-
     final sentences = description.split(RegExp(r'(?<=[.!?])\s+'));
     return sentences
         .where((s) => s.trim().isNotEmpty)
@@ -145,20 +154,12 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('• ',
-                    style: TextStyle(color: Colors.white, fontSize: 14)),
-                Expanded(
-                  child: Text(
-                    s.trim(),
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 14, height: 1.5),
-                  ),
-                ),
+                const Text('• ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                Expanded(child: Text(s.trim(), style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5))),
               ],
             ),
           ),
-        )
-        .toList();
+        ).toList();
   }
 
   @override
@@ -170,6 +171,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // UI logic remains the same...
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -197,20 +199,18 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                 children: [
                   Column(
                     children: [
-                      const Text('Weight',
-                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                      const Text('Weight', style: TextStyle(color: Colors.white, fontSize: 16)),
                       SizedBox(
                         width: 100,
                         child: TextField(
                           controller: _weightController,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 20),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.grey[900],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ),
@@ -218,25 +218,22 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('x',
-                        style: TextStyle(color: Colors.white, fontSize: 24)),
+                    child: Text('x', style: TextStyle(color: Colors.white, fontSize: 24)),
                   ),
                   Column(
                     children: [
-                      const Text('Reps',
-                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                      const Text('Reps', style: TextStyle(color: Colors.white, fontSize: 16)),
                       SizedBox(
                         width: 100,
                         child: TextField(
                           controller: _repsController,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 20),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.grey[900],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ),
@@ -252,16 +249,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton.icon(
           onPressed: _isSubmitting ? null : _handleSubmit,
-          icon: _isSubmitting
-              ? const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : const Icon(Icons.check),
+          icon: _isSubmitting ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.check),
           label: Text(_isSubmitting ? 'Submitting...' : 'Confirm'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
