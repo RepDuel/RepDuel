@@ -17,7 +17,8 @@ import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/iap_provider.dart';
 import '../../../core/services/share_service.dart';
-import '../utils/rank_utils.dart'; // Import the new utils file
+import '../utils/rank_utils.dart';
+import '../../../widgets/paywall_lock.dart';
 
 // --- Data Model for the Score History Graph ---
 class ScoreHistoryEntry {
@@ -143,8 +144,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   final _screenshotController = ScreenshotController();
   bool _isSharing = false;
 
-  // The static members for rank logic have been moved to rank_utils.dart
-
+  // This screen-specific method is correct to keep here
   Future<Map<String, dynamic>> getScenarioAndRankProgress({
     required String scenarioId,
     required int scoreToUse,
@@ -169,6 +169,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return {'scenario': scenario, 'rank': rank};
   }
 
+  // This handler now correctly delegates to the ShareService
   Future<void> _handleShare(Map<String, dynamic> scenarioData, Map<String, dynamic> rankData) async {
     setState(() => _isSharing = true);
     try {
@@ -220,7 +221,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         final nextThreshold = rankData['next_rank_threshold'];
         final isMax = currentRank == 'Celestial';
 
-        // Use the new, global rankOrder constant from the utility file
+        // Use the global rankOrder constant from rank_utils.dart
         final currentIndex = rankOrder.indexOf(currentRank);
         final leftRank = currentIndex > 0 ? rankOrder[currentIndex - 1] : null;
         final rightRank = !isMax && currentIndex < rankOrder.length - 1 ? rankOrder[currentIndex + 1] : null;
@@ -256,7 +257,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   const SizedBox(height: 12),
                   Text(currentRank, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2)),
                   const SizedBox(height: 16),
-                  // Use the new, global getRankColor function
+                  // Use the global getRankColor function from rank_utils.dart
                   Container(width: 200, height: 20, color: Colors.grey[800], child: LinearProgressIndicator(value: progressValue, backgroundColor: Colors.transparent, valueColor: AlwaysStoppedAnimation<Color>(getRankColor(currentRank)), minHeight: 24)),
                   const SizedBox(height: 12),
                   Text(isMax ? 'MAX RANK' : nextThreshold != null ? '$scaledScore / ${(nextThreshold * weightMultiplier).round()}' : '$scaledScore', style: const TextStyle(color: Colors.white, fontSize: 16)),
@@ -277,19 +278,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           if (tier == SubscriptionTier.gold || tier == SubscriptionTier.platinum) {
                             return ScoreHistoryChart(scenarioId: widget.scenarioId);
                           } else {
-                            return GestureDetector(
+                            return PaywallLock(
+                              message: "Upgrade to Gold to track your progress over time.",
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Upgrade to see your progress!")));
                               },
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white24)),
-                                child: const Column(children: [
-                                  Icon(Icons.lock_outline, color: Colors.amber, size: 40),
-                                  SizedBox(height: 12),
-                                  Text("Upgrade to Gold to track your progress over time.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 16, height: 1.4)),
-                                ]),
-                              ),
                             );
                           }
                         },
