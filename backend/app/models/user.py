@@ -24,12 +24,27 @@ class User(Base):
 
     display_name = Column(String(255), nullable=True)
 
-    subscription_level = Column(  # New field for subscription tier
+    subscription_level = Column(
         String(32),
         nullable=False,
-        default="free",  # Default level for new users
+        default="free",
         server_default="free",
     )
+    
+    # --- NEW COLUMNS FOR PAYMENTS ---
+
+    # Stores the Stripe Customer ID (e.g., 'cus_...')
+    # This lets you look up the user in your Stripe dashboard.
+    stripe_customer_id = Column(String, unique=True, index=True, nullable=True)
+
+    # Stores the ID of the user's active Stripe subscription (e.g., 'sub_...')
+    stripe_subscription_id = Column(String, unique=True, nullable=True)
+
+    # Stores the Apple original_transaction_id.
+    # This is the unique identifier for a user's subscription series with Apple.
+    apple_original_transaction_id = Column(String, unique=True, index=True, nullable=True)
+
+    # --- END OF NEW COLUMNS ---
 
     guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
 

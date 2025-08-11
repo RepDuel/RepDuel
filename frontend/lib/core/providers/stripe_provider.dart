@@ -1,13 +1,13 @@
 // frontend/lib/core/providers/stripe_provider.dart
 
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
-// TODO: Replace 'your_app' with your actual project name from pubspec.yaml
 import 'package:repduel/core/config/env.dart';
-
-// TODO: Import your API client (e.g., from a Dio service provider)
-// import 'package:repduel/core/api/api_client.dart';
+import 'package:repduel/core/providers/auth_provider.dart';
 
 // --- Provider Definition ---
 
@@ -28,61 +28,73 @@ class StripeService {
   void _initStripe() {
     // Initialize Stripe using the configuration from our Env class.
     Stripe.publishableKey = Env.stripePublishableKey;
-    // Add any other Stripe-wide settings here.
   }
 
   /// Initiates the Stripe Checkout flow for a subscription.
   /// This function orchestrates the entire client-side process.
   Future<void> subscribeToPlan({
-    required String planId, // e.g., Env.stripePremiumPlanId
     required Function(String) onDisplayError, // Callback to show errors in the UI
   }) async {
     try {
-      // Step 1: Call your backend to create a Stripe Checkout Session.
-      // Your backend will create the session and return its client_secret.
-      
-      // ---- TODO: REPLACE THIS MOCK BACKEND CALL WITH YOUR REAL API CLIENT ----
-      // Example of a real call using a hypothetical apiClientProvider:
-      // final apiClient = _ref.read(apiClientProvider);
-      // final response = await apiClient.post(
-      //   '/create-stripe-payment-intent', 
-      //   data: {'planId': planId}
-      // );
-      // final clientSecret = response.data['clientSecret'] as String?;
-      
-      // This is a placeholder for your actual backend call.
-      print("Calling backend to create Stripe Checkout Session for plan: $planId...");
-      await Future.delayed(const Duration(seconds: 1)); // Simulate network latency
-      // This fake secret will fail. You must get a real one from your backend.
-      const String clientSecret = "pi_..._secret_..."; 
-      // ---- END MOCK BACKEND CALL ----
-
-      if (clientSecret == null || clientSecret.isEmpty) {
-        throw Exception("Failed to get payment client secret from server.");
+      // Step 1: Get the currently authenticated user's token.
+      final token = _ref.read(authProvider).token;
+      if (token == null) {
+        throw Exception("User is not authenticated. Please log in.");
       }
 
-      // Step 2: Present the Stripe payment sheet to the user.
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: Env.merchantDisplayName,
-        ),
+      // Step 2: Call your backend to create a Stripe Checkout Session.
+      print("Calling backend to create Stripe Checkout Session...");
+      
+      final response = await http.post(
+        Uri.parse('${Env.baseUrl}/api/v1/payments/create-checkout-session'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          // Pass the Price ID for the plan the user is subscribing to.
+          'price_id': Env.stripePremiumPlanId, // From your .env file
+          
+          // These are the URLs Stripe will redirect to.
+          // TODO: Replace these with your actual production URLs when you deploy.
+          'success_url': 'http://localhost:3000/success', // A page in your app for success
+          'cancel_url': 'http://localhost:3000/cancel',   // A page for cancellation
+        }),
       );
 
-      await Stripe.instance.presentPaymentSheet();
+      // Step 3: Handle the backend response.
+      if (response.statusCode != 201) { // We expect a 201 Created status
+        final errorData = json.decode(response.body);
+        throw Exception("Failed to create checkout session: ${errorData['detail'] ?? response.reasonPhrase}");
+      }
       
-      // Step 3: Confirmation is handled by webhooks.
-      // Your backend receives a `checkout.session.completed` event from Stripe.
-      // In that webhook handler, you update the user's `subscription_level` in your database.
-      // The app will see the change the next time it fetches the user profile.
-      print("Payment sheet presented. Awaiting webhook for confirmation.");
+      final responseData = json.decode(response.body);
+      final checkoutUrlString = responseData['checkout_url'] as String?;
+
+      if (checkoutUrlString == null || checkoutUrlString.isEmpty) {
+        throw Exception("Server did not return a valid checkout URL.");
+      }
+
+      // Step 4: Redirect the user to the Stripe Checkout page.
+      final checkoutUrl = Uri.parse(checkoutUrlString);
+      if (await canLaunchUrl(checkoutUrl)) {
+        // This will open the URL in the user's browser.
+        await launchUrl(checkoutUrl, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception("Could not launch Stripe checkout URL.");
+      }
+      
+      // After this, the process is out of the app's hands.
+      // Stripe handles the payment, and on success, sends a webhook to your backend.
+      // Your backend webhook handler is responsible for updating the user's subscription_level.
 
     } on StripeException catch (e) {
+      // This might catch client-side Stripe errors, though less likely with this flow.
       print("Stripe Error: ${e.error.localizedMessage}");
       onDisplayError(e.error.localizedMessage ?? "A payment error occurred.");
     } catch (e) {
       print("Generic Error: $e");
-      onDisplayError("An unexpected error occurred. Please try again.");
+      onDisplayError("An unexpected error occurred: ${e.toString()}");
     }
   }
 }
