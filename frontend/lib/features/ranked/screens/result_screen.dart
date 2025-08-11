@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +16,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/iap_provider.dart';
+import '../../../core/services/share_service.dart';
+import '../utils/rank_utils.dart'; // Import the new utils file
 
 // --- Data Model for the Score History Graph ---
 class ScoreHistoryEntry {
@@ -32,14 +35,13 @@ final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistory
   final user = ref.watch(authProvider).user;
   if (user == null) throw Exception("User not authenticated");
   
-  // This endpoint MUST be protected on your backend to be a real premium feature
   final url = '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
   final response = await http.get(Uri.parse(url));
 
   if (response.statusCode == 200) {
     final List<dynamic> data = json.decode(response.body);
     final entries = data.map((item) => ScoreHistoryEntry.fromJson(item)).toList();
-    entries.sort((a, b) => a.date.compareTo(b.date)); // Sort by date ascending for the graph
+    entries.sort((a, b) => a.date.compareTo(b.date));
     return entries;
   } else if (response.statusCode == 403) {
     throw Exception("Upgrade to Gold to see your history.");
@@ -125,7 +127,7 @@ class ShareableResultCard extends StatelessWidget {
   }
 }
 
-// --- Main Screen (now a ConsumerStatefulWidget for the share feature) ---
+// --- Main Screen ---
 class ResultScreen extends ConsumerStatefulWidget {
   final int finalScore;
   final int previousBest;
@@ -141,24 +143,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   final _screenshotController = ScreenshotController();
   bool _isSharing = false;
 
-  static const List<String> rankOrder = ["Unranked", "Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Jade", "Master", "Grandmaster", "Nova", "Astra", "Celestial"];
-  static Color getRankColor(String rank) {
-    switch (rank) {
-      case 'Iron': return Colors.grey;
-      case 'Bronze': return const Color(0xFFcd7f32);
-      case 'Silver': return const Color(0xFFc0c0c0);
-      case 'Gold': return const Color(0xFFefbf04);
-      case 'Platinum': return const Color(0xFF00ced1);
-      case 'Diamond': return const Color(0xFFb9f2ff);
-      case 'Jade': return const Color(0xFF62f40c);
-      case 'Master': return const Color(0xFFff00ff);
-      case 'Grandmaster': return const Color(0xFFffde21);
-      case 'Nova': return const Color(0xFFa45ee5);
-      case 'Astra': return const Color(0xFFff4040);
-      case 'Celestial': return const Color(0xFF00ffff);
-      default: return Colors.white;
-    }
-  }
+  // The static members for rank logic have been moved to rank_utils.dart
 
   Future<Map<String, dynamic>> getScenarioAndRankProgress({
     required String scenarioId,
@@ -186,38 +171,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   Future<void> _handleShare(Map<String, dynamic> scenarioData, Map<String, dynamic> rankData) async {
     setState(() => _isSharing = true);
-    final user = ref.read(authProvider).user;
-    final weightMultiplier = user?.weightMultiplier ?? 1.0;
-    
     try {
-      final imageBytes = await _screenshotController.captureFromWidget(
-        InheritedTheme.captureAll(
-          context,
-          Material(
-            color: Colors.transparent,
-            child: ShareableResultCard(
-              username: user?.username ?? 'An Athlete',
-              scenarioName: scenarioData['name'] ?? 'Scenario',
-              finalScore: (widget.finalScore * weightMultiplier).round(),
-              rankName: rankData['current_rank'] ?? 'Unranked',
-              rankColor: getRankColor(rankData['current_rank'] ?? 'Unranked'),
-            ),
-          ),
-        ),
-        delay: Duration.zero,
-      );
-
-      final tempDir = await getTemporaryDirectory();
-      final path = '${tempDir.path}/repduel_result.png';
-      await File(path).writeAsBytes(imageBytes);
-
-      await Share.shareXFiles(
-        [XFile(path)],
-        text: 'I just hit a new score of ${(widget.finalScore * weightMultiplier).round()} in ${scenarioData['name']} on RepDuel! Can you beat it? #RepDuel',
-      );
-
+      await ref.read(shareServiceProvider).shareResult(
+            context: context,
+            screenshotController: _screenshotController,
+            scenarioData: scenarioData,
+            rankData: rankData,
+            finalScore: widget.finalScore,
+          );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to share: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst("Exception: ", "")))
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSharing = false);
     }
@@ -252,9 +219,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         final currentRank = rankData['current_rank'] ?? 'Unranked';
         final nextThreshold = rankData['next_rank_threshold'];
         final isMax = currentRank == 'Celestial';
+
+        // Use the new, global rankOrder constant from the utility file
         final currentIndex = rankOrder.indexOf(currentRank);
         final leftRank = currentIndex > 0 ? rankOrder[currentIndex - 1] : null;
         final rightRank = !isMax && currentIndex < rankOrder.length - 1 ? rankOrder[currentIndex + 1] : null;
+        
         final scaledScore = (scoreToUse * weightMultiplier).round();
         final progressValue = isMax ? 1.0 : (nextThreshold != null && nextThreshold > 0) ? (scoreToUse / nextThreshold).clamp(0.0, 1.0) : 0.0;
 
@@ -286,6 +256,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   const SizedBox(height: 12),
                   Text(currentRank, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2)),
                   const SizedBox(height: 16),
+                  // Use the new, global getRankColor function
                   Container(width: 200, height: 20, color: Colors.grey[800], child: LinearProgressIndicator(value: progressValue, backgroundColor: Colors.transparent, valueColor: AlwaysStoppedAnimation<Color>(getRankColor(currentRank)), minHeight: 24)),
                   const SizedBox(height: 12),
                   Text(isMax ? 'MAX RANK' : nextThreshold != null ? '$scaledScore / ${(nextThreshold * weightMultiplier).round()}' : '$scaledScore', style: const TextStyle(color: Colors.white, fontSize: 16)),
@@ -296,7 +267,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   const Text("SCORE PROGRESSION", style: TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 16),
                   
-                  // Use a simple Consumer to watch just the subscription provider
                   Consumer(
                     builder: (context, ref, child) {
                       final subscriptionState = ref.watch(subscriptionProvider);
@@ -309,7 +279,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           } else {
                             return GestureDetector(
                               onTap: () {
-                                // TODO: Navigate to your paywall screen
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Upgrade to see your progress!")));
                               },
                               child: Container(

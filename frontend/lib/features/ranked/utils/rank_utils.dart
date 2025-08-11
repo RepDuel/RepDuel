@@ -7,6 +7,51 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/api_providers.dart';
 
+// --- NEW ADDITIONS FOR RESULT SCREEN ---
+
+/// A constant list defining the order of ranks from lowest to highest.
+/// This is now the single source of truth for rank order.
+const List<String> rankOrder = [
+  "Unranked", "Iron", "Bronze", "Silver", "Gold", "Platinum",
+  "Diamond", "Jade", "Master", "Grandmaster", "Nova", "Astra", "Celestial"
+];
+
+/// A utility function to get the corresponding color for a given rank name.
+/// This is now globally accessible.
+Color getRankColor(String rank) {
+  switch (rank) {
+    case 'Iron':
+      return Colors.grey;
+    case 'Bronze':
+      return const Color(0xFFcd7f32);
+    case 'Silver':
+      return const Color(0xFFc0c0c0);
+    case 'Gold':
+      return const Color(0xFFefbf04);
+    case 'Platinum':
+      return const Color(0xFF00ced1);
+    case 'Diamond':
+      return const Color(0xFFb9f2ff);
+    case 'Jade':
+      return const Color(0xFF62f40c);
+    case 'Master':
+      return const Color(0xFFff00ff);
+    case 'Grandmaster':
+      return const Color(0xFFffde21);
+    case 'Nova':
+      return const Color(0xFFa45ee5);
+    case 'Astra':
+      return const Color(0xFFff4040);
+    case 'Celestial':
+      return const Color(0xFF00ffff);
+    default:
+      return Colors.white;
+  }
+}
+
+
+// --- EXISTING UTILITIES (UNCHANGED) ---
+
 class RankUtils {
   static const Map<String, int> rankEnergy = {
     'Iron': 100,
@@ -134,38 +179,6 @@ class RankUtils {
 
     final extraSteps = (score - topVal) / stepScore;
     return ((topEnergy + extraSteps * stepEnergy)).roundToDouble();
-  }
-
-  /// Determine color of rank
-  static Color getRankColor(String rank) {
-    switch (rank) {
-      case 'Iron':
-        return Colors.grey;
-      case 'Bronze':
-        return const Color(0xFFcd7f32);
-      case 'Silver':
-        return const Color(0xFFc0c0c0);
-      case 'Gold':
-        return const Color(0xFFefbf04);
-      case 'Platinum':
-        return const Color(0xFF00ced1);
-      case 'Diamond':
-        return const Color(0xFFb9f2ff);
-      case 'Jade':
-        return const Color(0xFF62f40c);
-      case 'Master':
-        return const Color(0xFFff00ff); // pink
-      case 'Grandmaster':
-        return const Color(0xFFffde21); // yellow
-      case 'Nova':
-        return const Color(0xFFa45ee5); // purple
-      case 'Astra':
-        return const Color(0xFFff4040); // red
-      case 'Celestial':
-        return const Color(0xFF00ffff); // cyan
-      default:
-        return Colors.white;
-    }
   }
 
   /// Format values like double to 1 decimal place or fallback

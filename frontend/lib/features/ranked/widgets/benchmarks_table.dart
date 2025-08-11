@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../utils/rank_utils.dart';
+import '../utils/rank_utils.dart'; // <-- 1. IMPORT THE NEW UTILITY FILE
 import '../../../core/providers/auth_provider.dart';
 
 class BenchmarksTable extends ConsumerWidget {
@@ -100,9 +100,10 @@ class _BenchmarkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 2. THIS IS THE FIX. IT NOW CALLS THE GLOBAL getRankColor FUNCTION.
     final color = metadata?['color'] != null
         ? Color(int.parse(metadata!['color'].substring(1, 7), radix: 16))
-        : RankUtils.getRankColor(rank);
+        : getRankColor(rank);
 
     final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
 
