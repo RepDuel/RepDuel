@@ -7,7 +7,8 @@ import 'dart:convert';
 
 import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../ranked/screens/result_screen.dart'; // We need the provider from here
+// We still need to import this to navigate to the ResultScreen
+import '../../ranked/screens/result_screen.dart'; 
 
 class ScenarioScreen extends ConsumerStatefulWidget {
   final String liftName;
@@ -78,7 +79,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     if (user == null) return;
 
     final url = Uri.parse('${Env.baseUrl}/api/v1/scores/scenario/${widget.scenarioId}/');
-    final token = ref.read(authProvider).token;
     final body = {
       'user_id': user.id,
       'weight_lifted': score,
@@ -88,10 +88,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     
     await http.post(
       url,
-      headers: {
-        'Content-Type': 'application/json',
-        // 'Authorization': 'Bearer $token', // Example if you need auth
-      },
+      headers: {'Content-Type': 'application/json'},
       body: json.encode(body),
     );
   }
@@ -102,7 +99,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
     final weight = double.tryParse(_weightController.text) ?? 0;
     final reps = int.tryParse(_repsController.text) ?? 0;
-    if (weight <= 0 || reps <= 0) return; // Basic validation
+    if (weight <= 0 || reps <= 0) return;
 
     final oneRepMax = _calculateOneRepMax(weight, reps);
 
@@ -116,21 +113,13 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
     if (!mounted) return;
 
-    // --- THIS IS THE CRITICAL FIX ---
-    // We navigate to a ProviderScope that overrides the provider's value.
+    // --- FIX: Revert to the simple, direct navigation ---
     final shouldRefresh = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ProviderScope(
-          overrides: [
-            // Provide the real score to the provider.
-            currentScoreProvider.overrideWithValue(adjustedScore.round()),
-          ],
-          child: ResultScreen(
-            // Pass the props to the widget as before.
-            finalScore: adjustedScore.round(),
-            previousBest: previousBest,
-            scenarioId: widget.scenarioId,
-          ),
+        builder: (_) => ResultScreen(
+          finalScore: adjustedScore.round(),
+          previousBest: previousBest,
+          scenarioId: widget.scenarioId,
         ),
       ),
     );
@@ -171,7 +160,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // UI logic remains the same...
+    // The build method remains the same
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
