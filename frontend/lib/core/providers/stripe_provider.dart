@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter_stripe/flutter_stripe.dart'; // This import is still needed for StripeException
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,19 +16,17 @@ final stripeServiceProvider = Provider<StripeService>((ref) {
   return StripeService(ref);
 });
 
-// --- Stripe Service Class ---
+// --- Stripe Service Class (Simplified) ---
 
 class StripeService {
   final Ref _ref;
 
-  StripeService(this._ref) {
-    _initStripe();
-  }
+  // --- FIX: REMOVED THE CONSTRUCTOR AND INITIALIZATION ---
+  // The _initStripe() method has been removed because initialization
+  // is now correctly handled in main.dart before the app runs.
+  StripeService(this._ref);
+  // --- END FIX ---
 
-  void _initStripe() {
-    // Initialize Stripe using the configuration from our Env class.
-    Stripe.publishableKey = Env.stripePublishableKey;
-  }
 
   /// Initiates the Stripe Checkout flow for a subscription.
   /// This function orchestrates the entire client-side process.
@@ -56,9 +54,8 @@ class StripeService {
           'price_id': Env.stripePremiumPlanId, // From your .env file
           
           // These are the URLs Stripe will redirect to.
-          // TODO: Replace these with your actual production URLs when you deploy.
-          'success_url': 'http://localhost:3000/success', // A page in your app for success
-          'cancel_url': 'http://localhost:3000/cancel',   // A page for cancellation
+          'success_url': Env.stripeSuccessUrl,
+          'cancel_url': Env.stripeCancelUrl,
         }),
       );
 
@@ -75,21 +72,23 @@ class StripeService {
         throw Exception("Server did not return a valid checkout URL.");
       }
 
-      // Step 4: Redirect the user to the Stripe Checkout page.
+      // This logic remains correct for launching the URL.
       final checkoutUrl = Uri.parse(checkoutUrlString);
-      if (await canLaunchUrl(checkoutUrl)) {
-        // This will open the URL in the user's browser.
-        await launchUrl(checkoutUrl, mode: LaunchMode.externalApplication);
-      } else {
-        throw Exception("Could not launch Stripe checkout URL.");
+      
+      if (!await canLaunchUrl(checkoutUrl)) {
+        throw Exception("Could not prepare to launch Stripe URL.");
       }
       
+      // On web, `webOnlyWindowName: '_self'` ensures it opens in the SAME tab.
+      // On mobile, this parameter is ignored and it opens the external browser correctly.
+      await launchUrl(
+        checkoutUrl,
+        webOnlyWindowName: '_self',
+      );
+      
       // After this, the process is out of the app's hands.
-      // Stripe handles the payment, and on success, sends a webhook to your backend.
-      // Your backend webhook handler is responsible for updating the user's subscription_level.
 
     } on StripeException catch (e) {
-      // This might catch client-side Stripe errors, though less likely with this flow.
       print("Stripe Error: ${e.error.localizedMessage}");
       onDisplayError(e.error.localizedMessage ?? "A payment error occurred.");
     } catch (e) {

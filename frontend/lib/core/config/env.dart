@@ -52,4 +52,24 @@ class Env {
     }
     return dotenv.env['STRIPE_PREMIUM_PLAN_ID'] ?? '';
   }
+
+  // --- FIX: ADDED MISSING GETTERS ---
+
+  // --- Getter for stripeSuccessUrl ---
+  static String get stripeSuccessUrl {
+    const fromEnv = String.fromEnvironment('STRIPE_SUCCESS_URL');
+    if (fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    return dotenv.env['STRIPE_SUCCESS_URL'] ?? '';
+  }
+
+  // --- Getter for stripeCancelUrl ---
+  static String get stripeCancelUrl {
+    const fromEnv = String.fromEnvironment('STRIPE_CANCEL_URL');
+    if (fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    return dotenv.env['STRIPE_CANCEL_URL'] ?? '';
+  }
 }

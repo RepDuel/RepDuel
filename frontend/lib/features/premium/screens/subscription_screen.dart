@@ -1,9 +1,62 @@
 // frontend/lib/features/premium/screens/subscription_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:repduel/core/providers/iap_provider.dart'; // We'll need this soon for Apple
+import 'package:repduel/core/providers/stripe_provider.dart';
 
-class SubscriptionScreen extends StatelessWidget {
+class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
+
+  @override
+  ConsumerState<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
+  bool _isPurchasing = false;
+
+  Future<void> _handlePurchase() async {
+    setState(() => _isPurchasing = true);
+
+    try {
+      // This calls the StripeService you already have
+      await ref.read(stripeServiceProvider).subscribeToPlan(
+        onDisplayError: (error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(error), backgroundColor: Colors.red),
+            );
+          }
+        },
+      );
+    } finally {
+      // Ensure the loading state is always turned off
+      if (mounted) {
+        setState(() => _isPurchasing = false);
+      }
+    }
+  }
+
+  Future<void> _handleRestore() async {
+    // This is for Apple IAP, but good to have the handler ready
+     ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Restoring purchases...")),
+    );
+    try {
+      await ref.read(subscriptionProvider.notifier).restorePurchases();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text("Purchases restored successfully!"), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text("Restore failed: ${e.toString()}"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +90,9 @@ class SubscriptionScreen extends StatelessWidget {
             _buildFeatureRow('Support the development of RepDuel'),
             const SizedBox(height: 48),
 
-            // --- The Purchase Button ---
+            // --- The Purchase Button (Now with loading state) ---
             ElevatedButton(
-              onPressed: () {
-                // TODO: Implement purchase logic for Gold tier
-                print("Gold Tier purchase initiated!");
-              },
+              onPressed: _isPurchasing ? null : _handlePurchase,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.black,
@@ -50,11 +100,21 @@ class SubscriptionScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                disabledBackgroundColor: Colors.grey.shade700,
               ),
-              child: const Text(
-                'Upgrade for \$4.99 / month',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              child: _isPurchasing
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.black,
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : const Text(
+                      'Upgrade for \$4.99 / month',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
             ),
             const SizedBox(height: 32),
             
@@ -63,9 +123,7 @@ class SubscriptionScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 TextButton(
-                  onPressed: () {
-                    // TODO: Implement restore purchases logic
-                  },
+                  onPressed: _handleRestore,
                   child: const Text('Restore Purchases', style: TextStyle(color: Colors.white70)),
                 ),
               ],
@@ -82,7 +140,6 @@ class SubscriptionScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget for a feature list item
   Widget _buildFeatureRow(String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
