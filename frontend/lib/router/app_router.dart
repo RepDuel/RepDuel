@@ -1,4 +1,5 @@
 // frontend/lib/router/app_router.dart
+
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +15,7 @@ import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/add_exercise_screen.dart';
+import '../features/premium/screens/subscription_screen.dart'; // <-- ADD THIS IMPORT
 import '../core/providers/auth_provider.dart';
 
 /// Riverpod-backed GoRouter. Rebuilds when [authProvider] changes.
@@ -60,6 +62,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
+
+      // --- ADD THIS NEW ROUTE FOR THE SUBSCRIPTION SCREEN ---
+      GoRoute(
+        path: '/subscribe',
+        builder: (context, state) => const SubscriptionScreen(),
+      ),
+      // --------------------------------------------------------
 
       // Auth
       GoRoute(
