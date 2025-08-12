@@ -21,7 +21,6 @@ class User(Base):
     gender = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     energy = Column(Float, nullable=True)
-
     display_name = Column(String(255), nullable=True)
 
     subscription_level = Column(
@@ -31,7 +30,7 @@ class User(Base):
         server_default="free",
     )
     
-    # --- NEW COLUMNS FOR PAYMENTS ---
+    # --- Columns for Payments ---
 
     # Stores the Stripe Customer ID (e.g., 'cus_...')
     # This lets you look up the user in your Stripe dashboard.
@@ -44,7 +43,7 @@ class User(Base):
     # This is the unique identifier for a user's subscription series with Apple.
     apple_original_transaction_id = Column(String, unique=True, index=True, nullable=True)
 
-    # --- END OF NEW COLUMNS ---
+    # --- Relationships ---
 
     guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
 
@@ -52,12 +51,20 @@ class User(Base):
         "Message", back_populates="author", cascade="all, delete-orphan"
     )
 
-    scores = relationship("Score", back_populates="user")
+    scores = relationship(
+        "Score", back_populates="user", cascade="all, delete-orphan"
+    )
 
     energy_history = relationship(
         "EnergyHistory", back_populates="user", cascade="all, delete-orphan"
     )
+    
+    routine_submissions = relationship(
+        "RoutineSubmission", back_populates="user", cascade="all, delete-orphan"
+    )
 
+    # --- Timestamps and Other Fields ---
+    
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -65,10 +72,6 @@ class User(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
-    )
-
-    routine_submissions = relationship(
-        "RoutineSubmission", back_populates="user", cascade="all, delete-orphan"
     )
 
     weight_multiplier = Column(Float, default=1.0)

@@ -5,16 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/secure_storage_service.dart';
-import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  Future<void> _changeProfilePicture(
-      BuildContext context, WidgetRef ref) async {
+  Future<void> _changeProfilePicture(BuildContext context, WidgetRef ref) async {
     final picker = ImagePicker();
     debugPrint('[📷] Starting image picker...');
 
@@ -33,8 +32,7 @@ class SettingsScreen extends ConsumerWidget {
     final mimeType = picked.mimeType ?? 'image/jpeg';
 
     final authNotifier = ref.read(authProvider.notifier);
-    final ok = await authNotifier.updateProfilePictureFromBytes(
-        bytes, filename, mimeType);
+    final ok = await authNotifier.updateProfilePictureFromBytes(bytes, filename, mimeType);
 
     if (!context.mounted) return;
 
@@ -52,9 +50,7 @@ class SettingsScreen extends ConsumerWidget {
     final isKg = user.weightMultiplier == 1.0;
     final unitLabel = isKg ? 'kg' : 'lbs';
 
-    final displayedWeight = user.weight != null
-        ? (user.weight! * user.weightMultiplier).toStringAsFixed(1)
-        : '';
+    final displayedWeight = user.weight != null ? (user.weight! * user.weightMultiplier).toStringAsFixed(1) : '';
 
     final controller = TextEditingController(text: displayedWeight);
 
@@ -75,12 +71,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          TextButton(
-              onPressed: () => Navigator.pop(context, controller.text),
-              child: const Text("Save")),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Save")),
         ],
       ),
     );
@@ -88,8 +80,7 @@ class SettingsScreen extends ConsumerWidget {
     if (result != null) {
       final input = double.tryParse(result);
       if (input != null) {
-        final storedWeight =
-            input / user.weightMultiplier; // Convert back to kg
+        final storedWeight = input / user.weightMultiplier;
         await ref.read(authProvider.notifier).updateUser(weight: storedWeight);
       }
     }
@@ -139,14 +130,8 @@ class SettingsScreen extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-                title: const Text('Kilograms',
-                    style: TextStyle(color: Colors.white)),
-                onTap: () => Navigator.pop(context, 'kg')),
-            ListTile(
-                title:
-                    const Text('Pounds', style: TextStyle(color: Colors.white)),
-                onTap: () => Navigator.pop(context, 'lbs')),
+            ListTile(title: const Text('Kilograms', style: TextStyle(color: Colors.white)), onTap: () => Navigator.pop(context, 'kg')),
+            ListTile(title: const Text('Pounds', style: TextStyle(color: Colors.white)), onTap: () => Navigator.pop(context, 'lbs')),
           ],
         ),
       ),
@@ -154,9 +139,7 @@ class SettingsScreen extends ConsumerWidget {
 
     if (result != null && result != (isKg ? 'kg' : 'lbs')) {
       final newMultiplier = result == 'kg' ? 1.0 : 2.20462;
-      final success = await ref
-          .read(authProvider.notifier)
-          .updateUser(weightMultiplier: newMultiplier);
+      final success = await ref.read(authProvider.notifier).updateUser(weightMultiplier: newMultiplier);
       if (!success) {
         debugPrint('Failed to update weight multiplier.');
       }
@@ -171,15 +154,10 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Reset Progress"),
-        content: const Text(
-            "Are you sure you want to delete all your scores? This cannot be undone."),
+        content: const Text("Are you sure you want to delete all your scores? This cannot be undone."),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel")),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Confirm")),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Confirm")),
         ],
       ),
     );
@@ -200,34 +178,57 @@ class SettingsScreen extends ConsumerWidget {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success
-            ? 'Progress reset successfully.'
-            : 'Failed to reset progress.'),
+        content: Text(success ? 'Progress reset successfully.' : 'Failed to reset progress.'),
       ),
     );
   }
 
-  /// Best-practice logout:
-  /// - Confirm intent
-  /// - Clear auth state via provider (this should also clear SecureStorage)
-  /// - As a safety net, also clear SecureStorage token locally
-  /// - Navigate to /login
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Account", style: TextStyle(color: Colors.red)),
+        content: const Text("Are you absolutely sure you want to delete your account? All of your data, including scores and progress, will be permanently erased. This cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text("Delete Forever")),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final token = ref.read(authProvider).token;
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Authentication error. Please log in again.')));
+      return;
+    }
+    
+    final response = await http.delete(
+      Uri.parse('${Env.baseUrl}/api/v1/users/me'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (!context.mounted) return;
+
+    if (response.statusCode == 204) {
+      await ref.read(authProvider.notifier).logout();
+      context.go('/login');
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account deleted successfully.')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete account. Please try again.')));
+    }
+  }
+
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Log out'),
-        content: const Text(
-            'You will be signed out of your account on this device. Continue?'),
+        content: const Text('You will be signed out of your account on this device. Continue?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Log out'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Log out')),
         ],
       ),
     );
@@ -235,36 +236,18 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed != true) return;
 
     try {
-      // Preferred: use your auth provider's logout (clears state & tokens)
       await ref.read(authProvider.notifier).logout();
     } catch (e) {
-      // Fallback: ensure local token is cleared even if provider doesn't expose logout
-      try {
-        await SecureStorageService().deleteToken();
-      } catch (_) {}
-      // Also try to reset provider user/token if your notifier exposes such methods
-      // (left as comment since your notifier API may vary)
-      // await ref.read(authProvider.notifier).reset();
+      try { await SecureStorageService().deleteToken(); } catch (_) {}
     }
 
     if (!context.mounted) return;
-
-    // Navigate to login (clears back stack)
     context.go('/login');
-
-    // Optional: feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Signed out')),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
   }
 
   bool _isValidImageUrl(String? url) {
-    return url != null &&
-        url.isNotEmpty &&
-        (url.endsWith('.png') ||
-            url.endsWith('.jpg') ||
-            url.endsWith('.jpeg') ||
-            url.endsWith('.webp'));
+    return url != null && url.isNotEmpty && (url.endsWith('.png') || url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.webp'));
   }
 
   @override
@@ -279,9 +262,7 @@ class SettingsScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
       ),
       body: user == null
-          ? const Center(
-              child: Text('User not found.',
-                  style: TextStyle(color: Colors.white)))
+          ? const Center(child: Text('User not found.', style: TextStyle(color: Colors.white)))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -292,66 +273,50 @@ class SettingsScreen extends ConsumerWidget {
                       CircleAvatar(
                         radius: 48,
                         backgroundColor: Colors.grey[700],
-                        backgroundImage: _isValidImageUrl(user.avatarUrl)
-                            ? NetworkImage(user.avatarUrl!)
-                                as ImageProvider<Object>
-                            : const AssetImage(
-                                    'assets/images/profile_placeholder.png')
-                                as ImageProvider<Object>,
+                        backgroundImage: _isValidImageUrl(user.avatarUrl) ? NetworkImage(user.avatarUrl!) as ImageProvider<Object> : const AssetImage('assets/images/profile_placeholder.png') as ImageProvider<Object>,
                       ),
                       const SizedBox(height: 8),
-                      const Text('Tap to change picture',
-                          style: TextStyle(color: Colors.grey)),
+                      const Text('Tap to change picture', style: TextStyle(color: Colors.grey)),
                       const SizedBox(height: 24),
                     ],
                   ),
                 ),
                 ListTile(
-                  title: const Text('Gender',
-                      style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.gender ?? "Unknown",
-                      style: const TextStyle(color: Colors.grey)),
+                  title: const Text('Gender', style: TextStyle(color: Colors.white)),
+                  subtitle: Text(user.gender ?? "Unknown", style: const TextStyle(color: Colors.grey)),
                   trailing: const Icon(Icons.edit, color: Colors.white),
                   onTap: () => _editGender(context, ref),
                 ),
                 const Divider(color: Colors.grey),
                 ListTile(
-                  title: const Text('Weight',
-                      style: TextStyle(color: Colors.white)),
-                  subtitle: Text(
-                    user.weight != null
-                        ? (user.weight! * user.weightMultiplier)
-                                .toStringAsFixed(1) +
-                            (user.weightMultiplier == 1.0 ? " kg" : " lbs")
-                        : "N/A",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
+                  title: const Text('Weight', style: TextStyle(color: Colors.white)),
+                  subtitle: Text(user.weight != null ? (user.weight! * user.weightMultiplier).toStringAsFixed(1) + (user.weightMultiplier == 1.0 ? " kg" : " lbs") : "N/A", style: const TextStyle(color: Colors.grey)),
                   trailing: const Icon(Icons.edit, color: Colors.white),
                   onTap: () => _editWeight(context, ref),
                 ),
                 const Divider(color: Colors.grey),
                 ListTile(
-                  title: const Text('Weight Unit (kg/lbs)',
-                      style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.weightMultiplier == 1.0 ? "kg" : "lbs",
-                      style: const TextStyle(color: Colors.grey)),
+                  title: const Text('Weight Unit (kg/lbs)', style: TextStyle(color: Colors.white)),
+                  subtitle: Text(user.weightMultiplier == 1.0 ? "kg" : "lbs", style: const TextStyle(color: Colors.grey)),
                   trailing: const Icon(Icons.edit, color: Colors.white),
                   onTap: () => _editWeightUnit(context, ref),
                 ),
                 const Divider(color: Colors.grey),
                 ListTile(
-                  title: const Text('Reset Progress',
-                      style: TextStyle(color: Colors.red)),
-                  trailing:
-                      const Icon(Icons.delete_forever, color: Colors.redAccent),
+                  title: const Text('Reset Progress', style: TextStyle(color: Colors.red)),
+                  trailing: const Icon(Icons.delete_forever, color: Colors.redAccent),
                   onTap: () => _resetProgress(context, ref),
                 ),
                 const Divider(color: Colors.grey),
-
-                // ---- Logout at the bottom ----
                 ListTile(
-                  title: const Text('Log out',
-                      style: TextStyle(color: Colors.white)),
+                  title: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  subtitle: const Text('This action is permanent.', style: TextStyle(color: Colors.redAccent)),
+                  trailing: const Icon(Icons.warning, color: Colors.red),
+                  onTap: () => _deleteAccount(context, ref),
+                ),
+                const Divider(color: Colors.grey),
+                ListTile(
+                  title: const Text('Log out', style: TextStyle(color: Colors.white)),
                   trailing: const Icon(Icons.logout, color: Colors.white),
                   onTap: () => _logout(context, ref),
                 ),
