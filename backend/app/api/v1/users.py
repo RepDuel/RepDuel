@@ -14,6 +14,7 @@ from app.schemas.token import Token
 from app.services.user_service import (
     authenticate_user,
     create_user,
+    delete_user,
     get_user_by_email,
     get_user_by_id,
     get_user_by_username,
@@ -44,6 +45,12 @@ async def register_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
         )
+    existing_username = await get_user_by_username(db, user_in.username)
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username is already taken",
+        )
     return await create_user(db, user_in)
 
 
@@ -73,6 +80,16 @@ async def update_current_user(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    if updates.username and await get_user_by_username(db, updates.username):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username is already taken",
+        )
+    if updates.email and await get_user_by_email(db, updates.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
     return await update_user(db, current_user, updates)
 
 
@@ -105,30 +122,32 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    # Validate image
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    # Generate unique filename and create directory
     ext = os.path.splitext(file.filename)[1]
     filename = f"{uuid4().hex}{ext}"
     avatar_dir = os.path.join("static", "avatars")
     os.makedirs(avatar_dir, exist_ok=True)
 
-    # Save image
     file_path = os.path.join(avatar_dir, filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Generate full public URL
     public_url = str(request.base_url) + f"static/avatars/{filename}"
     current_user.avatar_url = public_url
 
-    # Save user
     db.add(current_user)
     await db.commit()
     await db.refresh(current_user)
 
-    print(f"[✅] Uploaded avatar: {file.filename} as {filename} ({file.content_type})")
-
     return current_user
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    await delete_user(db, current_user)
+    return None

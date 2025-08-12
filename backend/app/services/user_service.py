@@ -21,8 +21,13 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     return result.scalars().first()
 
 
-async def get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
-    result = await db.execute(select(User).where(User.id == user_id))
+async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
+    result = await db.execute(select(User).filter(User.id == user_id))
+    return result.scalars().first()
+
+
+async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
+    result = await db.execute(select(User).filter(User.username == username))
     return result.scalars().first()
 
 
@@ -41,8 +46,8 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
 
 
 async def update_user(db: AsyncSession, user: User, updates: UserUpdate) -> User:
-    # Only update fields that are provided (exclude unset)
-    for field, value in updates.model_dump(exclude_unset=True).items():
+    update_data = updates.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
         if field == "password":
             setattr(user, "hashed_password", hash_password(value))
         else:
@@ -52,13 +57,7 @@ async def update_user(db: AsyncSession, user: User, updates: UserUpdate) -> User
     return user
 
 
-async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User:
-    result = await db.execute(select(User).filter(User.id == user_id))
-    user = result.scalars().first()
-    return user
-
-
-async def get_user_by_username(db: AsyncSession, username: str) -> User:
-    result = await db.execute(select(User).filter(User.username == username))
-    user = result.scalars().first()
-    return user
+async def delete_user(db: AsyncSession, user_to_delete: User) -> None:
+    await db.delete(user_to_delete)
+    await db.commit()
+    return None
