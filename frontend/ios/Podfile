@@ -38,8 +38,14 @@ target 'Runner' do
   end
 end
 
+# This is the new, corrected post_install block.
+# It ensures all of your plugins (pods) use the iOS 13.0 deployment target,
+# preventing the build warnings.
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    end
   end
 end
