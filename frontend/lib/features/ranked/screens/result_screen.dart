@@ -1,24 +1,20 @@
 // frontend/lib/features/ranked/screens/result_screen.dart
 
-import 'dart:io';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart'; // <-- ADD THIS IMPORT
+import 'package:http/http.dart' as http;
 import 'package:screenshot/screenshot.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/iap_provider.dart';
 import '../../../core/services/share_service.dart';
-import '../utils/rank_utils.dart';
 import '../../../widgets/paywall_lock.dart';
+import '../utils/rank_utils.dart';
 
 // --- Data Model for the Score History Graph ---
 class ScoreHistoryEntry {
@@ -37,7 +33,14 @@ final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistory
   if (user == null) throw Exception("User not authenticated");
   
   final url = '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
-  final response = await http.get(Uri.parse(url));
+  final token = ref.read(authProvider).token;
+
+  final response = await http.get(
+    Uri.parse(url),
+    headers: {
+      'Authorization': 'Bearer $token',
+    },
+  );
 
   if (response.statusCode == 200) {
     final List<dynamic> data = json.decode(response.body);
@@ -45,6 +48,7 @@ final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistory
     entries.sort((a, b) => a.date.compareTo(b.date));
     return entries;
   } else if (response.statusCode == 403) {
+    // This is a controlled "error" to be handled by the UI
     throw Exception("Upgrade to Gold to see your history.");
   } else {
     throw Exception("Failed to load score history.");
@@ -64,16 +68,26 @@ class ScoreHistoryChart extends ConsumerWidget {
       error: (e, s) => Center(child: Text(e.toString().replaceFirst("Exception: ", ""), style: const TextStyle(color: Colors.red, fontSize: 14))),
       data: (history) {
         if (history.length < 2) return const Center(child: Text("Log at least two workouts to see a graph.", style: TextStyle(color: Colors.white70)));
+        
+        final spots = history.asMap().entries.map((entry) {
+            return FlSpot(entry.key.toDouble(), entry.value.score);
+        }).toList();
+
         return SizedBox(
           height: 200,
           child: LineChart(
             LineChartData(
               gridData: const FlGridData(show: false),
-              titlesData: const FlTitlesData(leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)), topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)), bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)), rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false))),
+              titlesData: const FlTitlesData(
+                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
               borderData: FlBorderData(show: true, border: Border.all(color: Colors.white24)),
               lineBarsData: [
                 LineChartBarData(
-                  spots: history.map((entry) => FlSpot(entry.date.millisecondsSinceEpoch.toDouble(), entry.score)).toList(),
+                  spots: spots,
                   isCurved: true,
                   color: Colors.amber,
                   barWidth: 3,
@@ -144,14 +158,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   final _screenshotController = ScreenshotController();
   bool _isSharing = false;
 
-  // This screen-specific method is correct to keep here
   Future<Map<String, dynamic>> getScenarioAndRankProgress({
     required String scenarioId,
     required int scoreToUse,
     required double userWeight,
     required String userGender,
   }) async {
-    final scenarioRes = await http.get(Uri.parse('${Env.baseUrl}/api/v1/scenarios/$scenarioId/details'));
+    final token = ref.read(authProvider).token;
+    final headers = {'Authorization': 'Bearer $token'};
+
+    final scenarioRes = await http.get(
+      Uri.parse('${Env.baseUrl}/api/v1/scenarios/$scenarioId/details'),
+      headers: headers,
+    );
     if (scenarioRes.statusCode != 200) throw Exception("Failed to load scenario details.");
     final scenario = json.decode(scenarioRes.body);
 
@@ -162,6 +181,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         'user_weight': userWeight.toString(),
         'user_gender': userGender.toLowerCase(),
       }),
+      headers: headers,
     );
     if (rankRes.statusCode != 200) throw Exception("Failed to load rank progress.");
     final rank = json.decode(rankRes.body);
@@ -169,7 +189,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return {'scenario': scenario, 'rank': rank};
   }
 
-  // This handler now correctly delegates to the ShareService
   Future<void> _handleShare(Map<String, dynamic> scenarioData, Map<String, dynamic> rankData) async {
     setState(() => _isSharing = true);
     try {
@@ -221,7 +240,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         final nextThreshold = rankData['next_rank_threshold'];
         final isMax = currentRank == 'Celestial';
 
-        // Use the global rankOrder constant from rank_utils.dart
         final currentIndex = rankOrder.indexOf(currentRank);
         final leftRank = currentIndex > 0 ? rankOrder[currentIndex - 1] : null;
         final rightRank = !isMax && currentIndex < rankOrder.length - 1 ? rankOrder[currentIndex + 1] : null;
@@ -255,9 +273,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     if (rightRank != null) Opacity(opacity: 0.3, child: SvgPicture.asset('assets/images/ranks/${rightRank.toLowerCase()}.svg', height: 56)) else const SizedBox(width: 56),
                   ]),
                   const SizedBox(height: 12),
-                  Text(currentRank, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2)),
+                  Text(currentRank, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: getRankColor(currentRank), letterSpacing: 1.2)),
                   const SizedBox(height: 16),
-                  // Use the global getRankColor function from rank_utils.dart
                   Container(width: 200, height: 20, color: Colors.grey[800], child: LinearProgressIndicator(value: progressValue, backgroundColor: Colors.transparent, valueColor: AlwaysStoppedAnimation<Color>(getRankColor(currentRank)), minHeight: 24)),
                   const SizedBox(height: 12),
                   Text(isMax ? 'MAX RANK' : nextThreshold != null ? '$scaledScore / ${(nextThreshold * weightMultiplier).round()}' : '$scaledScore', style: const TextStyle(color: Colors.white, fontSize: 16)),
@@ -278,10 +295,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           if (tier == SubscriptionTier.gold || tier == SubscriptionTier.platinum) {
                             return ScoreHistoryChart(scenarioId: widget.scenarioId);
                           } else {
+                            // --- THIS IS THE MODIFIED WIDGET ---
                             return PaywallLock(
                               message: "Upgrade to Gold to track your progress over time.",
                               onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Upgrade to see your progress!")));
+                                GoRouter.of(context).push('/subscribe');
                               },
                             );
                           }
