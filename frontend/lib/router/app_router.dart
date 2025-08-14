@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../core/providers/auth_provider.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
-import '../features/chat/screens/chat_screen.dart';
+// import '../features/chat/screens/chat_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/normal/screens/normal_screen.dart';
 import '../features/premium/screens/payment_success_screen.dart';
@@ -54,10 +54,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         builder: (context, state) => const ProfileWrapper(),
       ),
-      GoRoute(
-        path: '/chat',
-        builder: (context, state) => const ChatScreen(),
-      ),
+      // GoRoute(
+      //   path: '/chat',
+      //   builder: (context, state) => const ChatScreen(),
+      // ),
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),

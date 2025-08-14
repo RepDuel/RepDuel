@@ -213,7 +213,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
             ),
-      bottomNavigationBar: MainBottomNavBar(currentIndex: 4, onTap: (index) {}),
+      bottomNavigationBar: MainBottomNavBar(currentIndex: 3, onTap: (index) {}),
     );
   }
 }

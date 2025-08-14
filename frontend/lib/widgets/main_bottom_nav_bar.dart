@@ -30,10 +30,10 @@ class MainBottomNavBar extends StatelessWidget {
           case 2:
             context.go('/routines');
             break;
+          // case 3:
+          //   context.go('/chat');
+          //   break;
           case 3:
-            context.go('/chat');
-            break;
-          case 4:
             context.go('/profile');
             break;
         }
@@ -54,10 +54,10 @@ class MainBottomNavBar extends StatelessWidget {
           icon: Icon(Icons.fitness_center),
           label: 'Routines',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat),
-          label: 'Chat',
-        ),
+        // BottomNavigationBarItem(
+        //   icon: Icon(Icons.chat),
+        //   label: 'Chat',
+        // ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person),
           label: 'Profile',

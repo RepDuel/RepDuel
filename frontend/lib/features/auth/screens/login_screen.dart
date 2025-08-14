@@ -116,7 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
       ),
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 4,
+        currentIndex: 3,
         onTap: (_) {},
       ),
     );
