@@ -87,7 +87,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                context.push('/paywall');
+                context.push('/subscribe');
               },
               child: const Text('Upgrade'),
             ),
