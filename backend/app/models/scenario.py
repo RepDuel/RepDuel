@@ -6,7 +6,7 @@ from app.models.associations import (ScenarioEquipmentAssociation,
                                      ScenarioSecondaryMuscleAssociation)
 from app.models.equipment import Equipment
 from app.models.muscle import Muscle
-from sqlalchemy import Column, Float, String
+from sqlalchemy import Boolean, Column, Float, String  # Added Boolean
 from sqlalchemy.orm import relationship
 
 
@@ -17,6 +17,10 @@ class Scenario(Base):
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
     multiplier = Column(Float, nullable=True)
+
+    # Determines if the scenario uses user's body weight instead of external weight.
+    is_bodyweight = Column(Boolean, nullable=False, default=False, server_default='false')
+
     scores = relationship("Score", back_populates="scenario")
 
     primary_muscles = relationship(
