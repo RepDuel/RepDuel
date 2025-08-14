@@ -5,9 +5,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart'; // <-- ADD THIS IMPORT
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:screenshot/screenshot.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -16,7 +17,7 @@ import '../../../core/services/share_service.dart';
 import '../../../widgets/paywall_lock.dart';
 import '../utils/rank_utils.dart';
 
-// --- Data Model for the Score History Graph ---
+// --- Data Model for the Score History Graph (Unchanged) ---
 class ScoreHistoryEntry {
   final double score;
   final DateTime date;
@@ -27,8 +28,9 @@ class ScoreHistoryEntry {
   );
 }
 
-// --- Provider for the premium score history feature ---
+// --- Provider for the premium score history feature (Unchanged) ---
 final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistoryEntry>, String>((ref, scenarioId) async {
+  // ... (no changes here) ...
   final user = ref.watch(authProvider).user;
   if (user == null) throw Exception("User not authenticated");
   
@@ -48,17 +50,22 @@ final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistory
     entries.sort((a, b) => a.date.compareTo(b.date));
     return entries;
   } else if (response.statusCode == 403) {
-    // This is a controlled "error" to be handled by the UI
     throw Exception("Upgrade to Gold to see your history.");
   } else {
     throw Exception("Failed to load score history.");
   }
 });
 
-// --- UI Widget for the Score History Chart ---
+// --- UI Widget for the Score History Chart (MODIFIED) ---
 class ScoreHistoryChart extends ConsumerWidget {
   final String scenarioId;
-  const ScoreHistoryChart({super.key, required this.scenarioId});
+  final double weightMultiplier; // ADDED: To receive the multiplier
+
+  const ScoreHistoryChart({
+    super.key,
+    required this.scenarioId,
+    required this.weightMultiplier, // ADDED
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -69,31 +76,68 @@ class ScoreHistoryChart extends ConsumerWidget {
       data: (history) {
         if (history.length < 2) return const Center(child: Text("Log at least two workouts to see a graph.", style: TextStyle(color: Colors.white70)));
         
+        // MODIFIED: Apply weightMultiplier to the scores before calculating the max Y value
+        final maxY = history.map((e) => e.score * weightMultiplier).reduce((a, b) => a > b ? a : b);
+        final roundedMaxY = ((maxY / 10).ceil() * 10).toDouble();
+        final yInterval = (roundedMaxY / 4).ceilToDouble();
+
+        // MODIFIED: Apply weightMultiplier to the scores when creating the FlSpots
         final spots = history.asMap().entries.map((entry) {
-            return FlSpot(entry.key.toDouble(), entry.value.score);
+            final scaledScore = entry.value.score * weightMultiplier;
+            return FlSpot(entry.key.toDouble(), scaledScore);
         }).toList();
 
         return SizedBox(
           height: 200,
           child: LineChart(
             LineChartData(
-              gridData: const FlGridData(show: false),
-              titlesData: const FlTitlesData(
-                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              gridData: const FlGridData(show: true),
+              titlesData: FlTitlesData(
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 36,
+                    interval: 1,
+                    getTitlesWidget: (value, meta) {
+                      final index = value.toInt();
+                      if (index < 0 || index >= history.length) {
+                        return const SizedBox.shrink();
+                      }
+                      final date = history[index].date;
+                      return Text(
+                        DateFormat('MM/dd').format(date),
+                        style: const TextStyle(color: Colors.white, fontSize: 10),
+                      );
+                    },
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 44,
+                    interval: yInterval > 0 ? yInterval : 1,
+                    // The 'value' passed here is already scaled because maxY is scaled
+                    getTitlesWidget: (value, meta) => Text(
+                      value.toStringAsFixed(0),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                ),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
-              borderData: FlBorderData(show: true, border: Border.all(color: Colors.white24)),
+              borderData: FlBorderData(show: true),
+              minY: 0,
+              maxY: roundedMaxY,
               lineBarsData: [
                 LineChartBarData(
                   spots: spots,
                   isCurved: true,
-                  color: Colors.amber,
+                  color: Colors.blueAccent,
                   barWidth: 3,
                   isStrokeCapRound: true,
-                  dotData: const FlDotData(show: false),
-                  belowBarData: BarAreaData(show: true, color: Colors.amber.withOpacity(0.3)),
+                  dotData: const FlDotData(show: true),
+                  belowBarData: BarAreaData(show: true),
                 ),
               ],
             ),
@@ -104,8 +148,9 @@ class ScoreHistoryChart extends ConsumerWidget {
   }
 }
 
-// --- UI Widget for the Shareable Image ---
+// --- ShareableResultCard (Unchanged) ---
 class ShareableResultCard extends StatelessWidget {
+    // ... (no changes here) ...
   final String username;
   final String scenarioName;
   final int finalScore;
@@ -142,8 +187,9 @@ class ShareableResultCard extends StatelessWidget {
   }
 }
 
-// --- Main Screen ---
+// --- Main Screen (MODIFIED) ---
 class ResultScreen extends ConsumerStatefulWidget {
+  // ... (no changes here) ...
   final int finalScore;
   final int previousBest;
   final String scenarioId;
@@ -155,6 +201,7 @@ class ResultScreen extends ConsumerStatefulWidget {
 }
 
 class _ResultScreenState extends ConsumerState<ResultScreen> {
+  // ... (no changes in these methods) ...
   final _screenshotController = ScreenshotController();
   bool _isSharing = false;
 
@@ -209,7 +256,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       if (mounted) setState(() => _isSharing = false);
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
@@ -254,6 +301,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // ... (no changes in this top section) ...
                   const SizedBox(height: 24),
                   const Text('FINAL SCORE', style: TextStyle(color: Colors.white70, fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
@@ -293,9 +341,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                         error: (e, s) => Text("Error checking subscription", style: const TextStyle(color: Colors.red)),
                         data: (tier) {
                           if (tier == SubscriptionTier.gold || tier == SubscriptionTier.platinum) {
-                            return ScoreHistoryChart(scenarioId: widget.scenarioId);
+                            // MODIFIED: Pass the weightMultiplier to the chart
+                            return ScoreHistoryChart(
+                              scenarioId: widget.scenarioId,
+                              weightMultiplier: weightMultiplier,
+                            );
                           } else {
-                            // --- THIS IS THE MODIFIED WIDGET ---
                             return PaywallLock(
                               message: "Upgrade to Gold to track your progress over time.",
                               onTap: () {
@@ -331,6 +382,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   Scaffold _buildScaffold(Widget child, {List<Widget> actions = const []}) {
+    // ... (no changes here) ...
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
