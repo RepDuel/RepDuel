@@ -115,6 +115,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> loadUserFromToken() async {
+    // Prevent re-running if user is already loaded.
+    if (state.token != null) return;
+    
     final tokenString = await _secureStorage.readToken();
     if (tokenString != null && tokenString.isNotEmpty) {
       try {
@@ -131,6 +134,40 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     }
   }
+
+  // --- START: MODIFIED METHOD TO FIX RACE CONDITION ---
+  Future<void> refreshUserData() async {
+    var token = state.token;
+
+    // If the token is null, it means the app is likely still initializing.
+    // We explicitly await the initial token load to resolve the race condition.
+    if (token == null) {
+      print("Token not yet in state, awaiting initial load...");
+      await loadUserFromToken();
+      // After awaiting, re-read the token from the now-updated state.
+      token = state.token;
+    }
+
+    // Now we can safely proceed. If token is still null here, the user isn't logged in.
+    if (token == null) {
+      print("No token found after initial load, cannot refresh user data.");
+      return;
+    }
+
+    print("Refreshing user data from server...");
+    try {
+      final user = await _authApi.getMe(token: token);
+      if (user != null) {
+        state = state.copyWith(user: user);
+        print("User data refreshed. New subscription level: ${user.subscriptionLevel}");
+      } else {
+        await logout();
+      }
+    } catch (e) {
+      print("Failed to refresh user data: $e");
+    }
+  }
+  // --- END: MODIFIED METHOD ---
 
   Future<bool> updateProfile({
     String? gender,

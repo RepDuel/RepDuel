@@ -1,10 +1,11 @@
 // frontend/lib/main.dart
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'core/config/env.dart';
 import 'router/app_router.dart';
@@ -12,16 +13,15 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  usePathUrlStrategy();
+
   await dotenv.load(fileName: ".env");
 
-  // --- THE REAL FIX for v11.5.0 ---
-  // We only set the publishableKey if we are NOT on the web.
   if (!kIsWeb) {
     Stripe.publishableKey = Env.stripePublishableKey;
     await Stripe.instance.applySettings();
   }
-  // On web, setup is handled in index.html, so we do nothing here.
-  // --- END FIX ---
 
   runApp(
     const ProviderScope(
