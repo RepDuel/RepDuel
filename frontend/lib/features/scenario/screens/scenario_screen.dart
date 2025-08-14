@@ -7,8 +7,7 @@ import 'dart:convert';
 
 import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
-// We still need to import this to navigate to the ResultScreen
-import '../../ranked/screens/result_screen.dart'; 
+import '../../ranked/screens/result_screen.dart';
 
 class ScenarioScreen extends ConsumerStatefulWidget {
   final String liftName;
@@ -29,8 +28,11 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   final TextEditingController _repsController = TextEditingController();
   bool _isSubmitting = false;
 
+  // --- MODIFIED: State variables for scenario details ---
   String? _description;
-  bool _isLoadingDescription = true;
+  bool _isBodyweight = false;
+  bool _isLoadingDetails = true;
+  // --- END OF MODIFICATION ---
 
   @override
   void initState() {
@@ -38,22 +40,30 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     _loadScenarioDetails();
   }
 
+  // --- MODIFIED: Fetches all necessary scenario details ---
   Future<void> _loadScenarioDetails() async {
-    final url = Uri.parse('${Env.baseUrl}/api/v1/scenarios/${widget.scenarioId}/details');
+    final url =
+        Uri.parse('${Env.baseUrl}/api/v1/scenarios/${widget.scenarioId}/details');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (mounted) setState(() => _description = data['description']);
+        if (mounted) {
+          setState(() {
+            _description = data['description'];
+            _isBodyweight = data['is_bodyweight'] ?? false;
+          });
+        }
       } else {
         if (mounted) setState(() => _description = 'Failed to load description.');
       }
     } catch (e) {
       if (mounted) setState(() => _description = 'Failed to load description.');
     } finally {
-      if (mounted) setState(() => _isLoadingDescription = false);
+      if (mounted) setState(() => _isLoadingDetails = false);
     }
   }
+  // --- END OF MODIFICATION ---
 
   double _calculateOneRepMax(double weight, int reps) {
     if (reps == 1) return weight;
@@ -61,7 +71,8 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   }
 
   Future<int> _fetchPreviousBest(String userId, String scenarioId) async {
-    final url = Uri.parse('${Env.baseUrl}/api/v1/scores/user/$userId/scenario/$scenarioId/highscore');
+    final url = Uri.parse(
+        '${Env.baseUrl}/api/v1/scores/user/$userId/scenario/$scenarioId/highscore');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -69,7 +80,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         return (data['weight_lifted'] as num?)?.round() ?? 0;
       }
     } catch (e) {
-      // Ignore errors here, just return 0 if fetching previous best fails
+      // Ignore errors here, just return 0
     }
     return 0;
   }
@@ -78,6 +89,13 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
+    // Use a token for authenticated requests
+    final token = ref.read(authProvider).token;
+    final headers = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
     final url = Uri.parse('${Env.baseUrl}/api/v1/scores/scenario/${widget.scenarioId}/');
     final body = {
       'user_id': user.id,
@@ -85,45 +103,58 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       'reps': reps,
       'sets': 1,
     };
-    
+
     await http.post(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: headers,
       body: json.encode(body),
     );
   }
 
+  // --- MODIFIED: Handles both bodyweight and weighted logic ---
   Future<void> _handleSubmit() async {
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
-    final weight = double.tryParse(_weightController.text) ?? 0;
     final reps = int.tryParse(_repsController.text) ?? 0;
-    if (weight <= 0 || reps <= 0) return;
-
-    final oneRepMax = _calculateOneRepMax(weight, reps);
+    if (reps <= 0) return;
 
     setState(() => _isSubmitting = true);
 
-    final previousBest = await _fetchPreviousBest(user.id, widget.scenarioId);
-    final userMultiplier = user.weightMultiplier;
-    final adjustedScore = oneRepMax / userMultiplier;
+    double scoreToSubmit;
 
-    await _submitScore(adjustedScore, reps);
+    if (_isBodyweight) {
+      // For bodyweight exercises, the score is simply the number of reps.
+      scoreToSubmit = reps.toDouble();
+    } else {
+      // For weighted exercises, use the 1RM calculation.
+      final weight = double.tryParse(_weightController.text) ?? 0;
+      if (weight <= 0) {
+        setState(() => _isSubmitting = false);
+        return;
+      }
+      final oneRepMax = _calculateOneRepMax(weight, reps);
+      // Backend handles storing the base score (in kg). The user's kg/lbs
+      // preference is applied for display on the results screen.
+      final userMultiplier = user.weightMultiplier;
+      scoreToSubmit = oneRepMax / userMultiplier;
+    }
+
+    final previousBest = await _fetchPreviousBest(user.id, widget.scenarioId);
+
+    await _submitScore(scoreToSubmit, reps);
 
     if (!mounted) return;
 
-    // --- FIX: Revert to the simple, direct navigation ---
     final shouldRefresh = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ResultScreen(
-          finalScore: adjustedScore.round(),
+          finalScore: scoreToSubmit.round(),
           previousBest: previousBest,
           scenarioId: widget.scenarioId,
         ),
       ),
     );
-    // --- END OF FIX ---
 
     if (shouldRefresh == true && mounted) {
       Navigator.of(context).pop(true);
@@ -131,6 +162,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
     setState(() => _isSubmitting = false);
   }
+  // --- END OF MODIFICATION ---
 
   List<Widget> _buildBulletDescription(String? description) {
     if (description == null || description.isEmpty) return [];
@@ -143,13 +175,99 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('• ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                Expanded(child: Text(s.trim(), style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5))),
+                const Text('• ',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                Expanded(
+                    child: Text(s.trim(),
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 14, height: 1.5))),
               ],
             ),
           ),
-        ).toList();
+        )
+        .toList();
   }
+
+  // --- NEW: A helper widget for the reps-only input field ---
+  Widget _buildRepsOnlyInput() {
+    return Column(
+      children: [
+        const Text('Reps', style: TextStyle(color: Colors.white, fontSize: 16)),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: 120,
+          child: TextField(
+            controller: _repsController,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 24),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  // --- END OF NEW ---
+
+  // --- NEW: A helper widget for the weight and reps input fields ---
+  Widget _buildWeightAndRepsInput() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Column(
+          children: [
+            const Text('Weight',
+                style: TextStyle(color: Colors.white, fontSize: 16)),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: 100,
+              child: TextField(
+                controller: _weightController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 20),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey[900],
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('x', style: TextStyle(color: Colors.white, fontSize: 24)),
+        ),
+        Column(
+          children: [
+            const Text('Reps',
+                style: TextStyle(color: Colors.white, fontSize: 16)),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: 100,
+              child: TextField(
+                controller: _repsController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 20),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey[900],
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+  // --- END OF NEW ---
 
   @override
   void dispose() {
@@ -160,7 +278,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The build method remains the same
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -175,61 +292,21 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (_isLoadingDescription)
+              if (_isLoadingDetails)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: CircularProgressIndicator(),
                 )
-              else
+              else ...[
                 ..._buildBulletDescription(_description),
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Column(
-                    children: [
-                      const Text('Weight', style: TextStyle(color: Colors.white, fontSize: 16)),
-                      SizedBox(
-                        width: 100,
-                        child: TextField(
-                          controller: _weightController,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white, fontSize: 20),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey[900],
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('x', style: TextStyle(color: Colors.white, fontSize: 24)),
-                  ),
-                  Column(
-                    children: [
-                      const Text('Reps', style: TextStyle(color: Colors.white, fontSize: 16)),
-                      SizedBox(
-                        width: 100,
-                        child: TextField(
-                          controller: _repsController,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white, fontSize: 20),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey[900],
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                const SizedBox(height: 32),
+                // --- MODIFIED: Conditionally render the correct input UI ---
+                if (_isBodyweight)
+                  _buildRepsOnlyInput()
+                else
+                  _buildWeightAndRepsInput(),
+                // --- END OF MODIFICATION ---
+              ],
             ],
           ),
         ),
@@ -238,7 +315,13 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton.icon(
           onPressed: _isSubmitting ? null : _handleSubmit,
-          icon: _isSubmitting ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.check),
+          icon: _isSubmitting
+              ? const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child:
+                      CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Icon(Icons.check),
           label: Text(_isSubmitting ? 'Submitting...' : 'Confirm'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
