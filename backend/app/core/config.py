@@ -8,7 +8,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    STRIPE_SECRET_KEY: str = "***REMOVED***"
+    STRIPE_SECRET_KEY: str
+    STRIPE_WEBHOOK_SECRET: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
