@@ -95,6 +95,10 @@ class EnergyGraph extends ConsumerWidget {
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
+                    // --- THE FIX IS HERE ---
+                    // Added reservedSize to ensure labels like "1080" have enough
+                    // space and don't wrap to the next line.
+                    reservedSize: 44,
                     interval: yInterval > 0 ? yInterval : 1,
                     getTitlesWidget: (value, meta) => Text(
                       value.toStringAsFixed(0),
