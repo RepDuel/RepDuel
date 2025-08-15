@@ -1,9 +1,6 @@
-
----
-
 # 🥇 RepDuel
 
-**RepDuel** is a gamified fitness platform for tracking workouts, competing on leaderboards, and analyzing performance — all in real time. Built with a cross-platform Flutter frontend and a high-performance FastAPI backend, RepDuel is designed for lifters, athletes, and fitness enthusiasts who want accountability, progression, and community.
+**RepDuel** is a gamified fitness platform for tracking workouts, competing on leaderboards, and analyzing performance. Built with a cross-platform Flutter frontend and a high-performance FastAPI backend, RepDuel is designed for lifters, athletes, and fitness enthusiasts who want accountability, progression, and community.
 
 ---
 
@@ -13,9 +10,7 @@
 | ---------- | ----------------------------- |
 | Frontend   | Flutter + Riverpod            |
 | Backend    | FastAPI + PostgreSQL          |
-| Real-time  | WebSockets                    |
 | Auth       | OAuth2 + JWT                  |
-| DevOps     | Docker + GitHub Actions       |
 | Storage    | Cloud image hosting (e.g. S3) |
 | State Mgmt | Riverpod                      |
 
@@ -28,7 +23,7 @@ repduel/
 ├── frontend/              # Flutter App (iOS, Android, Web)
 │   ├── lib/
 │   │   ├── core/          # Providers, API services, models
-│   │   ├── features/      # Auth, chat, profile, routines, leaderboard
+│   │   ├── features/      # Auth, profile, routines, leaderboard
 │   │   ├── widgets/       # Shared UI widgets
 │   │   ├── router/        # GoRouter navigation
 │   │   └── main.dart
@@ -37,15 +32,13 @@ repduel/
 │
 ├── backend/               # FastAPI Backend
 │   ├── app/
-│   │   ├── api/v1/        # Routes (auth, chat, routines, user, etc)
+│   │   ├── api/v1/        # Routes (auth, routines, user, etc)
 │   │   ├── services/      # Business logic
 │   │   ├── models/        # SQLAlchemy models
 │   │   ├── schemas/       # Pydantic v2 schemas
 │   │   └── main.py        # App entrypoint
 │   ├── alembic/           # Database migrations
-│   ├── Dockerfile
 │   └── requirements.txt
-├── docker-compose.yml
 └── README.md              # You are here
 ```
 
@@ -71,11 +64,6 @@ repduel/
 * Lift-specific leaderboards
 * Progress bars, energy graphs, performance trendlines
 
-### 💬 Real-time Chat (Discord-style)
-
-* WebSocket-based chat per room/lift
-* Fully enriched messages with avatars, ranks, timestamps
-
 ### 👤 User Accounts
 
 * JWT Auth (OAuth2 PasswordBearer)
@@ -89,7 +77,6 @@ repduel/
 ### Prerequisites
 
 * Git
-* Docker & Docker Compose
 * Python 3.10+
 * Flutter 3.x+
 * PostgreSQL locally or via cloud (e.g. Render)
@@ -122,23 +109,6 @@ flutter run                    # Select browser/device
 
 * Web: `http://localhost:5000`
 * Mobile: iOS/Android emulator or physical device
-
----
-
-## 🐳 Docker Setup
-
-To spin up the full stack with Docker:
-
-```bash
-docker-compose up --build
-```
-
-This runs:
-
-* FastAPI on `localhost:8000`
-* PostgreSQL
-* Redis (if used)
-* Flutter web on `localhost:5000` (if configured in Dockerfile)
 
 ---
 
@@ -178,8 +148,6 @@ SECRET_KEY=your_secret_key
 * `GET /user/profile`
 * `POST /routine/submit`
 * `GET /leaderboard/energy`
-* `GET /chat/messages`
-* `WS /ws/chat/{scenario_id}`
 
 ---
 
@@ -207,7 +175,6 @@ Ranks are based on energy scores:
 ## ✅ Roadmap
 
 * [x] Energy leaderboard + ranked lifts
-* [x] Real-time WebSocket chat
 * [x] Routine creation and submission
 * [ ] Mobile push notifications
 * [ ] Teams (Guilds) and challenges
@@ -216,7 +183,6 @@ Ranks are based on energy scores:
 ### Deployment Commands
 
 ```bash
-git checkout -b web-deploy
 cd frontend
 flutter clean
 flutter build web --release --dart-define=BACKEND_URL=https://repduel-backend.onrender.com
@@ -228,6 +194,7 @@ chmod +x deploy/build.sh
 git add deploy/
 git commit -m "Built production web assets"
 git push origin web-deploy
+```
 
 ---
 
