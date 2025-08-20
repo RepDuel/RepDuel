@@ -28,11 +28,9 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   final TextEditingController _repsController = TextEditingController();
   bool _isSubmitting = false;
 
-  // --- MODIFIED: State variables for scenario details ---
   String? _description;
   bool _isBodyweight = false;
   bool _isLoadingDetails = true;
-  // --- END OF MODIFICATION ---
 
   @override
   void initState() {
@@ -40,7 +38,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     _loadScenarioDetails();
   }
 
-  // --- MODIFIED: Fetches all necessary scenario details ---
   Future<void> _loadScenarioDetails() async {
     final url =
         Uri.parse('${Env.baseUrl}/api/v1/scenarios/${widget.scenarioId}/details');
@@ -63,7 +60,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       if (mounted) setState(() => _isLoadingDetails = false);
     }
   }
-  // --- END OF MODIFICATION ---
 
   double _calculateOneRepMax(double weight, int reps) {
     if (reps == 1) return weight;
@@ -77,7 +73,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return (data['weight_lifted'] as num?)?.round() ?? 0;
+        // Note: The high score for bodyweight might be based on reps, but the
+        // backend should return the final calculated *score* in this field.
+        // We will assume the backend handles this correctly for now.
+        return (data['score'] as num?)?.round() ?? 0;
       }
     } catch (e) {
       // Ignore errors here, just return 0
@@ -85,11 +84,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     return 0;
   }
 
-  Future<void> _submitScore(double score, int reps) async {
+  Future<void> _submitScore(double weightLifted, int reps) async {
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
-    // Use a token for authenticated requests
     final token = ref.read(authProvider).token;
     final headers = {
       'Content-Type': 'application/json',
@@ -99,7 +97,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     final url = Uri.parse('${Env.baseUrl}/api/v1/scores/scenario/${widget.scenarioId}/');
     final body = {
       'user_id': user.id,
-      'weight_lifted': score,
+      'weight_lifted': weightLifted, // Correctly named for the payload
       'reps': reps,
       'sets': 1,
     };
@@ -111,21 +109,28 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     );
   }
 
-  // --- MODIFIED: Handles both bodyweight and weighted logic ---
+  // --- FIXED: Handles both bodyweight and weighted logic correctly ---
   Future<void> _handleSubmit() async {
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
     final reps = int.tryParse(_repsController.text) ?? 0;
-    if (reps <= 0) return;
+    if (reps <= 0) {
+      // Optional: show a snackbar or message
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
     double scoreToSubmit;
+    double weightForBackend; // Variable for the API payload
 
     if (_isBodyweight) {
-      // For bodyweight exercises, the score is simply the number of reps.
+      // For bodyweight exercises, the display score is the number of reps.
       scoreToSubmit = reps.toDouble();
+      // For the backend, the 'weight_lifted' is 0. The scoring logic will
+      // be based on the 'reps' and the user's bodyweight on the server.
+      weightForBackend = 0.0;
     } else {
       // For weighted exercises, use the 1RM calculation.
       final weight = double.tryParse(_weightController.text) ?? 0;
@@ -134,18 +139,21 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         return;
       }
       final oneRepMax = _calculateOneRepMax(weight, reps);
-      // Backend handles storing the base score (in kg). The user's kg/lbs
-      // preference is applied for display on the results screen.
       final userMultiplier = user.weightMultiplier;
+      
+      // The score for both UI and backend is the 1RM in kg.
       scoreToSubmit = oneRepMax / userMultiplier;
+      weightForBackend = scoreToSubmit;
     }
 
     final previousBest = await _fetchPreviousBest(user.id, widget.scenarioId);
 
-    await _submitScore(scoreToSubmit, reps);
+    // Pass the correct weight value (0.0 for bodyweight) to the submission function.
+    await _submitScore(weightForBackend, reps);
 
     if (!mounted) return;
 
+    // The ResultScreen still correctly uses the calculated display score.
     final shouldRefresh = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ResultScreen(
@@ -162,7 +170,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
     setState(() => _isSubmitting = false);
   }
-  // --- END OF MODIFICATION ---
+  // --- END OF FIX ---
 
   List<Widget> _buildBulletDescription(String? description) {
     if (description == null || description.isEmpty) return [];
@@ -188,7 +196,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         .toList();
   }
 
-  // --- NEW: A helper widget for the reps-only input field ---
   Widget _buildRepsOnlyInput() {
     return Column(
       children: [
@@ -211,9 +218,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       ],
     );
   }
-  // --- END OF NEW ---
 
-  // --- NEW: A helper widget for the weight and reps input fields ---
   Widget _buildWeightAndRepsInput() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -267,7 +272,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       ],
     );
   }
-  // --- END OF NEW ---
 
   @override
   void dispose() {
@@ -300,12 +304,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
               else ...[
                 ..._buildBulletDescription(_description),
                 const SizedBox(height: 32),
-                // --- MODIFIED: Conditionally render the correct input UI ---
                 if (_isBodyweight)
                   _buildRepsOnlyInput()
                 else
                   _buildWeightAndRepsInput(),
-                // --- END OF MODIFICATION ---
               ],
             ],
           ),
