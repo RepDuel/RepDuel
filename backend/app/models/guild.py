@@ -30,7 +30,3 @@ class Guild(Base):
         server_default=func.now(),
         nullable=False,
     )
-
-    channels = relationship(
-        "Channel", back_populates="guild", cascade="all, delete-orphan"
-    )

@@ -50,10 +50,6 @@ class User(Base):
 
     guilds = relationship("Guild", back_populates="owner", cascade="all, delete-orphan")
 
-    messages = relationship(
-        "Message", back_populates="author", cascade="all, delete-orphan"
-    )
-
     scores = relationship("Score", back_populates="user", cascade="all, delete-orphan")
 
     energy_history = relationship(

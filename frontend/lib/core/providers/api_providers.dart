@@ -8,13 +8,10 @@ import '../api/guild_api_service.dart';
 import '../api/energy_api_service.dart';
 import '../config/env.dart';
 import '../services/secure_storage_service.dart';
-import '../api/message_api_service.dart';
 import '../utils/http_client.dart';
 import '../providers/auth_provider.dart';
 import '../api/auth_interceptor.dart';
 import '../models/guild.dart';
-import '../api/channel_api_service.dart';
-import '../models/channel.dart';
 
 final secureStorageProvider = Provider<SecureStorageService>((ref) {
   return SecureStorageService();
@@ -58,26 +55,9 @@ final authTokenProvider = Provider<String?>((ref) {
   return authState.token;
 });
 
-final messageApiProvider = Provider<MessageApiService>((ref) {
-  final client = ref.read(privateHttpClientProvider);
-  return MessageApiService(client);
-});
-
 final myGuildsProvider = FutureProvider<List<Guild>>((ref) async {
   final guildService = ref.watch(guildApiProvider);
   return guildService.getMyGuilds();
-});
-
-// Provider for the ChannelApiService instance
-final channelApiProvider = Provider<ChannelApiService>((ref) {
-  final client = ref.read(privateHttpClientProvider);
-  return ChannelApiService(client);
-});
-
-final guildChannelsProvider = FutureProvider.autoDispose
-    .family<List<Channel>, String>((ref, guildId) async {
-  final channelService = ref.watch(channelApiProvider);
-  return channelService.getGuildChannels(guildId);
 });
 
 final energyApiProvider = Provider<EnergyApiService>((ref) {
