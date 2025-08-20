@@ -3,13 +3,14 @@
 from typing import List, Optional
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
+
 from app.models.routine import Routine
 from app.models.routine_scenario import RoutineScenario
 from app.schemas.routine import (RoutineCreate, RoutineRead, RoutineUpdate,
                                  ScenarioSet)
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
 
 
 # Fetch routine by ID

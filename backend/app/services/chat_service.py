@@ -1,14 +1,12 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
 from app.models.message import Message
 from app.models.user import User
 from app.schemas.message import MessageRead
 from app.schemas.user import UserRead
-from app.services.rank_service import (
-    get_rank_from_energy,
-    get_rank_color,
-    get_rank_icon_path,
-)
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from app.services.rank_service import (get_rank_color, get_rank_from_energy,
+                                       get_rank_icon_path)
 
 
 async def enrich_message(db: AsyncSession, message: Message) -> dict:

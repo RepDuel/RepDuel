@@ -2,12 +2,13 @@
 
 import uuid
 
-from app.db.base_class import Base
 from sqlalchemy import Column, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import DateTime
+
+from app.db.base_class import Base
 
 
 class Message(Base):

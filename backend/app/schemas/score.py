@@ -1,8 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from app.schemas.user import UserRead
 from pydantic import BaseModel
+
+from app.schemas.user import UserRead
 
 
 class ScoreCreate(BaseModel):

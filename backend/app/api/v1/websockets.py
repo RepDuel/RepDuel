@@ -3,12 +3,13 @@
 import json
 from uuid import UUID
 
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+
 from app.core.auth import get_current_user_ws
 from app.db.session import async_session
 from app.schemas.message import MessageCreate, MessageRead
 from app.services.message_service import create_message
 from app.services.websocket_manager import WebSocketManager
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 router = APIRouter()
 ws_manager = WebSocketManager()
@@ -45,7 +46,9 @@ async def websocket_chat(
                     author_id=user.id,
                 )
 
-                message_dict = MessageRead.model_validate(message).model_dump(mode="json")
+                message_dict = MessageRead.model_validate(message).model_dump(
+                    mode="json"
+                )
 
             # Broadcast the dictionary. The manager will handle the final encoding.
             await ws_manager.broadcast(message_dict, channel_id)

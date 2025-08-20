@@ -11,14 +11,12 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @model_validator(mode="after")
     def normalize_base_url(self) -> "Settings":
         self.BASE_URL = self.BASE_URL.rstrip("/")
         return self
+
 
 settings = Settings()

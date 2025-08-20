@@ -1,10 +1,14 @@
 # backend/app/api/v1/api_router.py
 
+from fastapi import APIRouter
+
 from app.api.v1.channels import router as channels_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.energy import router as energy_router
 from app.api.v1.guilds import router as guilds_router
 from app.api.v1.messages import router as messages_router
+from app.api.v1.payments import router as payments_router
+from app.api.v1.ranks import router as ranks_router
 from app.api.v1.routine_submission import router as routine_submission_router
 from app.api.v1.routines import router as routines_router
 from app.api.v1.scenario import router as scenario_router
@@ -12,10 +16,6 @@ from app.api.v1.score import router as score_router
 from app.api.v1.standards import router as standards_router
 from app.api.v1.users import router as users_router
 from app.api.v1.websockets import router as websockets_router
-from app.api.v1.ranks import router as ranks_router
-from app.api.v1.payments import router as payments_router
-
-from fastapi import APIRouter
 
 api_router = APIRouter()
 

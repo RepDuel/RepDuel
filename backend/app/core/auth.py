@@ -3,16 +3,17 @@
 import logging
 from typing import Optional
 
+from fastapi import Depends, HTTPException, WebSocket, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.v1.deps import get_db
 from app.core.config import settings
 from app.db.session import async_session
 from app.models.user import User
 from app.schemas.user import UserRead
 from app.services.user_service import get_user_by_id
-from fastapi import Depends, HTTPException, WebSocket, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)

@@ -1,13 +1,14 @@
 # backend/app/models/scenario.py
 
+from sqlalchemy import Boolean, Column, Float, String
+from sqlalchemy.orm import relationship
+
 from app.db.base_class import Base
 from app.models.associations import (ScenarioEquipmentAssociation,
                                      ScenarioPrimaryMuscleAssociation,
                                      ScenarioSecondaryMuscleAssociation)
 from app.models.equipment import Equipment
 from app.models.muscle import Muscle
-from sqlalchemy import Boolean, Column, Float, String
-from sqlalchemy.orm import relationship
 
 
 class Scenario(Base):
@@ -18,12 +19,14 @@ class Scenario(Base):
     description = Column(String, nullable=True)
 
     # This will now be used as the RANK multiplier.
-    multiplier = Column(Float, nullable=False, default=1.0, server_default='1.0')
+    multiplier = Column(Float, nullable=False, default=1.0, server_default="1.0")
 
     # This new column is dedicated to calculating physical volume.
-    volume_multiplier = Column(Float, nullable=False, default=1.0, server_default='1.0')
+    volume_multiplier = Column(Float, nullable=False, default=1.0, server_default="1.0")
 
-    is_bodyweight = Column(Boolean, nullable=False, default=False, server_default='false')
+    is_bodyweight = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     scores = relationship("Score", back_populates="scenario")
 

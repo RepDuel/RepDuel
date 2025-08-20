@@ -3,10 +3,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from app.db.base_class import Base
 from sqlalchemy import Boolean, Column, DateTime, Float, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
+from app.db.base_class import Base
 
 
 class User(Base):
@@ -29,7 +30,7 @@ class User(Base):
         default="free",
         server_default="free",
     )
-    
+
     # --- Columns for Payments ---
 
     # Stores the Stripe Customer ID (e.g., 'cus_...')
@@ -41,7 +42,9 @@ class User(Base):
 
     # Stores the Apple original_transaction_id.
     # This is the unique identifier for a user's subscription series with Apple.
-    apple_original_transaction_id = Column(String, unique=True, index=True, nullable=True)
+    apple_original_transaction_id = Column(
+        String, unique=True, index=True, nullable=True
+    )
 
     # --- Relationships ---
 
@@ -51,20 +54,18 @@ class User(Base):
         "Message", back_populates="author", cascade="all, delete-orphan"
     )
 
-    scores = relationship(
-        "Score", back_populates="user", cascade="all, delete-orphan"
-    )
+    scores = relationship("Score", back_populates="user", cascade="all, delete-orphan")
 
     energy_history = relationship(
         "EnergyHistory", back_populates="user", cascade="all, delete-orphan"
     )
-    
+
     routine_submissions = relationship(
         "RoutineSubmission", back_populates="user", cascade="all, delete-orphan"
     )
 
     # --- Timestamps and Other Fields ---
-    
+
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

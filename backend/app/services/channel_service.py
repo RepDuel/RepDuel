@@ -2,10 +2,11 @@
 
 from uuid import UUID
 
-from app.models.channel import Channel
-from app.schemas.channel import ChannelCreate
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.channel import Channel
+from app.schemas.channel import ChannelCreate
 
 
 async def create_channel(db: AsyncSession, channel_in: ChannelCreate) -> Channel:

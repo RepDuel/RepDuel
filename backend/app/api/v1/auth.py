@@ -1,13 +1,14 @@
 # backend/app/api/v1/auth.py
 
-from app.api.v1.deps import get_db
-from app.core.config import settings
-from app.models.user import User
-from app.services.user_service import get_user_by_id
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.v1.deps import get_db
+from app.core.config import settings
+from app.models.user import User
+from app.services.user_service import get_user_by_id
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
 

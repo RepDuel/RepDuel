@@ -3,10 +3,11 @@
 import math
 from uuid import UUID
 
-from app.models.energy_history import EnergyHistory
-from app.services.dots_service import DotsCalculator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.energy_history import EnergyHistory
+from app.services.dots_service import DotsCalculator
 
 # Hardcoded mapping for each scenario to the corresponding lift name
 SCENARIO_LIFT_MAP = {

@@ -3,13 +3,15 @@
 from datetime import datetime
 from typing import List
 
-from app.models.routine import Routine
-from app.models.routine_submission import RoutineScenarioSubmission, RoutineSubmission
-from app.models.user import User
-from app.schemas.routine_submission import RoutineSubmissionCreate
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from fastapi import HTTPException, status
+
+from app.models.routine import Routine
+from app.models.routine_submission import (RoutineScenarioSubmission,
+                                           RoutineSubmission)
+from app.models.user import User
+from app.schemas.routine_submission import RoutineSubmissionCreate
 
 
 async def get_user_submissions(
@@ -58,7 +60,7 @@ async def create_routine_submission(
 
     title = generate_strava_title(
         routine_submission_data.scenarios,
-        routine_submission_data.completion_timestamp or datetime.utcnow()
+        routine_submission_data.completion_timestamp or datetime.utcnow(),
     )
 
     routine_submission = RoutineSubmission(

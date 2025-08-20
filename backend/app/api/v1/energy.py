@@ -1,13 +1,14 @@
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.v1.deps import get_db
 from app.models.energy_history import EnergyHistory
 from app.models.user import User
 from app.schemas.energy import (DailyEnergyEntry, EnergyEntry,
                                 EnergyLeaderboardEntry, EnergySubmit)
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
     prefix="/energy",

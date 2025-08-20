@@ -1,19 +1,18 @@
 # backend/app/api/v1/payments.py
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status # Added Request, Response
+from fastapi import (APIRouter, Depends,  # Added Request, Response
+                     HTTPException, Request, Response, status)
+from sqlalchemy import select  # Added select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select # Added select
 
 from app.api.v1.deps import get_db
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.payment import (
-    StripeCheckoutSessionCreate,
-    StripeCheckoutSessionResponse,
-    StripePortalSessionResponse,
-)
+from app.schemas.payment import (StripeCheckoutSessionCreate,
+                                 StripeCheckoutSessionResponse,
+                                 StripePortalSessionResponse)
 
 # --- Router Setup ---
 router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -24,6 +23,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 # --- API Endpoints ---
+
 
 @router.post(
     "/create-checkout-session",
@@ -70,9 +70,9 @@ async def create_checkout_session(
             cancel_url=checkout_data.cancel_url,
             customer_update={"name": "auto", "address": "auto"},
         )
-        
+
         if not checkout_session.url:
-             raise HTTPException(
+            raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Could not create Stripe checkout session URL.",
             )
@@ -113,7 +113,9 @@ async def create_portal_session(
             detail=f"Failed to create Stripe portal session: {e}",
         )
 
+
 # --- START: NEW WEBHOOK ENDPOINT ---
+
 
 @router.post("/webhook", status_code=status.HTTP_200_OK, include_in_schema=False)
 async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
@@ -126,12 +128,14 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     3. Updating the user's subscription status in the database.
     """
     payload = await request.body()
-    sig_header = request.headers.get('stripe-signature')
+    sig_header = request.headers.get("stripe-signature")
 
     # Step 1: Verify the event's signature to ensure it's from Stripe.
     try:
         event = stripe.Webhook.construct_event(
-            payload=payload, sig_header=sig_header, secret=settings.STRIPE_WEBHOOK_SECRET
+            payload=payload,
+            sig_header=sig_header,
+            secret=settings.STRIPE_WEBHOOK_SECRET,
         )
     except ValueError as e:
         # Invalid payload
@@ -141,29 +145,37 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail=f"Invalid webhook signature: {e}")
 
     # Step 2: Handle the 'checkout.session.completed' event.
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        stripe_customer_id = session.get('customer')
-        stripe_subscription_id = session.get('subscription')
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        stripe_customer_id = session.get("customer")
+        stripe_subscription_id = session.get("subscription")
 
         if not stripe_customer_id:
             print("Webhook error: 'customer' not found in session object.")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
-        print(f"Webhook received: checkout.session.completed for customer {stripe_customer_id}")
+        print(
+            f"Webhook received: checkout.session.completed for customer {stripe_customer_id}"
+        )
 
         # Step 3: Find the user and update their subscription in our database.
-        result = await db.execute(select(User).where(User.stripe_customer_id == stripe_customer_id))
+        result = await db.execute(
+            select(User).where(User.stripe_customer_id == stripe_customer_id)
+        )
         user = result.scalar_one_or_none()
 
         if user:
-            user.subscription_level = "gold"  # You can add more logic here for different plans
+            user.subscription_level = (
+                "gold"  # You can add more logic here for different plans
+            )
             user.stripe_subscription_id = stripe_subscription_id
             db.add(user)
             await db.commit()
             print(f"Database updated: User {user.email} is now on the 'gold' plan.")
         else:
-            print(f"Webhook error: User with Stripe customer ID {stripe_customer_id} not found.")
+            print(
+                f"Webhook error: User with Stripe customer ID {stripe_customer_id} not found."
+            )
 
     else:
         print(f"Unhandled event type received: {event['type']}")

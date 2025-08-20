@@ -1,10 +1,11 @@
 # backend/app/services/guild_service.py
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
 from app.models.guild import Guild
 from app.models.user import User
 from app.schemas.guild import GuildCreate
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 
 async def create_guild(db: AsyncSession, guild_in: GuildCreate, owner: User) -> Guild:

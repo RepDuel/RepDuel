@@ -2,8 +2,9 @@
 
 from typing import AsyncGenerator
 
-from app.db.session import async_session
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import async_session
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

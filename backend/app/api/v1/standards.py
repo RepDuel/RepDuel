@@ -2,8 +2,9 @@
 
 from typing import Optional
 
-from app.services.dots_service import DotsCalculator
 from fastapi import APIRouter, HTTPException
+
+from app.services.dots_service import DotsCalculator
 
 router = APIRouter(prefix="/standards", tags=["Standards"])
 

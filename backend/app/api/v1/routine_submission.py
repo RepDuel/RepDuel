@@ -1,5 +1,10 @@
 from typing import List
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.api.v1.deps import get_db
 from app.core.auth import get_current_user
 from app.models.routine_submission import RoutineSubmission
@@ -7,10 +12,6 @@ from app.models.user import User
 from app.schemas.routine_submission import (RoutineSubmissionCreate,
                                             RoutineSubmissionRead)
 from app.services.routine_submission_service import create_routine_submission
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/routine_submission", tags=["routine_submission"])
 

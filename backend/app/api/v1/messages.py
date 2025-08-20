@@ -3,12 +3,13 @@
 from typing import List
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.v1.deps import get_db
 from app.core.auth import get_current_user
 from app.schemas.message import MessageRead
 from app.services.message_service import get_messages_by_channel
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/messages", tags=["Messages"])
 

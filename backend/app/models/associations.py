@@ -1,7 +1,8 @@
 # backend/app/models/associations.py
 
-from app.db.base_class import Base
 from sqlalchemy import Column, ForeignKey, String
+
+from app.db.base_class import Base
 
 
 class ScenarioPrimaryMuscleAssociation(Base):

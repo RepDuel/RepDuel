@@ -10,6 +10,7 @@ def round_to_nearest_5(x: float) -> float:
     """Round value to the nearest 5."""
     return round(x / 5) * 5
 
+
 def round_to_nearest_1(x: float) -> float:
     """Round value to the nearest 1."""
     return round(x)
@@ -42,7 +43,9 @@ class DotsCalculator:
             raise ValueError("Gender must be either 'male' or 'female'")
 
     @staticmethod
-    def calculate_lift_standards(bodyweight_kg: float, gender: str, lift_ratio: float) -> Dict:
+    def calculate_lift_standards(
+        bodyweight_kg: float, gender: str, lift_ratio: float
+    ) -> Dict:
         """Calculate lift standards for all ranks"""
         standards = {}
         coeff = DotsCalculator.get_coefficient(bodyweight_kg, gender)
@@ -120,7 +123,9 @@ class DotsCalculator:
     ) -> Dict:
         """Get current rank and next rank threshold for a user's lift score"""
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{settings.BASE_URL}/api/v1/scenarios/{scenario_id}/multiplier")
+            response = await client.get(
+                f"{settings.BASE_URL}/api/v1/scenarios/{scenario_id}/multiplier"
+            )
 
         if response.status_code != 200:
             raise ValueError("Failed to fetch scenario multiplier")

@@ -1,8 +1,9 @@
 # backend/app/models/leaderboard.py
 
-from app.db.base_class import Base
 from sqlalchemy import Column, Float, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import UUID
+
+from app.db.base_class import Base
 
 
 class LeaderboardEntry(Base):

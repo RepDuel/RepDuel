@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
 from app.api.v1.api_router import api_router
 
 app = FastAPI(
-    title="RepDuel API",
-    version="1.0.0",
-    description="Backend for the RepDuel app"
+    title="RepDuel API", version="1.0.0", description="Backend for the RepDuel app"
 )
 
 app.add_middleware(

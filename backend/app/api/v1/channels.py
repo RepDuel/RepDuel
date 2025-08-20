@@ -2,13 +2,14 @@
 
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.v1.auth import get_current_user
 from app.api.v1.deps import get_db
 from app.models.user import User
 from app.schemas.channel import ChannelCreate, ChannelRead
 from app.services.channel_service import create_channel, get_channels_by_guild
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 

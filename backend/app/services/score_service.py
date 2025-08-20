@@ -1,7 +1,8 @@
-from app.models.score import Score
-from app.schemas.score import ScoreCreate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+
+from app.models.score import Score
+from app.schemas.score import ScoreCreate
 
 
 async def create_score(db: AsyncSession, score_data: ScoreCreate) -> Score:

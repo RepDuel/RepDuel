@@ -2,10 +2,11 @@
 
 from uuid import UUID
 
-from app.models.message import Message
-from app.schemas.message import MessageCreate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+
+from app.models.message import Message
+from app.schemas.message import MessageCreate
 
 
 async def create_message(

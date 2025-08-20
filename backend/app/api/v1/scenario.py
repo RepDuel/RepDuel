@@ -1,12 +1,13 @@
 # backend/app/api/v1/scenario.py
 
-from app.api.v1.deps import get_db
-from app.models.scenario import Scenario
-from app.schemas.scenario import ScenarioCreate, ScenarioOut, ScenarioRead
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from app.api.v1.deps import get_db
+from app.models.scenario import Scenario
+from app.schemas.scenario import ScenarioCreate, ScenarioOut, ScenarioRead
 
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
 
@@ -38,6 +39,7 @@ async def get_scenario_multiplier(scenario_id: str, db: AsyncSession = Depends(g
 
     # Return the multiplier of the found scenario
     return scenario.multiplier
+
 
 @router.get("/{scenario_id}/details", response_model=ScenarioRead)
 async def get_scenario_details(scenario_id: str, db: AsyncSession = Depends(get_db)):
