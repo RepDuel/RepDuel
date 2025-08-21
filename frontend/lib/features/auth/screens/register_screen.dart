@@ -1,11 +1,8 @@
-// frontend/lib/features/auth/screens/register_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/auth_provider.dart';
-import '../../../widgets/main_bottom_nav_bar.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -26,6 +23,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     usernameController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  void _submit() async {
+    if (formKey.currentState!.validate()) {
+      final success = await ref.read(authProvider.notifier).register(
+            usernameController.text.trim(),
+            emailController.text.trim(),
+            passwordController.text.trim(),
+          );
+
+      if (!mounted) return;
+
+      if (success) {
+        context.go('/login');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration failed. Username or email may already be taken.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -79,32 +99,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    final navigator = Navigator.of(context);
-                    final messenger = ScaffoldMessenger.of(context);
-
-                    final success =
-                        await ref.read(authProvider.notifier).register(
-                              usernameController.text.trim(),
-                              emailController.text.trim(),
-                              passwordController.text.trim(),
-                            );
-
-                    if (!mounted) return;
-
-                    if (success) {
-                      navigator.pushReplacementNamed('/login');
-                    } else {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Registration failed.'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                },
+                onPressed: _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.tealAccent[400],
                   foregroundColor: Colors.black,
@@ -122,10 +117,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ],
           ),
         ),
-      ),
-      bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 3,
-        onTap: (_) {},
       ),
     );
   }

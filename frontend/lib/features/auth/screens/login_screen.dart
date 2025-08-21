@@ -1,13 +1,10 @@
-// frontend/lib/features/auth/screens/login_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/auth_provider.dart';
-import '../../../widgets/loading_spinner.dart';
 import '../../../widgets/error_display.dart';
-import '../../../widgets/main_bottom_nav_bar.dart';
+import '../../../widgets/loading_spinner.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -33,14 +30,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      final success =
-          await ref.read(authStateProvider.notifier).login(email, password);
+      final success = await ref
+          .read(authProvider.notifier)
+          .login(email, password);
 
       if (!mounted) return;
 
-      if (success) {
-        GoRouter.of(context).go('/profile'); // Corrected navigation
-      } else {
+      if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Login failed. Please check your credentials.')),
@@ -51,7 +47,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
+    final authState = ref.watch(authProvider);
+
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.user != null) {
+        context.go('/shell/3');
+      }
+    });
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -104,8 +106,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextButton(
-                      onPressed: () => GoRouter.of(context)
-                          .go('/register'), // Corrected navigation
+                      onPressed: () => context.go('/register'),
                       child: const Text(
                         'Don\'t have an account? Sign up',
                         style: TextStyle(color: Colors.white70),
@@ -114,10 +115,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
               ),
-      ),
-      bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 3,
-        onTap: (_) {},
       ),
     );
   }

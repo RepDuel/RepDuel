@@ -2,12 +2,12 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/env.dart';
-import '../../scenario/screens/scenario_screen.dart';
 import '../../leaderboard/screens/leaderboard_screen.dart';
-import '../../../widgets/main_bottom_nav_bar.dart';
+import '../../scenario/screens/scenario_screen.dart';
 
 class NormalScreen extends StatefulWidget {
   const NormalScreen({super.key});
@@ -81,132 +81,108 @@ class _NormalScreenState extends State<NormalScreen> {
   }
 
   void _goToLeaderboard(String scenarioId, String liftName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => LeaderboardScreen(
-          scenarioId: scenarioId,
-          liftName: liftName,
-        ),
-      ),
-    );
+    context.push('/leaderboard/$scenarioId?liftName=$liftName');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Normal'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : (error != null)
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(error!, style: const TextStyle(color: Colors.white)),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _fetchScenarios,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : Column(
+    return isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : (error != null)
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Column header
-                    Container(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        children: [
-                          Expanded(
-                            child: Text('Lift', style: _headerStyle),
-                          ),
-                          Text('Leaderboard', style: _headerStyle),
-                        ],
-                      ),
+                    Text(error!, style: const TextStyle(color: Colors.white)),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _fetchScenarios,
+                      child: const Text('Retry'),
                     ),
+                  ],
+                ),
+              )
+            : Column(
+                children: [
+                  Container(
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Expanded(
+                          child: Text('Lift', style: _headerStyle),
+                        ),
+                        Text('Leaderboard', style: _headerStyle),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: () async => _fetchScenarios(),
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: scenarios.length,
+                        itemBuilder: (context, index) {
+                          final scenario = scenarios[index];
+                          final name =
+                              (scenario['name'] ?? 'Unnamed Scenario')
+                                  .toString();
+                          final id = scenario['id']?.toString();
 
-                    // List of scenarios
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: () async => _fetchScenarios(),
-                        child: ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          itemCount: scenarios.length,
-                          itemBuilder: (context, index) {
-                            final scenario = scenarios[index];
-                            final name =
-                                (scenario['name'] ?? 'Unnamed Scenario')
-                                    .toString();
-                            final id = scenario['id']?.toString();
-
-                            return Container(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 4),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 0),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[900],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        if (id != null) {
-                                          _goToScenario(id, name);
-                                        }
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12.0),
-                                        child: Text(
-                                          name,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                          ),
+                          return Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 0),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      if (id != null) {
+                                        _goToScenario(id, name);
+                                      }
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 12.0),
+                                      child: Text(
+                                        name,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
                                         ),
                                       ),
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.leaderboard,
-                                        color: Colors.blue),
-                                    onPressed: () {
-                                      if (id != null) {
-                                        _goToLeaderboard(id, name);
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.leaderboard,
+                                      color: Colors.blue),
+                                  onPressed: () {
+                                    if (id != null) {
+                                      _goToLeaderboard(id, name);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
-                  ],
-                ),
-      bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 0,
-        onTap: (_) {},
-      ),
-    );
+                  ),
+                ],
+              );
   }
 }

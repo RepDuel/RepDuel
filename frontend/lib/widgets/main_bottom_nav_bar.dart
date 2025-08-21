@@ -1,5 +1,6 @@
+// frontend/lib/widgets/main_bottom_nav_bar.dart
+
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 class MainBottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -17,30 +18,11 @@ class MainBottomNavBar extends StatelessWidget {
       backgroundColor: Colors.black,
       selectedItemColor: Colors.white,
       unselectedItemColor: Colors.grey,
+      type: BottomNavigationBarType.fixed, // Prevents items from shifting
       currentIndex: currentIndex,
-      onTap: (index) {
-        // Use GoRouter for navigation
-        switch (index) {
-          case 0:
-            context.go('/normal');
-            break;
-          case 1:
-            context.go('/ranked');
-            break;
-          case 2:
-            context.go('/routines');
-            break;
-          // case 3:
-          //   context.go('/chat');
-          //   break;
-          case 3:
-            context.go('/profile');
-            break;
-        }
-
-        // Notify parent widget about index change
-        onTap(index);
-      },
+      // The GoRouter switch statement has been removed.
+      // This widget now delegates the tap event directly to its parent.
+      onTap: onTap,
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.list),
@@ -54,10 +36,6 @@ class MainBottomNavBar extends StatelessWidget {
           icon: Icon(Icons.fitness_center),
           label: 'Routines',
         ),
-        // BottomNavigationBarItem(
-        //   icon: Icon(Icons.chat),
-        //   label: 'Chat',
-        // ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person),
           label: 'Profile',

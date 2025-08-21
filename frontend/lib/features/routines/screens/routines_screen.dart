@@ -1,20 +1,20 @@
 // frontend/lib/features/routines/screens/routines_screen.dart
 
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 
-import '../../../widgets/main_bottom_nav_bar.dart';
-import '../widgets/routine_card.dart';
-import '../widgets/add_routine_card.dart';
-import 'routine_play_screen.dart';
-import 'custom_routine_screen.dart';
 import '../../../core/config/env.dart';
 import '../../../core/models/routine.dart';
-import '../../../core/services/secure_storage_service.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/secure_storage_service.dart';
+import '../widgets/add_routine_card.dart';
+import '../widgets/routine_card.dart';
+import 'custom_routine_screen.dart';
+import 'routine_play_screen.dart';
 
 class RoutinesScreen extends ConsumerStatefulWidget {
   const RoutinesScreen({super.key});
@@ -66,7 +66,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
   }
 
   void _onAddRoutinePressed(List<Routine> routines) {
-    final currentUser = ref.read(authStateProvider).user;
+    final currentUser = ref.read(authProvider).user;
     final isFree = currentUser?.subscriptionLevel == null ||
         currentUser!.subscriptionLevel == 'free';
     final hasReachedLimit =
@@ -271,7 +271,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withAlpha(102), // fixed opacity
+                color: Colors.black.withAlpha(102),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(child: CircularProgressIndicator()),
@@ -283,89 +283,66 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = ref.watch(authStateProvider).user;
+    final currentUser = ref.watch(authProvider).user;
     final currentUserId = currentUser?.id;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Routines'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 0,
-        actions: const [],
-      ),
-      body: FutureBuilder<List<Routine>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              !snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return FutureBuilder<List<Routine>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (snapshot.hasError) {
-            final message = snapshot.error?.toString() ?? _genericFailMessage;
-            final isUnauthorized = message.contains('401');
+        if (snapshot.hasError) {
+          final message = snapshot.error?.toString() ?? _genericFailMessage;
+          final isUnauthorized = message.contains('401');
 
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(message,
-                      style: const TextStyle(color: Colors.white),
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 12),
-                  if (isUnauthorized)
-                    ElevatedButton(
-                        onPressed: () => context.go('/login'),
-                        child: const Text('Login'))
-                  else
-                    ElevatedButton(
-                        onPressed: _refresh, child: const Text('Retry')),
-                ],
-              ),
-            );
-          }
-
-          final routines = snapshot.data ?? <Routine>[];
-
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: GridView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: routines.length + 1,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount:
-                    (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.6,
-              ),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return AddRoutineCard(
-                      onPressed: () => _onAddRoutinePressed(routines));
-                }
-                final routine = routines[index - 1];
-                return _buildRoutineTile(routine, currentUserId);
-              },
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(message,
+                    style: const TextStyle(color: Colors.white),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                if (isUnauthorized)
+                  ElevatedButton(
+                      onPressed: () => context.go('/login'),
+                      child: const Text('Login'))
+                else
+                  ElevatedButton(
+                      onPressed: _refresh, child: const Text('Retry')),
+              ],
             ),
           );
-        },
-      ),
-      bottomNavigationBar: MainBottomNavBar(
-        currentIndex: 2,
-        onTap: (index) {
-          if (index == 0) {
-            context.go('/ranked');
-          } else if (index == 1) {
-            // stay
-          } else if (index == 2) {
-            context.go('/profile');
-          }
-        },
-      ),
+        }
+
+        final routines = snapshot.data ?? <Routine>[];
+
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: GridView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: routines.length + 1,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount:
+                  (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.6,
+            ),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return AddRoutineCard(
+                    onPressed: () => _onAddRoutinePressed(routines));
+              }
+              final routine = routines[index - 1];
+              return _buildRoutineTile(routine, currentUserId);
+            },
+          ),
+        );
+      },
     );
   }
 }

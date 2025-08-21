@@ -1,47 +1,45 @@
 // frontend/lib/router/app_router.dart
 
-import 'package:flutter/material.dart'; // Keep this import
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+// --- Core and Feature Imports ---
 import '../core/providers/auth_provider.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
-// import '../features/chat/screens/chat_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
-import '../features/normal/screens/normal_screen.dart';
 import '../features/premium/screens/payment_success_screen.dart';
 import '../features/premium/screens/subscription_screen.dart';
-import '../features/profile/screens/profile_wrapper.dart';
 import '../features/profile/screens/settings_screen.dart';
-import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/add_exercise_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
-import '../features/routines/screens/routines_screen.dart';
+
+// --- NEW SHELL IMPORT ---
+// This is the new parent widget for the main screens. We will create this file next.
+import '../presentation/scaffolds/main_scaffold.dart';
+
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
 
-  // The incorrect line has been removed from here.
-  // GoRouter will automatically respect the global setting from main.dart.
-
   return GoRouter(
-    initialLocation: '/profile',
+    // The initial location now points to the shell route, starting at the profile tab (index 3).
+    initialLocation: '/shell/3',
     routes: [
-      // ... your routes remain unchanged ...
+      // NEW SHELL ROUTE: This single route replaces the old /normal, /ranked, etc.
+      // It builds the main scaffold which contains the bottom nav bar and hosts the pages.
       GoRoute(
-        path: '/normal',
-        builder: (context, state) => const NormalScreen(),
+        path: '/shell/:index',
+        builder: (context, state) {
+          // Safely parse the index from the URL, defaulting to 0.
+          final indexString = state.pathParameters['index'] ?? '0';
+          final index = int.tryParse(indexString) ?? 0;
+          return MainScaffold(initialIndex: index);
+        },
       ),
-      GoRoute(
-        path: '/ranked',
-        builder: (context, state) => const RankedScreen(),
-      ),
-      GoRoute(
-        path: '/routines',
-        builder: (context, state) => const RoutinesScreen(),
-      ),
+
       GoRoute(
         path: '/routines/custom',
         builder: (context, state) => const CustomRoutineScreen(),
@@ -50,14 +48,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/routines/add-exercise',
         builder: (context, state) => const AddExerciseScreen(),
       ),
-      GoRoute(
-        path: '/profile',
-        builder: (context, state) => const ProfileWrapper(),
-      ),
-      // GoRoute(
-      //   path: '/chat',
-      //   builder: (context, state) => const ChatScreen(),
-      // ),
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
@@ -102,16 +92,20 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = auth.user != null;
       final path = state.uri.path;
-
-      final isPublicRoute =
-          path == '/login' || path == '/register' || path == '/payment-success';
-
-      if (!isLoggedIn && !isPublicRoute) {
+      
+      // We check if the path starts with /shell because it now has a parameter.
+      final isAppRoute = path.startsWith('/shell');
+      final isPublicRoute = path == '/login' || path == '/register' || path == '/payment-success';
+      
+      // If user is not logged in and tries to access a protected app route, redirect to login.
+      if (!isLoggedIn && !isPublicRoute && isAppRoute) {
         return '/login';
       }
 
-      if (isLoggedIn && path == '/login') {
-        return '/profile';
+      // If user is logged in and is on the login page, redirect them into the app.
+      if (isLoggedIn && (path == '/login' || path == '/register')) {
+        // UPDATED REDIRECT: Go to the shell, starting at the profile tab (index 3).
+        return '/shell/3';
       }
 
       return null;
