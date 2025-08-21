@@ -12,34 +12,26 @@ import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/premium/screens/payment_success_screen.dart';
 import '../features/premium/screens/subscription_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
+import '../features/profile/screens/theme_selector_screen.dart';
 import '../features/routines/screens/add_exercise_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
-
-// --- NEW SHELL IMPORT ---
-// This is the new parent widget for the main screens. We will create this file next.
 import '../presentation/scaffolds/main_scaffold.dart';
-
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
 
   return GoRouter(
-    // The initial location now points to the shell route, starting at the profile tab (index 3).
     initialLocation: '/shell/3',
     routes: [
-      // NEW SHELL ROUTE: This single route replaces the old /normal, /ranked, etc.
-      // It builds the main scaffold which contains the bottom nav bar and hosts the pages.
       GoRoute(
         path: '/shell/:index',
         builder: (context, state) {
-          // Safely parse the index from the URL, defaulting to 0.
           final indexString = state.pathParameters['index'] ?? '0';
           final index = int.tryParse(indexString) ?? 0;
           return MainScaffold(initialIndex: index);
         },
       ),
-
       GoRoute(
         path: '/routines/custom',
         builder: (context, state) => const CustomRoutineScreen(),
@@ -51,6 +43,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      // --- THIS IS THE FIX ---
+      // A new route is added to handle navigation to the theme selector screen.
+      GoRoute(
+        path: '/theme-selector',
+        builder: (context, state) => const ThemeSelectorScreen(),
       ),
       GoRoute(
         path: '/subscribe',
@@ -92,19 +90,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = auth.user != null;
       final path = state.uri.path;
-      
-      // We check if the path starts with /shell because it now has a parameter.
+
+      // Extend the public routes to allow access to the theme selector for previewing
       final isAppRoute = path.startsWith('/shell');
-      final isPublicRoute = path == '/login' || path == '/register' || path == '/payment-success';
-      
-      // If user is not logged in and tries to access a protected app route, redirect to login.
+      final isPublicRoute = path == '/login' ||
+          path == '/register' ||
+          path == '/payment-success';
+
       if (!isLoggedIn && !isPublicRoute && isAppRoute) {
         return '/login';
       }
 
-      // If user is logged in and is on the login page, redirect them into the app.
       if (isLoggedIn && (path == '/login' || path == '/register')) {
-        // UPDATED REDIRECT: Go to the shell, starting at the profile tab (index 3).
         return '/shell/3';
       }
 

@@ -1,78 +1,84 @@
 // frontend/lib/features/profile/screens/settings_screen.dart
 
-import '../../../core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
+import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../../core/services/secure_storage_service.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../../core/themes/app_themes.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  Future<void> _changeProfilePicture(BuildContext context, WidgetRef ref) async {
+  Future<void> _changeProfilePicture(
+      BuildContext context, WidgetRef ref) async {
     final picker = ImagePicker();
-    debugPrint('[📷] Starting image picker...');
-
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
       maxWidth: 800,
       maxHeight: 800,
       imageQuality: 85,
     );
-
     if (picked == null) return;
-    debugPrint('[📷] Picked image path: ${picked.path}');
 
     final bytes = await picked.readAsBytes();
-    final filename = picked.name;
-    final mimeType = picked.mimeType ?? 'image/jpeg';
 
-    final authNotifier = ref.read(authProvider.notifier);
-    final ok = await authNotifier.updateProfilePictureFromBytes(bytes, filename, mimeType);
+    // --- THIS IS THE FIX ---
+    // We provide a fallback value for picked.mimeType using the ?? operator.
+    // If mimeType is null, it will safely default to 'image/jpeg'.
+    final ok = await ref.read(authProvider.notifier).updateProfilePictureFromBytes(
+          bytes,
+          picked.name,
+          picked.mimeType ?? 'image/jpeg',
+        );
 
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(ok ? 'Profile picture updated!' : 'Upload failed.'),
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok ? 'Profile picture updated!' : 'Upload failed.'),
+        ),
+      );
+    }
   }
 
-  Future<void> _editWeight(BuildContext context, WidgetRef ref) async {
+  Future<void> _editWeight(
+      BuildContext context, WidgetRef ref, AppTheme theme) async {
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
     final isKg = user.weightMultiplier == 1.0;
     final unitLabel = isKg ? 'kg' : 'lbs';
-
-    final displayedWeight = user.weight != null ? (user.weight! * user.weightMultiplier).toStringAsFixed(1) : '';
-
+    final displayedWeight = user.weight != null
+        ? (user.weight! * user.weightMultiplier).toStringAsFixed(1)
+        : '';
     final controller = TextEditingController(text: displayedWeight);
 
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text("Edit Weight ($unitLabel)"),
-        backgroundColor: Colors.grey[900],
-        titleTextStyle: const TextStyle(color: Colors.white),
-        contentTextStyle: const TextStyle(color: Colors.white),
+        backgroundColor: theme.card,
+        titleTextStyle: TextStyle(color: theme.primary),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: theme.primary),
           decoration: InputDecoration(
             hintText: "Enter weight in $unitLabel",
-            hintStyle: const TextStyle(color: Colors.grey),
+            hintStyle: TextStyle(color: theme.primary.withOpacity(0.5)),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Save")),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel", style: TextStyle(color: theme.accent))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: Text("Save", style: TextStyle(color: theme.accent))),
         ],
       ),
     );
@@ -80,13 +86,15 @@ class SettingsScreen extends ConsumerWidget {
     if (result != null) {
       final input = double.tryParse(result);
       if (input != null) {
-        final storedWeight = input / user.weightMultiplier;
-        await ref.read(authProvider.notifier).updateUser(weight: storedWeight);
+        await ref
+            .read(authProvider.notifier)
+            .updateUser(weight: input / user.weightMultiplier);
       }
     }
   }
 
-  Future<void> _editGender(BuildContext context, WidgetRef ref) async {
+  Future<void> _editGender(
+      BuildContext context, WidgetRef ref, AppTheme theme) async {
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
@@ -94,14 +102,13 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Select Gender"),
-        backgroundColor: Colors.grey[900],
-        titleTextStyle: const TextStyle(color: Colors.white),
-        contentTextStyle: const TextStyle(color: Colors.white),
+        backgroundColor: theme.card,
+        titleTextStyle: TextStyle(color: theme.primary),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: ['Male', 'Female'].map((option) {
             return ListTile(
-              title: Text(option, style: const TextStyle(color: Colors.white)),
+              title: Text(option, style: TextStyle(color: theme.primary)),
               onTap: () => Navigator.pop(context, option),
             );
           }).toList(),
@@ -114,157 +121,89 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _editWeightUnit(BuildContext context, WidgetRef ref) async {
+  Future<void> _editWeightUnit(
+      BuildContext context, WidgetRef ref, AppTheme theme) async {
     final user = ref.read(authProvider).user;
     if (user == null) return;
-
-    final isKg = user.weightMultiplier == 1.0;
 
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Select Weight Unit"),
-        backgroundColor: Colors.grey[900],
-        titleTextStyle: const TextStyle(color: Colors.white),
-        contentTextStyle: const TextStyle(color: Colors.white),
+        backgroundColor: theme.card,
+        titleTextStyle: TextStyle(color: theme.primary),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(title: const Text('Kilograms', style: TextStyle(color: Colors.white)), onTap: () => Navigator.pop(context, 'kg')),
-            ListTile(title: const Text('Pounds', style: TextStyle(color: Colors.white)), onTap: () => Navigator.pop(context, 'lbs')),
+            ListTile(
+                title: Text('Kilograms', style: TextStyle(color: theme.primary)),
+                onTap: () => Navigator.pop(context, 'kg')),
+            ListTile(
+                title: Text('Pounds', style: TextStyle(color: theme.primary)),
+                onTap: () => Navigator.pop(context, 'lbs')),
           ],
         ),
       ),
     );
 
-    if (result != null && result != (isKg ? 'kg' : 'lbs')) {
-      final newMultiplier = result == 'kg' ? 1.0 : 2.20462;
-      final success = await ref.read(authProvider.notifier).updateUser(weightMultiplier: newMultiplier);
-      if (!success) {
-        debugPrint('Failed to update weight multiplier.');
-      }
+    if (result != null) {
+      await ref
+          .read(authProvider.notifier)
+          .updateUser(weightMultiplier: result == 'kg' ? 1.0 : 2.20462);
     }
   }
 
-  Future<void> _resetProgress(BuildContext context, WidgetRef ref) async {
-    final user = ref.read(authProvider).user;
-    if (user == null) return;
-
+  Future<void> _logout(
+      BuildContext context, WidgetRef ref, AppTheme theme) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Reset Progress"),
-        content: const Text("Are you sure you want to delete all your scores? This cannot be undone."),
+        backgroundColor: theme.card,
+        title: Text('Log out', style: TextStyle(color: theme.primary)),
+        content: Text(
+            'You will be signed out of your account on this device. Continue?',
+            style: TextStyle(color: theme.primary.withOpacity(0.8))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Confirm")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel', style: TextStyle(color: theme.accent))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Log out', style: TextStyle(color: theme.accent))),
         ],
       ),
     );
-
     if (confirmed != true) return;
 
-    final response = await http.delete(
-      Uri.parse('${Env.baseUrl}/api/v1/scores/user/${user.id}'),
-      headers: {
-        'Authorization': 'Bearer ${ref.read(authProvider).token}',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    final success = response.statusCode == 204;
-
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? 'Progress reset successfully.' : 'Failed to reset progress.'),
-      ),
-    );
-  }
-
-  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Delete Account", style: TextStyle(color: Colors.red)),
-        content: const Text("Are you absolutely sure you want to delete your account? All of your data, including scores and progress, will be permanently erased. This cannot be undone."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text("Delete Forever")),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    final token = ref.read(authProvider).token;
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Authentication error. Please log in again.')));
-      return;
-    }
-    
-    final response = await http.delete(
-      Uri.parse('${Env.baseUrl}/api/v1/users/me'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (!context.mounted) return;
-
-    if (response.statusCode == 204) {
-      await ref.read(authProvider.notifier).logout();
-      context.go('/login');
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account deleted successfully.')));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete account. Please try again.')));
-    }
-  }
-
-  Future<void> _logout(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Log out'),
-        content: const Text('You will be signed out of your account on this device. Continue?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Log out')),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await ref.read(authProvider.notifier).logout();
-    } catch (e) {
-      try { await SecureStorageService().deleteToken(); } catch (_) {}
-    }
-
-    if (!context.mounted) return;
-    context.go('/login');
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
+    await ref.read(authProvider.notifier).logout();
+    if (context.mounted) context.go('/login');
   }
 
   bool _isValidImageUrl(String? url) {
-    return url != null && url.isNotEmpty && (url.endsWith('.png') || url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.webp'));
+    if (url == null || url.isEmpty) return false;
+    final uri = Uri.tryParse(url);
+    return uri != null && uri.hasAbsolutePath;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
+    final theme = ref.watch(themeProvider);
+    final dividerColor = theme.primary.withOpacity(0.2);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.background,
       appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        title: Text('Settings', style: TextStyle(color: theme.primary)),
+        backgroundColor: theme.background,
+        iconTheme: IconThemeData(color: theme.primary),
       ),
       body: user == null
-          ? const Center(child: Text('User not found.', style: TextStyle(color: Colors.white)))
+          ? Center(
+              child:
+                  Text('User not found.', style: TextStyle(color: theme.primary)))
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
                 GestureDetector(
                   onTap: () => _changeProfilePicture(context, ref),
@@ -272,56 +211,109 @@ class SettingsScreen extends ConsumerWidget {
                     children: [
                       CircleAvatar(
                         radius: 48,
-                        backgroundColor: Colors.grey[700],
-                        backgroundImage: _isValidImageUrl(user.avatarUrl) ? NetworkImage(user.avatarUrl!) as ImageProvider<Object> : const AssetImage('assets/images/profile_placeholder.png') as ImageProvider<Object>,
+                        backgroundColor: theme.card,
+                        backgroundImage: _isValidImageUrl(user.avatarUrl)
+                            ? NetworkImage(user.avatarUrl!)
+                            : const AssetImage(
+                                    'assets/images/profile_placeholder.png')
+                                as ImageProvider,
                       ),
                       const SizedBox(height: 8),
-                      const Text('Tap to change picture', style: TextStyle(color: Colors.grey)),
-                      const SizedBox(height: 24),
+                      Text('Tap to change picture',
+                          style:
+                              TextStyle(color: theme.primary.withOpacity(0.5))),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
-                ListTile(
-                  title: const Text('Gender', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.gender ?? "Unknown", style: const TextStyle(color: Colors.grey)),
-                  trailing: const Icon(Icons.edit, color: Colors.white),
-                  onTap: () => _editGender(context, ref),
+                _SettingsSectionHeader(title: 'ACCOUNT', theme: theme),
+                _SettingsTile(
+                  title: 'Gender',
+                  subtitle: user.gender ?? "Not Set",
+                  onTap: () => _editGender(context, ref, theme),
+                  theme: theme,
                 ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Weight', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.weight != null ? (user.weight! * user.weightMultiplier).toStringAsFixed(1) + (user.weightMultiplier == 1.0 ? " kg" : " lbs") : "N/A", style: const TextStyle(color: Colors.grey)),
-                  trailing: const Icon(Icons.edit, color: Colors.white),
-                  onTap: () => _editWeight(context, ref),
+                Divider(color: dividerColor),
+                _SettingsTile(
+                  title: 'Weight',
+                  subtitle: user.weight != null
+                      ? "${(user.weight! * user.weightMultiplier).toStringAsFixed(1)} ${user.weightMultiplier == 1.0 ? "kg" : "lbs"}"
+                      : "Not Set",
+                  onTap: () => _editWeight(context, ref, theme),
+                  theme: theme,
                 ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Weight Unit (kg/lbs)', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.weightMultiplier == 1.0 ? "kg" : "lbs", style: const TextStyle(color: Colors.grey)),
-                  trailing: const Icon(Icons.edit, color: Colors.white),
-                  onTap: () => _editWeightUnit(context, ref),
+                Divider(color: dividerColor),
+                _SettingsTile(
+                  title: 'Weight Unit',
+                  subtitle: user.weightMultiplier == 1.0 ? "kg" : "lbs",
+                  onTap: () => _editWeightUnit(context, ref, theme),
+                  theme: theme,
                 ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Reset Progress', style: TextStyle(color: Colors.red)),
-                  trailing: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                  onTap: () => _resetProgress(context, ref),
+                const SizedBox(height: 24),
+                _SettingsSectionHeader(title: 'APPEARANCE', theme: theme),
+                _SettingsTile(
+                  title: 'App Theme',
+                  subtitle: theme.name,
+                  onTap: () => context.push('/theme-selector'),
+                  theme: theme,
                 ),
-                const Divider(color: Colors.grey),
+                const SizedBox(height: 24),
+                _SettingsSectionHeader(title: 'SESSION', theme: theme),
                 ListTile(
-                  title: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                  subtitle: const Text('This action is permanent.', style: TextStyle(color: Colors.redAccent)),
-                  trailing: const Icon(Icons.warning, color: Colors.red),
-                  onTap: () => _deleteAccount(context, ref),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Log out', style: TextStyle(color: theme.primary)),
+                  trailing: Icon(Icons.logout, color: theme.primary),
+                  onTap: () => _logout(context, ref, theme),
                 ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Log out', style: TextStyle(color: Colors.white)),
-                  trailing: const Icon(Icons.logout, color: Colors.white),
-                  onTap: () => _logout(context, ref),
-                ),
+                Divider(color: dividerColor),
               ],
             ),
+    );
+  }
+}
+
+class _SettingsSectionHeader extends StatelessWidget {
+  final String title;
+  final AppTheme theme;
+  const _SettingsSectionHeader({required this.title, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+            color: theme.primary.withOpacity(0.6),
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2),
+      ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final AppTheme theme;
+
+  const _SettingsTile({
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title, style: TextStyle(color: theme.primary)),
+      subtitle: Text(subtitle,
+          style: TextStyle(color: theme.primary.withOpacity(0.6))),
+      trailing: Icon(Icons.arrow_forward_ios, color: theme.primary, size: 16),
+      onTap: onTap,
     );
   }
 }

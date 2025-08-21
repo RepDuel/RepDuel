@@ -1,8 +1,11 @@
+// frontend/lib/features/auth/screens/login_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 
@@ -30,9 +33,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      final success = await ref
-          .read(authProvider.notifier)
-          .login(email, password);
+      final success =
+          await ref.read(authProvider.notifier).login(email, password);
 
       if (!mounted) return;
 
@@ -48,6 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final theme = ref.watch(themeProvider);
 
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.user != null) {
@@ -56,11 +59,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.background,
       appBar: AppBar(
-        title: const Text('Login'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        title: Text('Login', style: TextStyle(color: theme.primary)),
+        backgroundColor: theme.background,
+        foregroundColor: theme.primary,
         centerTitle: true,
       ),
       body: Padding(
@@ -75,10 +78,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ErrorDisplay(message: authState.error!),
                     TextFormField(
                       controller: _emailController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: theme.primary),
+                      decoration: InputDecoration(
                         labelText: 'Email',
-                        labelStyle: TextStyle(color: Colors.white),
+                        labelStyle: TextStyle(color: theme.primary),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          borderSide:
+                              BorderSide(color: theme.primary.withOpacity(0.5)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          borderSide:
+                              BorderSide(color: theme.accent, width: 2.0),
+                        ),
                       ),
                       validator: (value) =>
                           value!.isEmpty ? 'Please enter your email' : null,
@@ -87,10 +100,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: theme.primary),
+                      decoration: InputDecoration(
                         labelText: 'Password',
-                        labelStyle: TextStyle(color: Colors.white),
+                        labelStyle: TextStyle(color: theme.primary),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          borderSide:
+                              BorderSide(color: theme.primary.withOpacity(0.5)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          borderSide:
+                              BorderSide(color: theme.accent, width: 2.0),
+                        ),
                       ),
                       validator: (value) =>
                           value!.isEmpty ? 'Please enter your password' : null,
@@ -99,17 +122,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ElevatedButton(
                       onPressed: _submit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.tealAccent[400],
-                        foregroundColor: Colors.black,
+                        backgroundColor: theme.accent,
+                        foregroundColor: theme.background,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
                       ),
                       child: const Text('Login'),
                     ),
                     const SizedBox(height: 16),
                     TextButton(
                       onPressed: () => context.go('/register'),
-                      child: const Text(
+                      child: Text(
                         'Don\'t have an account? Sign up',
-                        style: TextStyle(color: Colors.white70),
+                        style:
+                            TextStyle(color: theme.primary.withOpacity(0.7)),
                       ),
                     ),
                   ],
