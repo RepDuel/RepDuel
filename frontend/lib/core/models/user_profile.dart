@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'role.dart';
+import '../../theme/app_theme.dart';
 
 class UserProfile {
   final String id;
@@ -17,6 +18,6 @@ class UserProfile {
   Role get highestRole {
     return roles.isNotEmpty
         ? roles.first
-        : Role(name: 'Unranked', color: const Color(0xFFFFFFFF), iconPath: '');
+        : Role(name: 'Unranked', color: AppTheme.rankColors['Unranked']!, iconPath: '');
   }
 }

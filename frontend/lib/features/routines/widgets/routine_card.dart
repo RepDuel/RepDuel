@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../theme/app_theme.dart';
 
 class RoutineCard extends StatelessWidget {
   final String name;
@@ -14,22 +15,23 @@ class RoutineCard extends StatelessWidget {
     required this.difficultyLevel,
   });
 
-  Color _getBarColor(int barIndex) {
+  Color _getBarColor(int barIndex, BuildContext context) {
+    final theme = Theme.of(context);
     if (difficultyLevel >= barIndex + 1) {
       switch (difficultyLevel) {
         case 1:
-          return Colors.green;
+          return AppTheme.successColor;
         case 2:
-          return Colors.yellow;
+          return AppTheme.inProgressColor;
         case 3:
-          return Colors.orange;
+          return AppTheme.warningColor;
         case 4:
-          return Colors.red;
+          return AppTheme.errorColor;
         default:
-          return Colors.grey;
+          return AppTheme.pendingColor;
       }
     }
-    return Colors.grey[800]!;
+    return theme.colorScheme.tertiary;
   }
 
   Widget _buildThumb() {
@@ -60,8 +62,9 @@ class RoutineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
-      color: Colors.grey[900],
+      color: theme.cardTheme.color,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,19 +84,12 @@ class RoutineCard extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: theme.textTheme.titleLarge,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   duration,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: theme.textTheme.labelLarge,
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -103,7 +99,7 @@ class RoutineCard extends StatelessWidget {
                       width: 20,
                       margin: const EdgeInsets.only(right: 6),
                       decoration: BoxDecoration(
-                        color: _getBarColor(index),
+                        color: _getBarColor(index, context),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     );

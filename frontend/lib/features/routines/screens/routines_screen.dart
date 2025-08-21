@@ -13,6 +13,7 @@ import '../../../core/config/env.dart';
 import '../../../core/models/routine.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../theme/app_theme.dart';
 
 class RoutinesScreen extends ConsumerStatefulWidget {
   const RoutinesScreen({super.key});
@@ -87,7 +88,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
               child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, foregroundColor: Colors.white),
+                backgroundColor: AppTheme.errorColor, foregroundColor: Colors.white),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Delete'),
           ),
@@ -225,12 +226,12 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                   PopupMenuItem(
                       value: 'delete',
                       child: Row(children: [
-                        Icon(Icons.delete_outline, color: Colors.red),
+                        Icon(Icons.delete_outline, color: AppTheme.errorColor),
                         SizedBox(width: 8),
                         Text('Delete')
                       ])),
                 ],
-                icon: const Icon(Icons.more_vert, color: Colors.white70),
+                icon: Icon(Icons.more_vert, color: Theme.of(context).colorScheme.onTertiary),
               ),
             ),
           ),
@@ -238,7 +239,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withAlpha(102),
+                color: Theme.of(context).scaffoldBackgroundColor.withAlpha(102),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(child: CircularProgressIndicator()),
@@ -252,13 +253,14 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authStateProvider).user;
     final currentUserId = currentUser?.id;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Routines'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         centerTitle: true,
         elevation: 0,
         actions: const [],
@@ -280,7 +282,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(message,
-                      style: const TextStyle(color: Colors.white),
+                      style: theme.textTheme.bodyLarge,
                       textAlign: TextAlign.center),
                   const SizedBox(height: 12),
                   if (isUnauthorized)

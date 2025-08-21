@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/workout_history_provider.dart';
 import '../../../core/models/routine_submission_read.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../theme/app_theme.dart';
 
 class WorkoutHistoryList extends ConsumerWidget {
   final String userId;
@@ -37,7 +38,7 @@ class WorkoutHistoryList extends ConsumerWidget {
       loading: () => const CircularProgressIndicator(),
       error: (e, _) => const Text(
         'Failed to load workout history.',
-        style: TextStyle(color: Colors.red),
+        style: TextStyle(color: AppTheme.errorColor),
       ),
       data: (entries) {
         if (entries.isEmpty) {
@@ -76,7 +77,7 @@ class WorkoutHistoryList extends ConsumerWidget {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey[900],
+                    color: Theme.of(context).cardTheme.color,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(

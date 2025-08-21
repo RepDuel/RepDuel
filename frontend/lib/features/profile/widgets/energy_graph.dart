@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 
+import '../../../theme/app_theme.dart';
 class DailyEnergyEntry {
   final String date; // Format: "2025-07-11"
   final double totalEnergy;
@@ -52,7 +53,7 @@ class EnergyGraph extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, _) => const Text(
         'Error loading data',
-        style: TextStyle(color: Colors.red),
+        style: TextStyle(color: AppTheme.errorColor),
       ),
       data: (entries) {
         if (entries.isEmpty) {
@@ -119,7 +120,7 @@ class EnergyGraph extends ConsumerWidget {
                     (i) => FlSpot(i.toDouble(), entries[i].totalEnergy),
                   ),
                   isCurved: true,
-                  color: Colors.blueAccent,
+                  color: Theme.of(context).colorScheme.primary,
                   barWidth: 3,
                   belowBarData: BarAreaData(show: true),
                   dotData: const FlDotData(show: true),

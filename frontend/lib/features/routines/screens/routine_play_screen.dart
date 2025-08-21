@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/config/env.dart';
 import '../../../core/models/routine.dart';
+import '../../../theme/app_theme.dart';
 
 class RoutinePlayScreen extends StatefulWidget {
   final Routine routine;
@@ -49,13 +50,14 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
   @override
   Widget build(BuildContext context) {
     final routine = widget.routine;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Play Routine'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -75,13 +77,13 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
                         flex: 2,
                         child: Text(
                           'Name',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                          style: theme.textTheme.labelLarge?.copyWith(fontSize: 16),
                         ),
                       ),
                       Expanded(
                         child: Text(
                           'Sets',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                          style: theme.textTheme.labelLarge?.copyWith(fontSize: 16),
                         ),
                       ),
                     ],
@@ -101,15 +103,13 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
                               flex: 2,
                               child: Text(
                                 name,
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 16),
+                                style: theme.textTheme.bodyLarge,
                               ),
                             ),
                             Expanded(
                               child: Text(
                                 '${scenario.sets}',
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 16),
+                                style: theme.textTheme.bodyLarge,
                               ),
                             ),
                           ],
@@ -130,8 +130,8 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
             context.push('/exercise_list/${routine.id}');
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
+            backgroundColor: AppTheme.successColor,
+            foregroundColor: theme.colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(vertical: 14),
             textStyle: const TextStyle(fontSize: 16),
           ),

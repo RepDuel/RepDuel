@@ -7,6 +7,7 @@ class AddRoutineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Semantics(
       button: true,
       label: 'Create Routine',
@@ -14,10 +15,10 @@ class AddRoutineCard extends StatelessWidget {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(12),
         child: Card(
-          color: Colors.grey[900],
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-            side: BorderSide(color: Colors.white12),
+          color: theme.cardTheme.color,
+          shape: RoundedRectangleBorder(
+            borderRadius: const BorderRadius.all(Radius.circular(12)),
+            side: BorderSide(color: theme.colorScheme.onTertiary.withOpacity(0.1)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -29,12 +30,12 @@ class AddRoutineCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(12)),
-                    color: Colors.black,
+                    color: theme.scaffoldBackgroundColor,
                     border: Border.all(
-                        color: Colors.white10, style: BorderStyle.solid),
+                        color: theme.colorScheme.onTertiary.withOpacity(0.1), style: BorderStyle.solid),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.add, size: 48, color: Colors.white70),
+                  child: Center(
+                    child: Icon(Icons.add, size: 48, color: theme.colorScheme.onTertiary),
                   ),
                 ),
               ),
@@ -45,16 +46,12 @@ class AddRoutineCard extends StatelessWidget {
                   children: [
                     Text(
                       'Create Routine',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: theme.textTheme.titleLarge,
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Build your own template',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      style: theme.textTheme.labelLarge,
                     ),
                   ],
                 ),

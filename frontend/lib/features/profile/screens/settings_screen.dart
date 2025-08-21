@@ -14,6 +14,7 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   Future<void> _changeProfilePicture(BuildContext context, WidgetRef ref) async {
+import '../../../theme/app_theme.dart';
     final picker = ImagePicker();
     debugPrint('[📷] Starting image picker...');
 
@@ -187,11 +188,11 @@ class SettingsScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Delete Account", style: TextStyle(color: Colors.red)),
+        title: const Text("Delete Account", style: TextStyle(color: AppTheme.errorColor)),
         content: const Text("Are you absolutely sure you want to delete your account? All of your data, including scores and progress, will be permanently erased. This cannot be undone."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text("Delete Forever")),
+          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor), child: const Text("Delete Forever")),
         ],
       ),
     );
@@ -303,15 +304,15 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const Divider(color: Colors.grey),
                 ListTile(
-                  title: const Text('Reset Progress', style: TextStyle(color: Colors.red)),
-                  trailing: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                  title: const Text('Reset Progress', style: TextStyle(color: AppTheme.errorColor)),
+                  trailing: const Icon(Icons.delete_forever, color: AppTheme.errorColorAccent),
                   onTap: () => _resetProgress(context, ref),
                 ),
                 const Divider(color: Colors.grey),
                 ListTile(
-                  title: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                  subtitle: const Text('This action is permanent.', style: TextStyle(color: Colors.redAccent)),
-                  trailing: const Icon(Icons.warning, color: Colors.red),
+                  title: const Text('Delete Account', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
+                  subtitle: const Text('This action is permanent.', style: TextStyle(color: AppTheme.errorColorAccent)),
+                  trailing: const Icon(Icons.warning, color: AppTheme.errorColor),
                   onTap: () => _deleteAccount(context, ref),
                 ),
                 const Divider(color: Colors.grey),

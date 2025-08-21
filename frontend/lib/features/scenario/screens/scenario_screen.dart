@@ -8,6 +8,7 @@ import 'dart:convert';
 import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../ranked/screens/result_screen.dart';
+import '../../../theme/app_theme.dart';
 
 class ScenarioScreen extends ConsumerStatefulWidget {
   final String liftName;
@@ -145,13 +146,12 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('• ',
-                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                Text('• ',
+                    style: Theme.of(context).textTheme.bodyMedium),
                 Expanded(
                   child: Text(
                     s.trim(),
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 14, height: 1.5),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
                   ),
                 ),
               ],
@@ -170,12 +170,13 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(widget.liftName),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         elevation: 0,
       ),
       body: Center(
@@ -197,17 +198,17 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                 children: [
                   Column(
                     children: [
-                      const Text('Weight',
-                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                      Text('Weight',
+                          style: theme.textTheme.bodyLarge),
                       SizedBox(
                         width: 100,
                         child: TextField(
                           controller: _weightController,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
+                          style: theme.textTheme.bodyLarge,
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: Colors.grey[900],
+                            fillColor: theme.inputDecorationTheme.fillColor,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -219,21 +220,21 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Text('x',
-                        style: TextStyle(color: Colors.white, fontSize: 24)),
+                        style: theme.textTheme.headlineLarge),
                   ),
                   Column(
                     children: [
-                      const Text('Reps',
-                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                      Text('Reps',
+                          style: theme.textTheme.bodyLarge),
                       SizedBox(
                         width: 100,
                         child: TextField(
                           controller: _repsController,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
+                          style: theme.textTheme.bodyLarge,
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: Colors.grey[900],
+                            fillColor: theme.inputDecorationTheme.fillColor,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -257,15 +258,15 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                   height: 16,
                   width: 16,
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    color: theme.colorScheme.onPrimary,
                     strokeWidth: 2,
                   ),
                 )
               : const Icon(Icons.check),
           label: Text(_isSubmitting ? 'Submitting...' : 'Confirm'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
+            backgroundColor: AppTheme.successColor,
+            foregroundColor: theme.colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(vertical: 12),
           ),
         ),

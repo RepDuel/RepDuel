@@ -14,6 +14,7 @@ import '../../../core/services/secure_storage_service.dart';
 import '../../../widgets/main_bottom_nav_bar.dart';
 import '../widgets/energy_graph.dart';
 import '../widgets/workout_history_list.dart';
+import '../../../theme/app_theme.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
