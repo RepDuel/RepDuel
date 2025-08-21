@@ -20,6 +20,7 @@ class Score(Base):
     sets = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # Relationships
-    user = relationship("User", back_populates="scores")
+    # --- Relationships ---
     scenario = relationship("Scenario", back_populates="scores")
+    user = relationship("User", back_populates="scores")
+    

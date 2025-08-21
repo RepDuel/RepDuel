@@ -17,18 +17,20 @@ class Scenario(Base):
     id = Column(String, primary_key=True, unique=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
-
-    # This will now be used as the RANK multiplier.
-    multiplier = Column(Float, nullable=False, default=1.0, server_default="1.0")
-
-    # This new column is dedicated to calculating physical volume.
-    volume_multiplier = Column(Float, nullable=False, default=1.0, server_default="1.0")
-
     is_bodyweight = Column(
         Boolean, nullable=False, default=False, server_default="false"
     )
-
-    scores = relationship("Score", back_populates="scenario")
+    # Multiplier for benchmark calculation (e.g. 0.25x for bench press, 0.33x for squats)
+    multiplier = Column(Float, nullable=False, default=1.0, server_default="1.0")
+    # Multiplier for volume calculation (e.g. 0.7x for pushups or 1.0x for bench press)
+    volume_multiplier = Column(Float, nullable=False, default=1.0, server_default="1.0")
+    
+    # --- Relationships ---
+    equipment = relationship(
+        "Equipment",
+        secondary=ScenarioEquipmentAssociation.__table__,
+        back_populates="scenarios",
+    )
 
     primary_muscles = relationship(
         "Muscle",
@@ -42,8 +44,4 @@ class Scenario(Base):
         back_populates="secondary_scenarios",
     )
 
-    equipment = relationship(
-        "Equipment",
-        secondary=ScenarioEquipmentAssociation.__table__,
-        back_populates="scenarios",
-    )
+    scores = relationship("Score", back_populates="scenario")

@@ -21,11 +21,13 @@ class Routine(Base):
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
-        nullable=True,  # Allows global routines
+        nullable=True,
     )
+
+    # --- Timestamps ---
     created_at = Column(DateTime, server_default=text("now()"))
 
-    # Relationships
+    # --- Relationships ---
     scenarios = relationship(
         "RoutineScenario", back_populates="routine", cascade="all, delete-orphan"
     )
