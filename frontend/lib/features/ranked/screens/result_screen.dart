@@ -188,7 +188,7 @@ class ShareableResultCard extends StatelessWidget {
 
 // --- Main Screen ---
 class ResultScreen extends ConsumerStatefulWidget {
-  final int finalScore;
+  final double finalScore;
   final int previousBest;
   final String scenarioId;
 
@@ -204,7 +204,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   Future<Map<String, dynamic>> getScenarioAndRankProgress({
     required String scenarioId,
-    required int scoreToUse,
+    required double scoreToUse,
     required double userWeight,
     required String userGender,
   }) async {
@@ -241,7 +241,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             screenshotController: _screenshotController,
             scenarioData: scenarioData,
             rankData: rankData,
-            finalScore: widget.finalScore,
+            finalScore: (widget.finalScore * (ref.read(authProvider).user?.weightMultiplier ?? 1.0)).round(),
           );
     } catch (e) {
       if (mounted) {
@@ -260,7 +260,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final userWeight = user?.weight ?? 70.0;
     final userGender = user?.gender ?? 'male';
     final weightMultiplier = user?.weightMultiplier ?? 1.0;
-    final scoreToUse = widget.finalScore > widget.previousBest ? widget.finalScore : widget.previousBest;
+    final scoreToUse = widget.finalScore > widget.previousBest ? widget.finalScore : widget.previousBest.toDouble();
     
     return FutureBuilder<Map<String, dynamic>>(
       future: getScenarioAndRankProgress(
@@ -288,7 +288,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         final leftRank = currentIndex > 0 ? rankOrder[currentIndex - 1] : null;
         final rightRank = !isMax && currentIndex < rankOrder.length - 1 ? rankOrder[currentIndex + 1] : null;
         
-        final scaledScore = (scoreToUse * weightMultiplier).round();
+        final scaledScore = (scoreToUse * weightMultiplier).toStringAsFixed(1);
         final progressValue = isMax ? 1.0 : (nextThreshold != null && nextThreshold > 0) ? (scoreToUse / nextThreshold).clamp(0.0, 1.0) : 0.0;
 
         return _buildScaffold(
@@ -301,9 +301,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   const SizedBox(height: 24),
                   const Text('FINAL SCORE', style: TextStyle(color: Colors.white70, fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
-                  Text('${(widget.finalScore * weightMultiplier).round()}', style: const TextStyle(color: Colors.white, fontSize: 72, fontWeight: FontWeight.bold)),
+                  Text((widget.finalScore * weightMultiplier).toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontSize: 72, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('Previous Best: ${(widget.previousBest * weightMultiplier).round()}', style: const TextStyle(color: Colors.white70, fontSize: 16)),
+                  Text('Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)}', style: const TextStyle(color: Colors.white70, fontSize: 16)),
                   const SizedBox(height: 24),
                   Text(scenarioName.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.1)),
                   const SizedBox(height: 32),
@@ -321,7 +321,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   const SizedBox(height: 16),
                   Container(width: 200, height: 20, color: Colors.grey[800], child: LinearProgressIndicator(value: progressValue, backgroundColor: Colors.transparent, valueColor: AlwaysStoppedAnimation<Color>(getRankColor(currentRank)), minHeight: 24)),
                   const SizedBox(height: 12),
-                  Text(isMax ? 'MAX RANK' : nextThreshold != null ? '$scaledScore / ${(nextThreshold * weightMultiplier).round()}' : '$scaledScore', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                  Text(isMax ? 'MAX RANK' : nextThreshold != null ? '$scaledScore / ${(nextThreshold * weightMultiplier).toStringAsFixed(1)}' : scaledScore, style: const TextStyle(color: Colors.white, fontSize: 16)),
                   
                   const SizedBox(height: 32),
                   const Divider(color: Colors.white24),

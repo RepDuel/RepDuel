@@ -43,9 +43,8 @@ class ShareService {
             child: ShareableResultCard(
               username: user?.username ?? 'An Athlete',
               scenarioName: scenarioData['name'] ?? 'Scenario',
-              finalScore: (finalScore * weightMultiplier).round(),
+              finalScore: finalScore,
               rankName: rankData['current_rank'] ?? 'Unranked',
-              // CORRECTED: Call the global getRankColor function from our utility file.
               rankColor: getRankColor(rankData['current_rank'] ?? 'Unranked'),
             ),
           ),
@@ -53,7 +52,7 @@ class ShareService {
         delay: Duration.zero,
       );
 
-      final shareText = 'I just hit a new score of ${(finalScore * weightMultiplier).round()} in ${scenarioData['name']} on RepDuel! Can you beat it? #RepDuel';
+      final shareText = 'I just hit a new score of $finalScore in ${scenarioData['name']} on RepDuel! Can you beat it? #RepDuel';
 
       // Platform-aware sharing logic
       if (kIsWeb) {
