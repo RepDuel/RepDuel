@@ -1,4 +1,4 @@
-# app/services/energy_service.py
+# backend/app/services/energy_service.py
 
 import math
 from uuid import UUID
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.energy_history import EnergyHistory
 from app.services.dots_service import DotsCalculator
+from app.services.user_service import get_user_by_id  # Add this import
 
 # Hardcoded mapping for each scenario to the corresponding lift name
 SCENARIO_LIFT_MAP = {
@@ -109,13 +110,23 @@ async def update_energy_if_personal_best(
     user_id: UUID,
     scenario_id: str,
     new_score: float,
-    bodyweight_kg: float,
-    gender: str,
 ):
     scenario_id_str = str(scenario_id)
     lift = SCENARIO_LIFT_MAP.get(scenario_id_str)
     if not lift:
         return
+
+    # Fetch user data to get bodyweight and gender
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        return
+    
+    # Validate gender with fallback
+    gender = user.gender.lower() if user.gender else 'male'
+    if gender not in ['male', 'female']:
+        gender = 'male'  # Fallback to male if invalid
+    
+    bodyweight_kg = user.weight or 70.0  # Default weight if None
 
     # Fetch user's current personal best for that scenario
     from app.models.score import Score

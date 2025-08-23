@@ -59,18 +59,13 @@ async def create_score_for_scenario(
     await db.commit()
     await db.refresh(db_score)
 
-    user = await db.get(User, score.user_id)
-    if user:
-        await update_energy_if_personal_best(
-            user_id=score.user_id,
-            scenario_id=scenario_id,
-            new_score=score_value,
-            bodyweight_kg=user.weight,
-            gender=user.gender,
-            db=db,
-        )
-    else:
-        print(f"Warning: User {score.user_id} not found for energy update")
+    # CORRECTED: Call with the right parameters
+    await update_energy_if_personal_best(
+        db=db,
+        user_id=score.user_id,
+        scenario_id=scenario_id,
+        new_score=score_value,
+    )
 
     return db_score
 

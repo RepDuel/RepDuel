@@ -37,6 +37,11 @@ final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistory
   final url = '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
   final token = ref.read(authProvider).token;
 
+  // Debug: Print score history request
+  print('Fetching score history for user: ${user.id}, scenario: $scenarioId');
+  print('Score History URL: $url');
+  print('Token available: ${token != null}');
+
   final response = await http.get(
     Uri.parse(url),
     headers: {
@@ -44,15 +49,19 @@ final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistory
     },
   );
 
+  // Debug: Print score history response
+  print('Score History Response Status: ${response.statusCode}');
+  print('Score History Response Body: ${response.body}');
+
   if (response.statusCode == 200) {
     final List<dynamic> data = json.decode(response.body);
     final entries = data.map((item) => ScoreHistoryEntry.fromJson(item)).toList();
     entries.sort((a, b) => a.date.compareTo(b.date));
     return entries;
   } else if (response.statusCode == 403) {
-    throw Exception("Upgrade to Gold to see your history.");
+    throw Exception("Upgrade to Gold to see your history. Status: 403");
   } else {
-    throw Exception("Failed to load score history.");
+    throw Exception("Failed to load score history. Status: ${response.statusCode}, Body: ${response.body}");
   }
 });
 
@@ -211,23 +220,43 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final token = ref.read(authProvider).token;
     final headers = {'Authorization': 'Bearer $token'};
 
-    final scenarioRes = await http.get(
-      Uri.parse('${Env.baseUrl}/api/v1/scenarios/$scenarioId/details'),
-      headers: headers,
-    );
-    if (scenarioRes.statusCode != 200) throw Exception("Failed to load scenario details.");
+    // Debug: Print the request details
+    print('Fetching scenario details for: $scenarioId');
+    print('Token available: ${token != null}');
+    
+    final scenarioUrl = Uri.parse('${Env.baseUrl}/api/v1/scenarios/$scenarioId/details');
+    print('Scenario URL: $scenarioUrl');
+
+    final scenarioRes = await http.get(scenarioUrl, headers: headers);
+    
+    // Debug: Print scenario response details
+    print('Scenario Response Status: ${scenarioRes.statusCode}');
+    print('Scenario Response Body: ${scenarioRes.body}');
+    
+    if (scenarioRes.statusCode != 200) {
+      throw Exception("Failed to load scenario details. Status: ${scenarioRes.statusCode}, Body: ${scenarioRes.body}");
+    }
     final scenario = json.decode(scenarioRes.body);
 
-    final rankRes = await http.get(
-      Uri.parse('${Env.baseUrl}/api/v1/ranks/get_rank_progress').replace(queryParameters: {
-        'scenario_id': scenarioId,
-        'final_score': scoreToUse.toString(),
-        'user_weight': userWeight.toString(),
-        'user_gender': userGender.toLowerCase(),
-      }),
-      headers: headers,
-    );
-    if (rankRes.statusCode != 200) throw Exception("Failed to load rank progress.");
+    // Debug: Print rank progress request details
+    final rankUrl = Uri.parse('${Env.baseUrl}/api/v1/ranks/get_rank_progress').replace(queryParameters: {
+      'scenario_id': scenarioId,
+      'final_score': scoreToUse.toString(),
+      'user_weight': userWeight.toString(),
+      'user_gender': userGender.toLowerCase(),
+    });
+    print('Rank URL: $rankUrl');
+    print('Rank Query Params: scenario_id=$scenarioId, final_score=$scoreToUse, user_weight=$userWeight, user_gender=$userGender');
+
+    final rankRes = await http.get(rankUrl, headers: headers);
+    
+    // Debug: Print rank response details
+    print('Rank Response Status: ${rankRes.statusCode}');
+    print('Rank Response Body: ${rankRes.body}');
+    
+    if (rankRes.statusCode != 200) {
+      throw Exception("Failed to load rank progress. Status: ${rankRes.statusCode}, Body: ${rankRes.body}");
+    }
     final rank = json.decode(rankRes.body);
 
     return {'scenario': scenario, 'rank': rank};
@@ -274,7 +303,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           return _buildScaffold(const Center(child: CircularProgressIndicator()));
         }
         if (snapshot.hasError) {
-          return _buildScaffold(Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white))));
+          final error = snapshot.error.toString();
+          print('Error in FutureBuilder: $error');
+          return _buildScaffold(
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Error: $error', 
+                    style: const TextStyle(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => setState(() {}), // Retry
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
         final scenarioData = snapshot.data!['scenario'];

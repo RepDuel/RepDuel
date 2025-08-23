@@ -141,7 +141,7 @@ async def rank_icon(user_id: str):
 @router.get("/get_rank_progress", response_model=dict)
 async def get_rank_progress(
     scenario_id: str, 
-    final_score: int,  # This should already be the calculated score_value from the frontend
+    final_score: float,
     user_weight: float, 
     user_gender: str = "male"
 ):
