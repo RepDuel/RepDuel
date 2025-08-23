@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import get_db
 from app.models.score import Score
+from app.models.user import User
 from app.schemas.score import ScoreCreate, ScoreOut, ScoreReadWithUser
 from app.services.energy_service import update_energy_if_personal_best
 
@@ -43,21 +44,33 @@ async def create_score_for_scenario(
 ):
     # Calculate score_value
     score_value = calculate_score_value(score.weight_lifted, score.reps)
-    score_data = score.dict()
-    score_data["scenario_id"] = scenario_id
     
-    db_score = Score(**score_data, score_value=score_value)  # Add calculated score_value
+    # Create the database score object
+    db_score = Score(
+        user_id=score.user_id,
+        scenario_id=scenario_id,
+        weight_lifted=score.weight_lifted,
+        reps=score.reps,
+        sets=score.sets,
+        score_value=score_value
+    )
+    
     db.add(db_score)
     await db.commit()
     await db.refresh(db_score)
 
-    # 🔥 Update energy if it's a new PR - now using score_value instead of weight_lifted
-    await update_energy_if_personal_best(
-        user_id=score.user_id,
-        scenario_id=scenario_id,
-        new_score=score_value,  # Use score_value instead of weight_lifted
-        db=db,
-    )
+    user = await db.get(User, score.user_id)
+    if user:
+        await update_energy_if_personal_best(
+            user_id=score.user_id,
+            scenario_id=scenario_id,
+            new_score=score_value,
+            bodyweight_kg=user.weight,
+            gender=user.gender,
+            db=db,
+        )
+    else:
+        print(f"Warning: User {score.user_id} not found for energy update")
 
     return db_score
 

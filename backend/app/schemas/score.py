@@ -10,7 +10,6 @@ from app.schemas.user import UserRead
 
 class ScoreCreate(BaseModel):
     user_id: UUID
-    scenario_id: str
     weight_lifted: float
     sets: int | None = None
     reps: int | None = None
