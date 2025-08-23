@@ -76,7 +76,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         // Note: The high score for bodyweight might be based on reps, but the
         // backend should return the final calculated *score* in this field.
         // We will assume the backend handles this correctly for now.
-        return (data['score'] as num?)?.round() ?? 0;
+        return (data['score_value'] as num?)?.round() ?? 0;
       }
     } catch (e) {
       // Ignore errors here, just return 0

@@ -14,13 +14,21 @@ from app.services.energy_service import update_energy_if_personal_best
 
 router = APIRouter(prefix="/scores", tags=["Scores"])
 
+# Helper function to calculate score_value (same formula as Dart)
+def calculate_score_value(weight_lifted: float, reps: int | None) -> float:
+    if reps is None or reps == 1:
+        return weight_lifted
+    return weight_lifted * (1 + reps / 30)
+
 
 @router.post("/", response_model=ScoreOut)
 async def create_score(
     score: ScoreCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    db_score = Score(**score.dict())
+    # Calculate score_value before creating the record
+    score_value = calculate_score_value(score.weight_lifted, score.reps)
+    db_score = Score(**score.dict(), score_value=score_value)  # Add calculated score_value
     db.add(db_score)
     await db.commit()
     await db.refresh(db_score)
@@ -33,19 +41,21 @@ async def create_score_for_scenario(
     score: ScoreCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    # Calculate score_value
+    score_value = calculate_score_value(score.weight_lifted, score.reps)
     score_data = score.dict()
     score_data["scenario_id"] = scenario_id
-
-    db_score = Score(**score_data)
+    
+    db_score = Score(**score_data, score_value=score_value)  # Add calculated score_value
     db.add(db_score)
     await db.commit()
     await db.refresh(db_score)
 
-    # 🔥 Update energy if it's a new PR
+    # 🔥 Update energy if it's a new PR - now using score_value instead of weight_lifted
     await update_energy_if_personal_best(
         user_id=score.user_id,
         scenario_id=scenario_id,
-        new_score=score.weight_lifted,
+        new_score=score_value,  # Use score_value instead of weight_lifted
         db=db,
     )
 
@@ -60,7 +70,7 @@ async def get_leaderboard(
     db: AsyncSession = Depends(get_db),
 ):
     subquery = (
-        select(Score.user_id, func.max(Score.weight_lifted).label("max_weight"))
+        select(Score.user_id, func.max(Score.score_value).label("max_score"))  # Use score_value
         .where(Score.scenario_id == scenario_id)
         .group_by(Score.user_id)
         .subquery()
@@ -68,14 +78,14 @@ async def get_leaderboard(
 
     stmt = (
         select(Score)
-        .options(selectinload(Score.user))  # Load user info
+        .options(selectinload(Score.user))
         .join(
             subquery,
             (Score.user_id == subquery.c.user_id)
-            & (Score.weight_lifted == subquery.c.max_weight),
+            & (Score.score_value == subquery.c.max_score),  # Use score_value
         )
         .where(Score.scenario_id == scenario_id)
-        .order_by(Score.weight_lifted.desc())
+        .order_by(Score.score_value.desc())  # Use score_value
     )
 
     result = await db.execute(stmt)
@@ -106,7 +116,7 @@ async def get_user_high_score(
     stmt = (
         select(Score)
         .where(Score.user_id == user_id, Score.scenario_id == scenario_id)
-        .order_by(Score.weight_lifted.desc())
+        .order_by(Score.score_value.desc())  # Use score_value instead of weight_lifted
         .limit(1)
     )
     result = await db.execute(stmt)

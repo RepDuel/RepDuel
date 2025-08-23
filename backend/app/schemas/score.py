@@ -1,3 +1,5 @@
+# backend/app/schemas/score.py
+
 from datetime import datetime
 from uuid import UUID
 
@@ -19,6 +21,7 @@ class ScoreOut(BaseModel):
     user_id: UUID
     scenario_id: str
     weight_lifted: float
+    score_value: float
     created_at: datetime
     sets: int | None = None
     reps: int | None = None
@@ -29,6 +32,7 @@ class ScoreOut(BaseModel):
 class ScoreReadWithUser(BaseModel):
     id: int
     weight_lifted: float
+    score_value: float
     created_at: datetime
     user: UserRead
 

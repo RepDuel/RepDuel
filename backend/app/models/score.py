@@ -15,6 +15,7 @@ class Score(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=False)
+    score_value = Column(Float, nullable=False)
     weight_lifted = Column(Float, nullable=False)
     reps = Column(Integer, nullable=True)
     sets = Column(Integer, nullable=True)

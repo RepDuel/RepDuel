@@ -1,3 +1,5 @@
+# backend/app/api/v1/ranks.py
+
 import os
 
 import httpx
@@ -138,8 +140,16 @@ async def rank_icon(user_id: str):
 
 @router.get("/get_rank_progress", response_model=dict)
 async def get_rank_progress(
-    scenario_id: str, final_score: int, user_weight: float, user_gender: str = "male"
+    scenario_id: str, 
+    final_score: int,  # This should already be the calculated score_value from the frontend
+    user_weight: float, 
+    user_gender: str = "male"
 ):
+    """
+    Calculate rank progress based on the final calculated score_value.
+    The final_score parameter should be the calculated one-rep max (score_value),
+    not the raw weight_lifted.
+    """
     # Step 1: Fetch scenario multiplier
     async with httpx.AsyncClient() as client:
         print(
@@ -159,12 +169,41 @@ async def get_rank_progress(
     if not isinstance(scenario_multiplier, float):
         scenario_multiplier = scenario_multiplier.get("multiplier", 1)
 
-    # Step 2: Get lift standards
+    # Step 2: Get lift standards using the calculated score_value
     standards = DotsCalculator.calculate_lift_standards(
-        bodyweight_kg=user_weight, gender=user_gender, lift_ratio=scenario_multiplier
+        bodyweight_kg=user_weight, 
+        gender=user_gender, 
+        lift_ratio=scenario_multiplier
     )
 
-    # Step 3: Determine rank
+    # Step 3: Determine rank using the calculated score_value
     return DotsCalculator.get_current_rank_and_next_rank(
-        user_lift_score=final_score, standards=standards
+        user_lift_score=final_score,  # This is now the calculated score_value
+        standards=standards
+    )
+
+
+# NEW ENDPOINT: Get user's high score_value for a scenario
+@router.get("/user/{user_id}/scenario/{scenario_id}/highscore_value")
+async def get_user_high_score_value(
+    user_id: str,
+    scenario_id: str,
+):
+    """
+    Get the highest score_value (calculated one-rep max) for a user in a scenario.
+    This replaces the old endpoint that used weight_lifted.
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{settings.BASE_URL}/api/v1/scores/user/{user_id}/scenario/{scenario_id}/highscore"
+        )
+
+    if response.status_code == 200:
+        score_data = response.json()
+        # Return the calculated score_value instead of weight_lifted
+        return {"high_score": score_data.get("score_value", 0)}
+    
+    raise HTTPException(
+        status_code=response.status_code,
+        detail="Failed to fetch high score"
     )
