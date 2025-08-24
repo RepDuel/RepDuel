@@ -9,14 +9,19 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import get_db
 from app.models.score import Score
+from app.models.scenario import Scenario
 from app.models.user import User
 from app.schemas.score import ScoreCreate, ScoreOut, ScoreReadWithUser
 from app.services.energy_service import update_energy_if_personal_best
 
 router = APIRouter(prefix="/scores", tags=["Scores"])
 
-# Helper function to calculate score_value (same formula as Dart)
-def calculate_score_value(weight_lifted: float, reps: int | None) -> float:
+# Helper function to calculate score_value
+def calculate_score_value(weight_lifted: float, reps: int | None, is_bodyweight: bool = False) -> float:
+    if is_bodyweight:
+        # For bodyweight exercises: score = number of reps
+        return reps if reps is not None else 0
+    # For weighted exercises: use 1RM formula
     if reps is None or reps == 1:
         return weight_lifted
     return weight_lifted * (1 + reps / 30)
@@ -42,8 +47,19 @@ async def create_score_for_scenario(
     score: ScoreCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    # Calculate score_value
-    score_value = calculate_score_value(score.weight_lifted, score.reps)
+    # Get scenario to determine exercise type (FIRST PRINCIPLES APPROACH)
+    scenario = await db.get(Scenario, scenario_id)
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+    
+    is_bodyweight = scenario.is_bodyweight
+    
+    # Calculate score_value appropriately
+    score_value = calculate_score_value(
+        score.weight_lifted, 
+        score.reps, 
+        is_bodyweight=is_bodyweight
+    )
     
     # Create the database score object
     db_score = Score(
@@ -52,14 +68,14 @@ async def create_score_for_scenario(
         weight_lifted=score.weight_lifted,
         reps=score.reps,
         sets=score.sets,
-        score_value=score_value
+        score_value=score_value,
+        is_bodyweight=is_bodyweight  # Store the definitive exercise type
     )
     
     db.add(db_score)
     await db.commit()
     await db.refresh(db_score)
 
-    # CORRECTED: Call with the right parameters
     await update_energy_if_personal_best(
         db=db,
         user_id=score.user_id,

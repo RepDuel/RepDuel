@@ -21,6 +21,7 @@ class ScoreOut(BaseModel):
     scenario_id: str
     weight_lifted: float
     score_value: float
+    is_bodyweight: bool
     created_at: datetime
     sets: int | None = None
     reps: int | None = None

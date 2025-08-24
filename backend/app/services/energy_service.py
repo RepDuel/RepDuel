@@ -110,6 +110,7 @@ async def update_energy_if_personal_best(
     user_id: UUID,
     scenario_id: str,
     new_score: float,
+    is_bodyweight: bool = False,
 ):
     scenario_id_str = str(scenario_id)
     lift = SCENARIO_LIFT_MAP.get(scenario_id_str)
