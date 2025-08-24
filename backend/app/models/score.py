@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -20,6 +20,7 @@ class Score(Base):
     reps = Column(Integer, nullable=True)
     sets = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_bodyweight = Column(Boolean, default=False)
 
     # --- Relationships ---
     scenario = relationship("Scenario", back_populates="scores")
