@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -17,145 +16,9 @@ import '../../../core/providers/iap_provider.dart';
 import '../../../core/services/share_service.dart';
 import '../../../widgets/paywall_lock.dart';
 import '../utils/rank_utils.dart';
-
-// --- Data Model for the Score History Graph ---
-class ScoreHistoryEntry {
-  final double score;
-  final DateTime date;
-  ScoreHistoryEntry({required this.score, required this.date});
-  factory ScoreHistoryEntry.fromJson(Map<String, dynamic> json) => ScoreHistoryEntry(
-    score: (json['weight_lifted'] as num).toDouble(),
-    date: DateTime.parse(json['created_at'] as String),
-  );
-}
-
-// --- Provider for the premium score history feature ---
-final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistoryEntry>, String>((ref, scenarioId) async {
-  final user = ref.watch(authProvider).user;
-  if (user == null) throw Exception("User not authenticated");
-  
-  final url = '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
-  final token = ref.read(authProvider).token;
-
-  // Debug: Print score history request
-  print('Fetching score history for user: ${user.id}, scenario: $scenarioId');
-  print('Score History URL: $url');
-  print('Token available: ${token != null}');
-
-  final response = await http.get(
-    Uri.parse(url),
-    headers: {
-      'Authorization': 'Bearer $token',
-    },
-  );
-
-  // Debug: Print score history response
-  print('Score History Response Status: ${response.statusCode}');
-  print('Score History Response Body: ${response.body}');
-
-  if (response.statusCode == 200) {
-    final List<dynamic> data = json.decode(response.body);
-    final entries = data.map((item) => ScoreHistoryEntry.fromJson(item)).toList();
-    entries.sort((a, b) => a.date.compareTo(b.date));
-    return entries;
-  } else if (response.statusCode == 403) {
-    throw Exception("Upgrade to Gold to see your history. Status: 403");
-  } else {
-    throw Exception("Failed to load score history. Status: ${response.statusCode}, Body: ${response.body}");
-  }
-});
-
-// --- UI Widget for the Score History Chart ---
-class ScoreHistoryChart extends ConsumerWidget {
-  final String scenarioId;
-  final double weightMultiplier;
-
-  const ScoreHistoryChart({
-    super.key,
-    required this.scenarioId,
-    required this.weightMultiplier,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final historyAsync = ref.watch(scoreHistoryProvider(scenarioId));
-    return historyAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, s) => Center(child: Text(e.toString().replaceFirst("Exception: ", ""), style: const TextStyle(color: Colors.red, fontSize: 14))),
-      data: (history) {
-        if (history.length < 2) return const Center(child: Text("Log at least two workouts to see a graph.", style: TextStyle(color: Colors.white70)));
-        
-        // Apply weightMultiplier to the scores before calculating the max Y value
-        final maxY = history.map((e) => e.score * weightMultiplier).reduce((a, b) => a > b ? a : b);
-        final roundedMaxY = ((maxY / 10).ceil() * 10).toDouble();
-        final yInterval = (roundedMaxY / 4).ceilToDouble();
-
-        // Apply weightMultiplier to the scores when creating the FlSpots
-        final spots = history.asMap().entries.map((entry) {
-            final scaledScore = entry.value.score * weightMultiplier;
-            return FlSpot(entry.key.toDouble(), scaledScore);
-        }).toList();
-
-        return SizedBox(
-          height: 200,
-          child: LineChart(
-            LineChartData(
-              gridData: const FlGridData(show: true),
-              titlesData: FlTitlesData(
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 36,
-                    interval: 1,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index < 0 || index >= history.length) {
-                        return const SizedBox.shrink();
-                      }
-                      final date = history[index].date;
-                      return Text(
-                        DateFormat('MM/dd').format(date),
-                        style: const TextStyle(color: Colors.white, fontSize: 10),
-                      );
-                    },
-                  ),
-                ),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 44,
-                    interval: yInterval > 0 ? yInterval : 1,
-                    // The 'value' passed here is already scaled because maxY is scaled
-                    getTitlesWidget: (value, meta) => Text(
-                      value.toStringAsFixed(0),
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                    ),
-                  ),
-                ),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              ),
-              borderData: FlBorderData(show: true),
-              minY: 0,
-              maxY: roundedMaxY,
-              lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: true,
-                  color: Colors.blueAccent,
-                  barWidth: 3,
-                  isStrokeCapRound: true,
-                  dotData: const FlDotData(show: true),
-                  belowBarData: BarAreaData(show: true),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
+import '../widgets/score_history_chart.dart';
+import '../providers/score_history_provider.dart';
+import '../models/score_history_entry.dart';
 
 // --- ShareableResultCard ---
 class ShareableResultCard extends StatelessWidget {
