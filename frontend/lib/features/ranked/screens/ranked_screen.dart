@@ -118,7 +118,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return (data['weight_lifted'] as num).toDouble();
+        return (data['score_value'] as num).toDouble();
       }
     } catch (_) {}
     return 0.0;
