@@ -16,8 +16,20 @@ Future<void> main() async {
 
   usePathUrlStrategy();
 
-  await dotenv.load(fileName: ".env");
+  // Load .env file only in development mode or if it exists
+  if (kIsWeb) {
+    // For web, we try to load .env but don't fail if it doesn't exist
+    try {
+      await dotenv.load(fileName: ".env");
+    } catch (e) {
+      print("Note: .env file not found or failed to load. Using compile-time environment variables instead.");
+    }
+  } else {
+    // For mobile, load the .env file normally
+    await dotenv.load(fileName: ".env");
+  }
 
+  // Initialize Stripe
   if (!kIsWeb) {
     Stripe.publishableKey = Env.stripePublishableKey;
     await Stripe.instance.applySettings();

@@ -23,7 +23,6 @@
 *.iws
 
 # Generated plugin registrant files
-lib/generated_plugin_registrant.dart
 
 # Platform-specific build files and caches
 /android/app/build/
