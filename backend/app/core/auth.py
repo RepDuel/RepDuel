@@ -29,7 +29,7 @@ async def get_current_user_ws(
     try:
         logger.debug(f"[WS AUTH] token: {token}")
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         logger.debug(f"[WS AUTH] payload: {payload}")
         user_id = payload.get("sub")
@@ -67,7 +67,7 @@ async def get_current_user(
     try:
         logger.debug(f"Authorization token received: {token}")
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         logger.debug(f"Decoded JWT payload: {payload}")
         user_id: Optional[str] = payload.get("sub")

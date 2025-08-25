@@ -90,7 +90,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate      # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env           # Update DB creds, SECRET_KEY
+cp .env.example .env           # Update DB creds, JWT_SECRET_KEY
 alembic upgrade head           # Run DB migrations
 uvicorn app.main:app --reload
 ```
@@ -136,7 +136,7 @@ flutter test
 
 ```
 DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/repduel
-SECRET_KEY=your_secret_key
+JWT_SECRET_KEY=your_secret_key
 ```
 
 ---
