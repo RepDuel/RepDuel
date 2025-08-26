@@ -1,3 +1,5 @@
+# backend/app/core/config.py
+
 from pydantic import AnyHttpUrl, PostgresDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
