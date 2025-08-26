@@ -85,8 +85,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             ),
             const SizedBox(height: 32),
             _buildFeatureRow('Track your score history with progress charts'),
-            _buildFeatureRow('Unlock exclusive "Celestial" rank icon'),
-            _buildFeatureRow('Access advanced analytics (coming soon)'),
             _buildFeatureRow('Support the development of RepDuel'),
             const SizedBox(height: 48),
 
