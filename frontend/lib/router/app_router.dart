@@ -98,7 +98,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAppRoute = path.startsWith('/shell');
       final isPublicRoute = path == '/login' ||
           path == '/register' ||
-          path == '/payment-success';
+          path == '/payment-success' ||
+          path == '/payment-cancel';
 
       if (!isLoggedIn && !isPublicRoute && isAppRoute) {
         return '/login';

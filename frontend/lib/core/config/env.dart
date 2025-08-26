@@ -53,8 +53,6 @@ class Env {
     return dotenv.env['STRIPE_PREMIUM_PLAN_ID'] ?? '';
   }
 
-  // --- FIX: ADDED MISSING GETTERS ---
-
   // --- Getter for stripeSuccessUrl ---
   static String get stripeSuccessUrl {
     const fromEnv = String.fromEnvironment('STRIPE_SUCCESS_URL');
