@@ -10,6 +10,7 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/premium/screens/payment_success_screen.dart';
+import '../features/premium/screens/payment_cancel_screen.dart';
 import '../features/premium/screens/subscription_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/profile/screens/theme_selector_screen.dart';
@@ -44,8 +45,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
-      // --- THIS IS THE FIX ---
-      // A new route is added to handle navigation to the theme selector screen.
       GoRoute(
         path: '/theme-selector',
         builder: (context, state) => const ThemeSelectorScreen(),
@@ -57,6 +56,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/payment-success',
         builder: (context, state) => const PaymentSuccessScreen(),
+      ),
+      GoRoute(
+        path: '/payment-cancel',
+        builder: (context, state) => const PaymentCancelScreen(),
       ),
       GoRoute(
         path: '/login',
