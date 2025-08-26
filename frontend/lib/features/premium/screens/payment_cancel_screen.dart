@@ -25,17 +25,21 @@ class PaymentCancelScreen extends ConsumerWidget {
           child: Column(
             children: [
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildCancelIcon(),
-                    const SizedBox(height: 32),
-                    _buildTitle(),
-                    const SizedBox(height: 16),
-                    _buildDescription(),
-                    const SizedBox(height: 48),
-                    _buildBenefitsReminder(),
-                  ],
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 40), // Add top spacing
+                      _buildCancelIcon(),
+                      const SizedBox(height: 32),
+                      _buildTitle(),
+                      const SizedBox(height: 16),
+                      _buildDescription(),
+                      const SizedBox(height: 48),
+                      _buildBenefitsReminder(),
+                      const SizedBox(height: 40), // Add bottom spacing
+                    ],
+                  ),
                 ),
               ),
               _buildActionButtons(context),
