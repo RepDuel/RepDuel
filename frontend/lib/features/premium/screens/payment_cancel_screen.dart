@@ -213,6 +213,6 @@ class PaymentCancelScreen extends ConsumerWidget {
   }
 
   void _navigateToHome(BuildContext context) {
-    context.go('/shell/3');
+    context.go('/profile');
   }
 }

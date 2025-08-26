@@ -1,16 +1,22 @@
 // frontend/lib/widgets/main_bottom_nav_bar.dart
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class MainBottomNavBar extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTap;
-
   const MainBottomNavBar({
     super.key,
-    required this.currentIndex,
-    required this.onTap,
+    required this.navigationShell,
   });
+
+  final StatefulNavigationShell navigationShell;
+
+  void _onTap(int index) {
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,11 +24,9 @@ class MainBottomNavBar extends StatelessWidget {
       backgroundColor: Colors.black,
       selectedItemColor: Colors.white,
       unselectedItemColor: Colors.grey,
-      type: BottomNavigationBarType.fixed, // Prevents items from shifting
-      currentIndex: currentIndex,
-      // The GoRouter switch statement has been removed.
-      // This widget now delegates the tap event directly to its parent.
-      onTap: onTap,
+      type: BottomNavigationBarType.fixed,
+      currentIndex: navigationShell.currentIndex,
+      onTap: _onTap,
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.list),

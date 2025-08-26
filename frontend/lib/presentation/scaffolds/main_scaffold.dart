@@ -2,76 +2,46 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../features/normal/screens/normal_screen.dart';
-import '../../features/profile/screens/profile_screen.dart';
-import '../../features/ranked/screens/ranked_screen.dart';
-import '../../features/routines/screens/routines_screen.dart';
 import '../../widgets/main_bottom_nav_bar.dart';
 
-class MainScaffold extends StatefulWidget {
-  final int initialIndex;
-
+class MainScaffold extends StatelessWidget {
   const MainScaffold({
     super.key,
-    required this.initialIndex,
+    required this.navigationShell,
   });
 
-  @override
-  State<MainScaffold> createState() => _MainScaffoldState();
-}
-
-class _MainScaffoldState extends State<MainScaffold> {
-  late int _currentIndex;
-
-  final List<Widget> _pages = [
-    const NormalScreen(),
-    const RankedScreen(),
-    const RoutinesScreen(),
-    const ProfileScreen(),
-  ];
-
-  final List<String> _titles = [
-    'Normal',
-    'Ranked',
-    'Routines',
-    'Profile',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.initialIndex;
-  }
-
-  void _onTap(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
+  final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context) {
+    const List<String> titles = [
+      'Normal',
+      'Ranked',
+      'Routines',
+      'Profile',
+    ];
+
+    final int currentIndex = navigationShell.currentIndex;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
+        title: Text(titles[currentIndex]),
         centerTitle: true,
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          if (_currentIndex == 3)
+          if (currentIndex == 3)
             IconButton(
               icon: const Icon(Icons.settings),
-              onPressed: () => context.push('/settings'),
+              onPressed: () => context.go('/profile/settings'),
             ),
         ],
       ),
-      body: _pages[_currentIndex],
+      body: navigationShell,
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onTap,
+        navigationShell: navigationShell,
       ),
     );
   }

@@ -9,14 +9,21 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/secure_storage_service.dart';
+import '../../../router/app_router.dart'; // Import this to get the key
+import '../../../widgets/loading_spinner.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  BuildContext get _rootContext {
+    // Helper to safely get the root navigator's context.
+    final context = rootNavigatorKey.currentContext;
+    assert(context != null, 'Root navigator context is not available');
+    return context!;
+  }
+
   Future<void> _changeProfilePicture(BuildContext context, WidgetRef ref) async {
     final picker = ImagePicker();
-    debugPrint('[📷] Starting image picker...');
-
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
       maxWidth: 800,
@@ -25,8 +32,7 @@ class SettingsScreen extends ConsumerWidget {
     );
 
     if (picked == null) return;
-    debugPrint('[📷] Picked image path: ${picked.path}');
-
+    
     final bytes = await picked.readAsBytes();
     final filename = picked.name;
     final mimeType = picked.mimeType ?? 'image/jpeg';
@@ -49,18 +55,15 @@ class SettingsScreen extends ConsumerWidget {
 
     final isKg = user.weightMultiplier == 1.0;
     final unitLabel = isKg ? 'kg' : 'lbs';
-
     final displayedWeight = user.weight != null ? (user.weight! * user.weightMultiplier).toStringAsFixed(1) : '';
-
     final controller = TextEditingController(text: displayedWeight);
 
     final result = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
+      context: _rootContext, // Use the root context
+      builder: (dialogContext) => AlertDialog(
         title: Text("Edit Weight ($unitLabel)"),
         backgroundColor: Colors.grey[900],
         titleTextStyle: const TextStyle(color: Colors.white),
-        contentTextStyle: const TextStyle(color: Colors.white),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
@@ -71,8 +74,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Save")),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, controller.text), child: const Text("Save")),
         ],
       ),
     );
@@ -91,18 +94,17 @@ class SettingsScreen extends ConsumerWidget {
     if (user == null) return;
 
     final result = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
+      context: _rootContext, // Use the root context
+      builder: (dialogContext) => AlertDialog(
         title: const Text("Select Gender"),
         backgroundColor: Colors.grey[900],
         titleTextStyle: const TextStyle(color: Colors.white),
-        contentTextStyle: const TextStyle(color: Colors.white),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: ['Male', 'Female'].map((option) {
             return ListTile(
               title: Text(option, style: const TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(context, option),
+              onTap: () => Navigator.pop(dialogContext, option),
             );
           }).toList(),
         ),
@@ -121,17 +123,16 @@ class SettingsScreen extends ConsumerWidget {
     final isKg = user.weightMultiplier == 1.0;
 
     final result = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
+      context: _rootContext, // Use the root context
+      builder: (dialogContext) => AlertDialog(
         title: const Text("Select Weight Unit"),
         backgroundColor: Colors.grey[900],
         titleTextStyle: const TextStyle(color: Colors.white),
-        contentTextStyle: const TextStyle(color: Colors.white),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(title: const Text('Kilograms', style: TextStyle(color: Colors.white)), onTap: () => Navigator.pop(context, 'kg')),
-            ListTile(title: const Text('Pounds', style: TextStyle(color: Colors.white)), onTap: () => Navigator.pop(context, 'lbs')),
+            ListTile(title: const Text('Kilograms', style: TextStyle(color: Colors.white)), onTap: () => Navigator.pop(dialogContext, 'kg')),
+            ListTile(title: const Text('Pounds', style: TextStyle(color: Colors.white)), onTap: () => Navigator.pop(dialogContext, 'lbs')),
           ],
         ),
       ),
@@ -139,10 +140,7 @@ class SettingsScreen extends ConsumerWidget {
 
     if (result != null && result != (isKg ? 'kg' : 'lbs')) {
       final newMultiplier = result == 'kg' ? 1.0 : 2.20462;
-      final success = await ref.read(authProvider.notifier).updateUser(weightMultiplier: newMultiplier);
-      if (!success) {
-        debugPrint('Failed to update weight multiplier.');
-      }
+      await ref.read(authProvider.notifier).updateUser(weightMultiplier: newMultiplier);
     }
   }
 
@@ -151,13 +149,13 @@ class SettingsScreen extends ConsumerWidget {
     if (user == null) return;
 
     final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
+      context: _rootContext, // Use the root context
+      builder: (dialogContext) => AlertDialog(
         title: const Text("Reset Progress"),
         content: const Text("Are you sure you want to delete all your scores? This cannot be undone."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Confirm")),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text("Confirm")),
         ],
       ),
     );
@@ -172,26 +170,23 @@ class SettingsScreen extends ConsumerWidget {
       },
     );
 
-    final success = response.statusCode == 204;
-
     if (!context.mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? 'Progress reset successfully.' : 'Failed to reset progress.'),
+        content: Text(response.statusCode == 204 ? 'Progress reset successfully.' : 'Failed to reset progress.'),
       ),
     );
   }
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
+      context: _rootContext, // Use the root context
+      builder: (dialogContext) => AlertDialog(
         title: const Text("Delete Account", style: TextStyle(color: Colors.red)),
-        content: const Text("Are you absolutely sure you want to delete your account? All of your data, including scores and progress, will be permanently erased. This cannot be undone."),
+        content: const Text("Are you absolutely sure? All data will be permanently erased."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text("Delete Forever")),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text("Delete Forever")),
         ],
       ),
     );
@@ -213,8 +208,6 @@ class SettingsScreen extends ConsumerWidget {
 
     if (response.statusCode == 204) {
       await ref.read(authProvider.notifier).logout();
-      context.go('/login');
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account deleted successfully.')));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete account. Please try again.')));
     }
@@ -222,27 +215,22 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
+      context: _rootContext, // Use the root context
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Log out'),
-        content: const Text('You will be signed out of your account on this device. Continue?'),
+        content: const Text('You will be signed out of your account. Continue?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Log out')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Log out')),
         ],
       ),
     );
 
     if (confirmed != true) return;
 
-    try {
-      await ref.read(authProvider.notifier).logout();
-    } catch (e) {
-      try { await SecureStorageService().deleteToken(); } catch (_) {}
-    }
-
+    await ref.read(authProvider.notifier).logout();
+    
     if (!context.mounted) return;
-    context.go('/login');
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
   }
 
@@ -254,6 +242,13 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
 
+    if (user == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: LoadingSpinner()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -261,67 +256,66 @@ class SettingsScreen extends ConsumerWidget {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
-      body: user == null
-          ? const Center(child: Text('User not found.', style: TextStyle(color: Colors.white)))
-          : ListView(
-              padding: const EdgeInsets.all(16),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // ... The rest of your ListView remains unchanged
+          GestureDetector(
+            onTap: () => _changeProfilePicture(context, ref),
+            child: Column(
               children: [
-                GestureDetector(
-                  onTap: () => _changeProfilePicture(context, ref),
-                  child: Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 48,
-                        backgroundColor: Colors.grey[700],
-                        backgroundImage: _isValidImageUrl(user.avatarUrl) ? NetworkImage(user.avatarUrl!) as ImageProvider<Object> : const AssetImage('assets/images/profile_placeholder.png') as ImageProvider<Object>,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text('Tap to change picture', style: TextStyle(color: Colors.grey)),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor: Colors.grey[700],
+                  backgroundImage: _isValidImageUrl(user.avatarUrl) ? NetworkImage(user.avatarUrl!) as ImageProvider<Object> : const AssetImage('assets/images/profile_placeholder.png') as ImageProvider<Object>,
                 ),
-                ListTile(
-                  title: const Text('Gender', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.gender ?? "Unknown", style: const TextStyle(color: Colors.grey)),
-                  trailing: const Icon(Icons.edit, color: Colors.white),
-                  onTap: () => _editGender(context, ref),
-                ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Weight', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.weight != null ? (user.weight! * user.weightMultiplier).toStringAsFixed(1) + (user.weightMultiplier == 1.0 ? " kg" : " lbs") : "N/A", style: const TextStyle(color: Colors.grey)),
-                  trailing: const Icon(Icons.edit, color: Colors.white),
-                  onTap: () => _editWeight(context, ref),
-                ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Weight Unit (kg/lbs)', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(user.weightMultiplier == 1.0 ? "kg" : "lbs", style: const TextStyle(color: Colors.grey)),
-                  trailing: const Icon(Icons.edit, color: Colors.white),
-                  onTap: () => _editWeightUnit(context, ref),
-                ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Reset Progress', style: TextStyle(color: Colors.red)),
-                  trailing: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                  onTap: () => _resetProgress(context, ref),
-                ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                  subtitle: const Text('This action is permanent.', style: TextStyle(color: Colors.redAccent)),
-                  trailing: const Icon(Icons.warning, color: Colors.red),
-                  onTap: () => _deleteAccount(context, ref),
-                ),
-                const Divider(color: Colors.grey),
-                ListTile(
-                  title: const Text('Log out', style: TextStyle(color: Colors.white)),
-                  trailing: const Icon(Icons.logout, color: Colors.white),
-                  onTap: () => _logout(context, ref),
-                ),
+                const SizedBox(height: 8),
+                const Text('Tap to change picture', style: TextStyle(color: Colors.grey)),
+                const SizedBox(height: 24),
               ],
             ),
+          ),
+          ListTile(
+            title: const Text('Gender', style: TextStyle(color: Colors.white)),
+            subtitle: Text(user.gender ?? "Unknown", style: const TextStyle(color: Colors.grey)),
+            trailing: const Icon(Icons.edit, color: Colors.white),
+            onTap: () => _editGender(context, ref),
+          ),
+          const Divider(color: Colors.grey),
+          ListTile(
+            title: const Text('Weight', style: TextStyle(color: Colors.white)),
+            subtitle: Text(user.weight != null ? (user.weight! * user.weightMultiplier).toStringAsFixed(1) + (user.weightMultiplier == 1.0 ? " kg" : " lbs") : "N/A", style: const TextStyle(color: Colors.grey)),
+            trailing: const Icon(Icons.edit, color: Colors.white),
+            onTap: () => _editWeight(context, ref),
+          ),
+          const Divider(color: Colors.grey),
+          ListTile(
+            title: const Text('Weight Unit (kg/lbs)', style: TextStyle(color: Colors.white)),
+            subtitle: Text(user.weightMultiplier == 1.0 ? "kg" : "lbs", style: const TextStyle(color: Colors.grey)),
+            trailing: const Icon(Icons.edit, color: Colors.white),
+            onTap: () => _editWeightUnit(context, ref),
+          ),
+          const Divider(color: Colors.grey),
+          ListTile(
+            title: const Text('Reset Progress', style: TextStyle(color: Colors.red)),
+            trailing: const Icon(Icons.delete_forever, color: Colors.redAccent),
+            onTap: () => _resetProgress(context, ref),
+          ),
+          const Divider(color: Colors.grey),
+          ListTile(
+            title: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            subtitle: const Text('This action is permanent.', style: TextStyle(color: Colors.redAccent)),
+            trailing: const Icon(Icons.warning, color: Colors.red),
+            onTap: () => _deleteAccount(context, ref),
+          ),
+          const Divider(color: Colors.grey),
+          ListTile(
+            title: const Text('Log out', style: TextStyle(color: Colors.white)),
+            trailing: const Icon(Icons.logout, color: Colors.white),
+            onTap: () => _logout(context, ref),
+          ),
+        ],
+      ),
     );
   }
 }

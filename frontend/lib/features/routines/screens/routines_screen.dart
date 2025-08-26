@@ -13,8 +13,6 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../widgets/add_routine_card.dart';
 import '../widgets/routine_card.dart';
-import 'custom_routine_screen.dart';
-import 'routine_play_screen.dart';
 
 class RoutinesScreen extends ConsumerStatefulWidget {
   const RoutinesScreen({super.key});
@@ -65,7 +63,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
     await _future;
   }
 
-  void _onAddRoutinePressed(List<Routine> routines) {
+  void _onAddRoutinePressed(List<Routine> routines) async {
     final currentUser = ref.read(authProvider).user;
     final isFree = currentUser?.subscriptionLevel == null ||
         currentUser!.subscriptionLevel == 'free';
@@ -97,12 +95,9 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CustomRoutineScreen()),
-    ).then((changed) {
-      if (changed == true && mounted) _refresh();
-    });
+    // Correctly navigate to CustomRoutineScreen using GoRouter
+    final changed = await context.push<bool>('/routines/custom');
+    if (changed == true && mounted) _refresh();
   }
 
   Future<void> _confirmAndDeleteRoutine(Routine routine) async {
@@ -199,11 +194,9 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
   }
 
   Future<void> _editRoutine(Routine routine) async {
-    final changed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-          builder: (_) => CustomRoutineScreen.edit(initial: routine)),
-    );
+    // Correctly navigate to the edit screen using a named route and passing the object
+    final changed =
+        await context.pushNamed<bool>('editRoutine', extra: routine);
     if (changed == true && mounted) _refresh();
   }
 
@@ -216,11 +209,8 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
       children: [
         GestureDetector(
           onTap: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => RoutinePlayScreen(routine: routine)),
-            );
+            // Correctly navigate using a named route and passing the object
+            await context.pushNamed('playRoutine', extra: routine);
             if (!mounted) return;
             _refresh();
           },

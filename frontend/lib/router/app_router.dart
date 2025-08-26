@@ -4,112 +4,179 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-// --- Core and Feature Imports ---
-import '../core/providers/auth_provider.dart';
+import '../core/models/routine.dart';
+import '../core/providers/auth_provider.dart'; // We need the provider itself
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
-import '../features/premium/screens/payment_success_screen.dart';
+import '../features/normal/screens/normal_screen.dart';
 import '../features/premium/screens/payment_cancel_screen.dart';
+import '../features/premium/screens/payment_success_screen.dart';
 import '../features/premium/screens/subscription_screen.dart';
+import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/profile/screens/theme_selector_screen.dart';
-import '../features/routines/screens/add_exercise_screen.dart';
+import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
+import '../features/routines/screens/routine_play_screen.dart';
+import '../features/routines/screens/routines_screen.dart';
 import '../presentation/scaffolds/main_scaffold.dart';
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authProvider);
+  // Listen to the auth provider to trigger redirects.
+  final authStateChanges = ref.watch(authProvider.notifier).stream;
 
   return GoRouter(
-    initialLocation: '/shell/3',
+    navigatorKey: rootNavigatorKey,
+    initialLocation: '/profile',
+    // This is the critical addition. It tells GoRouter to re-evaluate its
+    // routes and redirects whenever the authentication state changes.
+    refreshListenable: GoRouterRefreshStream(authStateChanges),
     routes: [
-      GoRoute(
-        path: '/shell/:index',
-        builder: (context, state) {
-          final indexString = state.pathParameters['index'] ?? '0';
-          final index = int.tryParse(indexString) ?? 0;
-          return MainScaffold(initialIndex: index);
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return MainScaffold(navigationShell: navigationShell);
         },
-      ),
-      GoRoute(
-        path: '/routines/custom',
-        builder: (context, state) => const CustomRoutineScreen(),
-      ),
-      GoRoute(
-        path: '/routines/add-exercise',
-        builder: (context, state) => const AddExerciseScreen(),
-      ),
-      GoRoute(
-        path: '/settings',
-        builder: (context, state) => const SettingsScreen(),
-      ),
-      GoRoute(
-        path: '/theme-selector',
-        builder: (context, state) => const ThemeSelectorScreen(),
-      ),
-      GoRoute(
-        path: '/subscribe',
-        builder: (context, state) => const SubscriptionScreen(),
-      ),
-      GoRoute(
-        path: '/payment-success',
-        builder: (context, state) => const PaymentSuccessScreen(),
-      ),
-      GoRoute(
-        path: '/payment-cancel',
-        builder: (context, state) => const PaymentCancelScreen(),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/normal',
+                name: 'normal',
+                builder: (context, state) => const NormalScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/ranked',
+                name: 'ranked',
+                builder: (context, state) => const RankedScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                  path: '/routines',
+                  name: 'routines',
+                  builder: (context, state) => const RoutinesScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'custom',
+                      name: 'createRoutine',
+                      builder: (context, state) => const CustomRoutineScreen(),
+                    ),
+                    GoRoute(
+                      path: 'edit',
+                      name: 'editRoutine',
+                      builder: (context, state) {
+                        final routine = state.extra as Routine;
+                        return CustomRoutineScreen.edit(initial: routine);
+                      },
+                    ),
+                    GoRoute(
+                      path: 'play',
+                      name: 'playRoutine',
+                      builder: (context, state) {
+                        final routine = state.extra as Routine;
+                        return RoutinePlayScreen(routine: routine);
+                      },
+                    ),
+                    GoRoute(
+                      path: 'exercise-list/:routineId',
+                      name: 'exerciseList',
+                      builder: (context, state) {
+                        final routineId = state.pathParameters['routineId']!;
+                        return ExerciseListScreen(routineId: routineId);
+                      },
+                    ),
+                  ]),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                  path: '/profile',
+                  name: 'profile',
+                  builder: (context, state) => const ProfileScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'settings',
+                      name: 'settings',
+                      builder: (context, state) => const SettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'theme-selector',
+                      name: 'themeSelector',
+                      builder: (context, state) => const ThemeSelectorScreen(),
+                    ),
+                  ]),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/login',
+        name: 'login',
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
         path: '/register',
+        name: 'register',
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
-        path: '/exercise_list/:routineId',
-        builder: (context, state) {
-          final routineId = state.pathParameters['routineId']!;
-          return ExerciseListScreen(routineId: routineId);
-        },
+        path: '/subscribe',
+        name: 'subscribe',
+        builder: (context, state) => const SubscriptionScreen(),
       ),
       GoRoute(
         path: '/leaderboard/:scenarioId',
+        name: 'liftLeaderboard',
         builder: (context, state) {
           final scenarioId = state.pathParameters['scenarioId']!;
           final liftName = state.uri.queryParameters['liftName'] ?? 'Unknown';
-          return LeaderboardScreen(
-            scenarioId: scenarioId,
-            liftName: liftName,
-          );
+          return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
         },
       ),
+      GoRoute(
+        path: '/payment-success',
+        name: 'paymentSuccess',
+        builder: (context, state) => const PaymentSuccessScreen(),
+      ),
+      GoRoute(
+        path: '/payment-cancel',
+        name: 'paymentCancel',
+        builder: (context, state) => const PaymentCancelScreen(),
+      ),
     ],
-
-    /// Simple auth guard
     redirect: (context, state) {
-      final isLoggedIn = auth.user != null;
+      // Because of refreshListenable, this logic now runs automatically
+      // on login or logout.
+      final isLoggedIn = ref.read(authProvider).user != null;
       final path = state.uri.path;
+      final isAuthRoute = (path == '/login' || path == '/register');
 
-      // Extend the public routes to allow access to the theme selector for previewing
-      final isAppRoute = path.startsWith('/shell');
-      final isPublicRoute = path == '/login' ||
-          path == '/register' ||
-          path == '/payment-success' ||
-          path == '/payment-cancel';
-
-      if (!isLoggedIn && !isPublicRoute && isAppRoute) {
+      if (!isLoggedIn && !isAuthRoute) {
         return '/login';
       }
-
-      if (isLoggedIn && (path == '/login' || path == '/register')) {
-        return '/shell/3';
+      if (isLoggedIn && isAuthRoute) {
+        return '/profile';
       }
-
       return null;
     },
   );
 });
+
+// Helper class to bridge a Stream to a Listenable for GoRouter.
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+}

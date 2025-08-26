@@ -1,14 +1,12 @@
 // frontend/lib/features/profile/screens/profile_screen.dart
 
-import '../../../core/config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:http/http.dart' as http;
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/energy_providers.dart';
-import '../../../core/services/secure_storage_service.dart';
 import '../widgets/energy_graph.dart';
 import '../widgets/workout_history_list.dart';
 
@@ -22,28 +20,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _showGraph = false;
-  Future<int>? _energyFuture;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final user = ref.watch(authProvider).user;
-    if (user != null && _energyFuture == null) {
-      _energyFuture = ref.read(energyApiProvider).getLatestEnergy(user.id);
-    }
-  }
-
-  Future<void> _testHistoryApi(String userId) async {
-    final token = await SecureStorageService().readToken();
-    final res = await http.get(
-      Uri.parse('${Env.baseUrl}/api/v1/routine_submission/user/$userId'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-    debugPrint('Status Code: ${res.statusCode}');
-    debugPrint('Body: ${res.body}');
-  }
 
   String getRank(int energy) {
     if (energy >= 1200) return 'Celestial';
@@ -93,106 +69,118 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
+    final user = ref.watch(authProvider).user;
 
-    return user == null
-        ? const Center(
-            child: Text('User not found.',
-                style: TextStyle(color: Colors.white)))
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child:
-                          user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                              ? Image.network(user.avatarUrl!,
-                                  width: 80, height: 80, fit: BoxFit.cover)
-                              : Image.asset(
-                                  'assets/images/profile_placeholder.png',
-                                  width: 80,
-                                  height: 80,
-                                  fit: BoxFit.cover),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(user.username,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 24)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                if (_energyFuture != null)
-                  FutureBuilder<int>(
-                    future: _energyFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      final energy = snapshot.data ?? 0;
-                      final rank = getRank(energy);
-                      final color = getRankColor(rank);
-                      final iconPath =
-                          'assets/images/ranks/${rank.toLowerCase()}.svg';
+    // **THIS IS THE CRITICAL FIX**
+    // This guard clause is the very first thing in the build method.
+    // It prevents the rest of the widget from trying to build with a null user
+    // during the logout transition, showing a safe loading screen instead.
+    if (user == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: LoadingSpinner()),
+      );
+    }
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                const Text('Energy: ',
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 18)),
-                                Text('$energy ',
-                                    style: TextStyle(
-                                        color: color,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold)),
-                                SvgPicture.asset(iconPath,
-                                    height: 24, width: 24),
-                                const SizedBox(width: 8),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() => _showGraph = !_showGraph);
-                                  },
-                                  child: Text(
-                                      _showGraph
-                                          ? 'Hide Graph'
-                                          : 'View Graph',
-                                      style:
-                                          const TextStyle(color: Colors.white)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (_showGraph) const SizedBox(height: 8),
-                          if (_showGraph)
-                            SizedBox(
-                                height: 200,
-                                child: EnergyGraph(userId: user.id)),
-                        ],
-                      );
-                    },
+    // Now that we know the user is not null, it's safe to proceed.
+    // We fetch the energy data within a FutureBuilder for safety.
+    final energyFuture = ref.read(energyApiProvider).getLatestEnergy(user.id);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child:
+                    user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                        ? Image.network(user.avatarUrl!,
+                            width: 80, height: 80, fit: BoxFit.cover)
+                        : Image.asset(
+                            'assets/images/profile_placeholder.png',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(user.username,
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 24)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          FutureBuilder<int>(
+            future: energyFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError || !snapshot.hasData) {
+                return const Text('Could not load energy score.', style: TextStyle(color: Colors.red));
+              }
+
+              final energy = snapshot.data ?? 0;
+              final rank = getRank(energy);
+              final color = getRankColor(rank);
+              final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        const Text('Energy: ',
+                            style: TextStyle(
+                                color: Colors.white, fontSize: 18)),
+                        Text('$energy ',
+                            style: TextStyle(
+                                color: color,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                        SvgPicture.asset(iconPath,
+                            height: 24, width: 24),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () {
+                            setState(() => _showGraph = !_showGraph);
+                          },
+                          child: Text(
+                              _showGraph
+                                  ? 'Hide Graph'
+                                  : 'View Graph',
+                              style:
+                                  const TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
                   ),
-                const SizedBox(height: 32),
-                const Text('Workout History',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                WorkoutHistoryList(userId: user.id),
-                const SizedBox(height: 16),
-              ],
-            ),
-          );
+                  if (_showGraph) const SizedBox(height: 8),
+                  if (_showGraph)
+                    SizedBox(
+                        height: 200,
+                        child: EnergyGraph(userId: user.id)),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 32),
+          const Text('Workout History',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          WorkoutHistoryList(userId: user.id),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
   }
 }

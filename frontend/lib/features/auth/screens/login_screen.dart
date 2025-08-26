@@ -29,7 +29,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _submit() async {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState?.validate() ?? false) {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
@@ -38,10 +38,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!mounted) return;
 
-      if (!success) {
+      if (success) {
+        context.go('/profile');
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Login failed. Please check your credentials.')),
+            content: Text('Login failed. Please check your credentials.'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }
@@ -51,12 +55,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final theme = ref.watch(themeProvider);
-
-    ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.user != null) {
-        context.go('/shell/3');
-      }
-    });
 
     return Scaffold(
       backgroundColor: theme.background,

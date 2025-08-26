@@ -126,8 +126,7 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
           onPressed: () {
-            // Navigate to ExerciseListScreen and pass the routineId
-            context.push('/exercise_list/${routine.id}');
+            context.push('/routines/exercise-list/${routine.id}');
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,

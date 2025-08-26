@@ -1,5 +1,6 @@
 // frontend/lib/core/providers/auth_provider.dart
 
+import 'dart:async'; // Add this import
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -55,9 +56,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthApiService _authApi;
   final SecureStorageService _secureStorage;
 
+  // **START: CRITICAL ADDITION FOR GOROUTER**
+  // Create a stream controller to broadcast state changes to the router.
+  final _authStateChangeController = StreamController<AuthState>.broadcast();
+
+  // Expose the stream for the router's refreshListenable to listen to.
+  Stream<AuthState> get stream => _authStateChangeController.stream;
+  // **END: CRITICAL ADDITION FOR GOROUTER**
+
   AuthNotifier(this._authApi, this._secureStorage) : super(AuthState()) {
     _initAuth();
   }
+
+  // **START: CRITICAL MODIFICATION**
+  // Override the 'state' setter to automatically broadcast changes.
+  // Every time you write `state = ...`, this will now also notify the router.
+  @override
+  set state(AuthState newState) {
+    super.state = newState;
+    _authStateChangeController.add(newState);
+  }
+
+  // **END: CRITICAL MODIFICATION**
 
   Future<void> _initAuth() async {
     await loadUserFromToken();
@@ -115,7 +135,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> loadUserFromToken() async {
-    // Prevent re-running if user is already loaded.
     if (state.token != null) return;
     
     final tokenString = await _secureStorage.readToken();
@@ -135,59 +154,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  // --- START: MODIFIED METHOD TO FIX RACE CONDITION ---
   Future<void> refreshUserData() async {
     var token = state.token;
-
-    // If the token is null, it means the app is likely still initializing.
-    // We explicitly await the initial token load to resolve the race condition.
     if (token == null) {
-      print("Token not yet in state, awaiting initial load...");
       await loadUserFromToken();
-      // After awaiting, re-read the token from the now-updated state.
       token = state.token;
     }
 
-    // Now we can safely proceed. If token is still null here, the user isn't logged in.
     if (token == null) {
-      print("No token found after initial load, cannot refresh user data.");
       return;
     }
 
-    print("Refreshing user data from server...");
     try {
       final user = await _authApi.getMe(token: token);
       if (user != null) {
         state = state.copyWith(user: user);
-        print("User data refreshed. New subscription level: ${user.subscriptionLevel}");
       } else {
         await logout();
       }
-    } catch (e) {
-      print("Failed to refresh user data: $e");
+    } catch (_) {
+      // It's possible the token is expired, so log out.
+      await logout();
     }
-  }
-  // --- END: MODIFIED METHOD ---
-
-  Future<bool> updateProfile({
-    String? gender,
-    double? weight,
-    String? subscriptionLevel,
-  }) async {
-    if (state.token == null) return false;
-    try {
-      final updatedUser = await _authApi.updateMe(
-        token: state.token!,
-        gender: gender,
-        weight: weight,
-        subscriptionLevel: subscriptionLevel,
-      );
-      if (updatedUser != null) {
-        state = state.copyWith(user: updatedUser);
-        return true;
-      }
-    } catch (_) {}
-    return false;
   }
 
   Future<bool> updateUser({
@@ -228,30 +216,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> updateProfilePicture(File imageFile) async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final token = state.token;
-      if (token == null) throw Exception("No auth token found.");
-
-      final updatedUser =
-          await _authApi.uploadProfilePicture(token: token, file: imageFile);
-
-      if (updatedUser != null) {
-        state = state.copyWith(user: updatedUser, isLoading: false);
-        return true;
-      } else {
-        state = state.copyWith(
-            isLoading: false, error: 'Failed to upload profile picture');
-        return false;
-      }
-    } catch (e) {
-      debugPrint('[❌] Profile picture upload error: $e');
-      state = state.copyWith(isLoading: false, error: e.toString());
-      return false;
-    }
-  }
-
   Future<bool> updateProfilePictureFromBytes(
     Uint8List bytes,
     String filename,
@@ -277,4 +241,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     return false;
   }
+  
+  // **START: CRITICAL ADDITION**
+  // Make sure to close the stream controller when the provider is disposed.
+  @override
+  void dispose() {
+    _authStateChangeController.close();
+    super.dispose();
+  }
+  // **END: CRITICAL ADDITION**
 }
