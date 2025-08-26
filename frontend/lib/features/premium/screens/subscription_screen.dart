@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:repduel/core/providers/iap_provider.dart'; // We'll need this soon for Apple
+import 'package:repduel/core/providers/iap_provider.dart';
 import 'package:repduel/core/providers/stripe_provider.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {

@@ -1,3 +1,5 @@
+// frontend/lib/core/providers/stripe_provider.dart
+
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -5,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:repduel/core/config/env.dart';
 import 'package:repduel/core/providers/auth_provider.dart';
-// IMPORT THE NEW HELPER, NOT THE SPECIFIC IMPLEMENTATIONS
 import 'package:repduel/core/utils/platform_redirects_helper.dart';
 
 final stripeServiceProvider = Provider<StripeService>((ref) {

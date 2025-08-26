@@ -1,3 +1,5 @@
+// frontend/lib/core/utils/platform_redirects_web.dart
+
 // This file is ONLY for web platforms.
 import 'dart:html';
 

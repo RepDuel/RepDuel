@@ -1,3 +1,5 @@
+// frontend/lib/core/utils/platform_redirects_helper.dart
+
 // This file conditionally exports the correct implementation.
 // The default is mobile. If 'dart.library.html' exists, it uses the web version.
 
