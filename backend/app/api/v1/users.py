@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import stripe
 from typing import Annotated
 from uuid import uuid4
 
@@ -20,6 +21,9 @@ from app.services.user_service import (authenticate_user, create_user,
                                        delete_user, get_user_by_email,
                                        get_user_by_id, get_user_by_username,
                                        update_user)
+
+# Initialize Stripe with your secret key
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -40,7 +44,36 @@ async def register_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username is already taken",
         )
-    return await create_user(db, user_in)
+    
+    # Create user in database first
+    user = await create_user(db, user_in)
+    
+    # Create Stripe customer
+    try:
+        stripe_customer = stripe.Customer.create(
+            email=user.email,
+            name=user.username,  # Using username as display name
+            metadata={
+                "user_id": str(user.id),
+                "username": user.username
+            }
+        )
+        
+        # Update user with Stripe customer ID
+        user.stripe_customer_id = stripe_customer.id
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        
+    except stripe.error.StripeError as e:
+        # Log the error but don't fail registration
+        print(f"Failed to create Stripe customer for user {user.id}: {str(e)}")
+        # You might want to use proper logging here instead of print
+    except Exception as e:
+        # Handle any other unexpected errors
+        print(f"Unexpected error creating Stripe customer for user {user.id}: {str(e)}")
+    
+    return user
 
 
 @router.post("/login", response_model=Token)
