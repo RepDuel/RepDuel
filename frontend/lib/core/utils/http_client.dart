@@ -1,3 +1,5 @@
+// frontend/lib/core/utils/http_client.dart
+
 import 'package:dio/dio.dart';
 
 class HttpClient {
@@ -5,16 +7,20 @@ class HttpClient {
 
   HttpClient(this._dio);
 
+  // Expose the underlying Dio instance if needed elsewhere
   Dio get dio => _dio;
 
+  // Your existing GET method
   Future<Response> get(String path, {Options? options}) {
     return _dio.get(path, options: options);
   }
 
+  // Your existing POST method
   Future<Response> post(String path, {Object? data, Options? options}) {
     return _dio.post(path, data: data, options: options);
   }
 
+  // Your existing PATCH method
   Future<Response> patch(
     String path, {
     dynamic data,
@@ -28,4 +34,11 @@ class HttpClient {
       options: options,
     );
   }
+
+  // --- THIS IS THE FIX ---
+  // Adding the missing DELETE method, matching your existing style.
+  Future<Response> delete(String path, {Options? options}) {
+    return _dio.delete(path, options: options);
+  }
+  // --- END OF FIX ---
 }

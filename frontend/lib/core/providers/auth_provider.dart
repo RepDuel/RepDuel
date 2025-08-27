@@ -1,7 +1,7 @@
 // frontend/lib/core/providers/auth_provider.dart
 
 import 'dart:async';
-import 'dart:io'; // Not strictly needed but kept for common practice
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
@@ -44,7 +44,6 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   final AuthApiService _authApi;
   final SecureStorageService _secureStorage;
 
-  // Stream for the router to react to auth state changes.
   final StreamController<AuthState> _authStateChangeController = StreamController<AuthState>.broadcast();
   Stream<AuthState> get authStateStream => _authStateChangeController.stream;
 
@@ -57,9 +56,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   set state(AsyncValue<AuthState> newState) {
     super.state = newState;
     newState.whenOrNull(
-      data: (authStateData) {
-        _authStateChangeController.add(authStateData);
-      },
+      data: (authStateData) => _authStateChangeController.add(authStateData),
     );
   }
 

@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart' show kIsWeb; // Import kIsWeb for conditional logic
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:dio/dio.dart';
 
 import '../api/auth_api_service.dart';

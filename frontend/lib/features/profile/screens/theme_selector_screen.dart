@@ -13,8 +13,17 @@ class ThemeSelectorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTheme = ref.watch(themeProvider);
-    final user = ref.watch(authProvider).user;
-    final isGoldSubscriber = user?.subscriptionLevel == 'gold';
+    
+    // --- FIX IS HERE ---
+    // Safely access the user from the AsyncValue<AuthState>
+    final authState = ref.watch(authProvider);
+    final user = authState.valueOrNull?.user; 
+    // --- END OF FIX ---
+    
+    // It's good practice to handle the case where the user might not be loaded yet.
+    // However, since this screen is likely behind an auth wall, we can proceed.
+    // If the user is null, isGoldSubscriber will be false, correctly locking themes.
+    final isGoldSubscriber = user?.subscriptionLevel == 'gold' || user?.subscriptionLevel == 'platinum'; // Added platinum for completeness
 
     return Scaffold(
       backgroundColor: currentTheme.background,
@@ -29,11 +38,13 @@ class ThemeSelectorScreen extends ConsumerWidget {
         itemBuilder: (context, index) {
           final theme = appThemes[index];
           final bool isSelected = theme.id == currentTheme.id;
+          // isPremium themes are locked if the user is not a gold or platinum subscriber
           final bool isLocked = theme.isPremium && !isGoldSubscriber;
 
           return GestureDetector(
             onTap: () {
               if (isLocked) {
+                // Optionally show a dialog before pushing
                 context.push('/subscribe');
               } else if (!isSelected) {
                 ref.read(themeProvider.notifier).setTheme(theme.id);
@@ -67,7 +78,7 @@ class ThemeSelectorScreen extends ConsumerWidget {
                     ),
                   ),
                   if (isLocked)
-                    Icon(Icons.lock, color: Colors.amber.shade700)
+                    const Icon(Icons.lock, color: Colors.amber) // Use a solid amber color
                   else if (isSelected)
                     Icon(Icons.check_circle, color: theme.accent),
                 ],

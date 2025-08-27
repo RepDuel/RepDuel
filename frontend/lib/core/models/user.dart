@@ -11,7 +11,8 @@ class User {
   final double? weight;
   final String? gender;
   final double weightMultiplier;
-  final String subscriptionLevel; // New field
+  final String subscriptionLevel;
+  final double energy; // <<< 1. ADD THE ENERGY FIELD
 
   User({
     required this.id,
@@ -24,7 +25,8 @@ class User {
     this.weight,
     this.gender,
     this.weightMultiplier = 1.0,
-    this.subscriptionLevel = 'free', // Default value
+    this.subscriptionLevel = 'free',
+    this.energy = 0.0, // <<< 2. ADD TO CONSTRUCTOR WITH A DEFAULT VALUE
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,9 @@ class User {
       gender: json['gender'] as String?,
       weightMultiplier: (json['weight_multiplier'] as num?)?.toDouble() ?? 1.0,
       subscriptionLevel: json['subscription_level'] as String? ?? 'free',
+      // <<< 3. ADD PARSING LOGIC FOR ENERGY
+      // This safely handles if the API sends an int, double, or null.
+      energy: (json['energy'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -57,6 +62,7 @@ class User {
       'gender': gender,
       'weight_multiplier': weightMultiplier,
       'subscription_level': subscriptionLevel,
+      'energy': energy, // <<< 4. ADD TO THE JSON MAP
     };
   }
 }

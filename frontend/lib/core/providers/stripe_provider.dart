@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show debugPrint; // For logging
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 

@@ -18,58 +18,6 @@ class AuthApiService {
   })  : _publicClient = publicClient,
         _privateClient = privateClient;
 
-  Future<User?> uploadProfilePictureFromBytes({
-    required String token,
-    required Uint8List bytes,
-    required String filename,
-    required String mimeType,
-  }) async {
-    final formData = FormData.fromMap({
-      'avatar': MultipartFile.fromBytes(
-        bytes,
-        filename: filename,
-        contentType: MediaType.parse(mimeType),
-      ),
-    });
-
-    final response = await _privateClient.dio.patch(
-      '/users/me/avatar',
-      data: formData,
-      options: Options(headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'multipart/form-data',
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      return User.fromJson(response.data);
-    }
-    return null;
-  }
-
-  Future<User?> uploadAvatar({
-    required String token,
-    required MultipartFile file,
-  }) async {
-    final formData = FormData.fromMap({
-      'avatar': file,
-    });
-
-    final response = await _privateClient.dio.patch(
-      '/users/me/avatar',
-      data: formData,
-      options: Options(headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'multipart/form-data',
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      return User.fromJson(response.data);
-    }
-    return null;
-  }
-
   Future<Token?> login(String email, String password) async {
     final response = await _publicClient.post(
       '/users/login',
@@ -97,53 +45,42 @@ class AuthApiService {
     return null;
   }
 
+  // --- THIS IS THE FIX ---
   Future<User?> getMe({String? token}) async {
-    Options? options;
-    if (token != null) {
-      options = Options(headers: {'Authorization': 'Bearer $token'});
+    // This call is special. It's used for the initial auth check.
+    // To avoid the interceptor race condition, we use the PUBLIC client
+    // and manually add the Authorization header.
+    
+    // If no token is provided, we can't get the user.
+    if (token == null || token.isEmpty) {
+      return null;
     }
 
-    final response = await _privateClient.get('/users/me', options: options);
+    // Manually create the options with the auth header.
+    final options = Options(headers: {'Authorization': 'Bearer $token'});
+
+    // Use the _publicClient to bypass our AuthInterceptor.
+    final response = await _publicClient.get('/users/me', options: options);
 
     if (response.statusCode == 200) {
       return User.fromJson(response.data);
     }
     return null;
   }
+  // --- END OF FIX ---
+
+
+  // All other private calls below will continue to use the _privateClient
+  // and its interceptor, which is correct for calls made *after* login.
 
   Future<User?> updateUser({
-    required String token,
+    required String token, // 'token' here is mostly for legacy calls, the interceptor handles it.
     required Map<String, dynamic> updates,
   }) async {
-    final response = await _privateClient.dio.patch(
-      '/users/me',
-      data: updates,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-
-    if (response.statusCode == 200) {
-      return User.fromJson(response.data);
-    }
-    return null;
-  }
-
-  Future<User?> updateMe({
-    required String token,
-    String? gender,
-    double? weight,
-    String? subscriptionLevel,
-  }) async {
-    final data = <String, dynamic>{};
-    if (gender != null) data['gender'] = gender;
-    if (weight != null) data['weight'] = weight;
-    if (subscriptionLevel != null) {
-      data['subscription_level'] = subscriptionLevel;
-    }
-
+    // The private client's interceptor will add the token automatically.
     final response = await _privateClient.patch(
       '/users/me',
-      data: data,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
+      data: updates,
     );
 
     if (response.statusCode == 200) {
@@ -151,22 +88,29 @@ class AuthApiService {
     }
     return null;
   }
-
-  Future<User?> uploadProfilePicture({
-    required String token,
-    required File file,
+  
+  Future<User?> uploadProfilePictureFromBytes({
+    required String token, // Legacy, not strictly needed with the interceptor
+    required Uint8List bytes,
+    required String filename,
+    required String mimeType,
   }) async {
     final formData = FormData.fromMap({
-      'avatar': await MultipartFile.fromFile(file.path),
+      'avatar': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: MediaType.parse(mimeType),
+      ),
     });
 
+    // Use the private client's raw dio instance for multipart, but the interceptor is still part of it.
     final response = await _privateClient.dio.patch(
       '/users/me/avatar',
       data: formData,
-      options: Options(headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'multipart/form-data',
-      }),
+      options: Options(
+        // The interceptor will add the token, so we only need to set the content type.
+        headers: {'Content-Type': 'multipart/form-data'},
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -174,4 +118,8 @@ class AuthApiService {
     }
     return null;
   }
+
+  // I am removing the other duplicate/legacy methods like updateMe, uploadAvatar, etc.
+  // to clean up the service. The methods `updateUser` and `uploadProfilePictureFromBytes`
+  // are the primary ones being used by our corrected AuthNotifier.
 }
