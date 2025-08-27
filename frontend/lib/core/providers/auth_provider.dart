@@ -1,17 +1,34 @@
 // frontend/lib/core/providers/auth_provider.dart
 
-import 'dart:async'; // Add this import
-import 'dart:io';
+import 'dart:async';
+import 'dart:io'; // Not strictly needed but kept for common practice
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
 import '../services/secure_storage_service.dart';
-import 'api_providers.dart';
+import 'api_providers.dart'; // Assuming this provides http clients
 
-// Main authentication state provider
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+// --- State Class ---
+class AuthState {
+  final User? user;
+  final String? token;
+
+  AuthState({this.user, this.token});
+
+  AuthState copyWith({User? user, String? token}) {
+    return AuthState(user: user ?? this.user, token: token ?? this.token);
+  }
+
+  // Factory for initial state (empty/logged out)
+  factory AuthState.initial() => AuthState(user: null, token: null);
+}
+
+// --- Provider Definition ---
+final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<AuthState>>((ref) {
   final publicClient = ref.read(publicHttpClientProvider);
   final privateClient = ref.read(privateHttpClientProvider);
   final authApi = AuthApiService(
@@ -22,158 +39,130 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(authApi, secureStorage);
 });
 
-final authStateProvider = authProvider;
-
-class AuthState {
-  final User? user;
-  final String? token;
-  final bool isLoading;
-  final String? error;
-
-  AuthState({
-    this.user,
-    this.token,
-    this.isLoading = false,
-    this.error,
-  });
-
-  AuthState copyWith({
-    User? user,
-    String? token,
-    bool? isLoading,
-    String? error,
-  }) {
-    return AuthState(
-      user: user ?? this.user,
-      token: token ?? this.token,
-      isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
-    );
-  }
-}
-
-class AuthNotifier extends StateNotifier<AuthState> {
+// --- StateNotifier ---
+class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   final AuthApiService _authApi;
   final SecureStorageService _secureStorage;
 
-  // **START: CRITICAL ADDITION FOR GOROUTER**
-  // Create a stream controller to broadcast state changes to the router.
-  final _authStateChangeController = StreamController<AuthState>.broadcast();
+  // Stream for the router to react to auth state changes.
+  final StreamController<AuthState> _authStateChangeController = StreamController<AuthState>.broadcast();
+  Stream<AuthState> get authStateStream => _authStateChangeController.stream;
 
-  // Expose the stream for the router's refreshListenable to listen to.
-  Stream<AuthState> get stream => _authStateChangeController.stream;
-  // **END: CRITICAL ADDITION FOR GOROUTER**
-
-  AuthNotifier(this._authApi, this._secureStorage) : super(AuthState()) {
+  AuthNotifier(this._authApi, this._secureStorage)
+      : super(const AsyncValue.loading()) {
     _initAuth();
   }
 
-  // **START: CRITICAL MODIFICATION**
-  // Override the 'state' setter to automatically broadcast changes.
-  // Every time you write `state = ...`, this will now also notify the router.
   @override
-  set state(AuthState newState) {
+  set state(AsyncValue<AuthState> newState) {
     super.state = newState;
-    _authStateChangeController.add(newState);
+    newState.whenOrNull(
+      data: (authStateData) {
+        _authStateChangeController.add(authStateData);
+      },
+    );
   }
-
-  // **END: CRITICAL MODIFICATION**
 
   Future<void> _initAuth() async {
-    await loadUserFromToken();
+    try {
+      await loadUserFromToken();
+    } catch (e) {
+      state = AsyncValue.error("Initialization failed: $e", StackTrace.current);
+      debugPrint("[AuthNotifier] Initialization failed: $e");
+    }
   }
 
-  Future<bool> login(String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
+  Future<void> login(String email, String password) async {
+    state = const AsyncValue.loading();
     try {
       final tokenResponse = await _authApi.login(email, password);
       if (tokenResponse != null && tokenResponse.accessToken.isNotEmpty) {
         await _secureStorage.writeToken(tokenResponse.accessToken);
         final user = await _authApi.getMe(token: tokenResponse.accessToken);
         if (user != null) {
-          state = AuthState(
-            user: user,
-            token: tokenResponse.accessToken,
-            isLoading: false,
-          );
-          return true;
+          state = AsyncValue.data(AuthState(user: user, token: tokenResponse.accessToken));
+        } else {
+          await _secureStorage.deleteToken();
+          state = AsyncValue.error('Login successful but user data not found.', StackTrace.current);
         }
+      } else {
+        await _secureStorage.deleteToken();
+        state = AsyncValue.error('Login failed. Invalid credentials.', StackTrace.current);
       }
-      state = state.copyWith(
-        isLoading: false,
-        error: 'Login failed. Invalid credentials.',
-      );
-      return false;
     } catch (e) {
-      final errorMessage = e.toString().contains('401')
-          ? 'Incorrect email or password.'
-          : 'An unexpected error occurred.';
-      state = state.copyWith(isLoading: false, error: errorMessage);
-      return false;
+      await _secureStorage.deleteToken();
+      String errorMessage = 'An unexpected error occurred.';
+      if (e.toString().contains('401')) {
+        errorMessage = 'Incorrect email or password.';
+      } else {
+        errorMessage = 'Login error: $e';
+      }
+      state = AsyncValue.error(errorMessage, StackTrace.current);
+      debugPrint("[AuthNotifier] Login error: $e");
     }
   }
 
-  Future<bool> register(String username, String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
+  Future<void> register(String username, String email, String password) async {
+    state = const AsyncValue.loading();
     try {
-      final user = await _authApi.register(username, email, password);
-      if (user != null) {
-        state = state.copyWith(isLoading: false, error: null);
-        return true;
+      final newUser = await _authApi.register(username, email, password);
+      if (newUser != null) {
+        state = AsyncValue.data(AuthState.initial()); // Reset state to prompt login
+        debugPrint("[AuthNotifier] Registration successful for $username.");
+      } else {
+        state = AsyncValue.error('Registration failed. Please try again.', StackTrace.current);
       }
-      state = state.copyWith(isLoading: false, error: 'Registration failed');
-      return false;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
-      return false;
+      state = AsyncValue.error('Error during registration: $e', StackTrace.current);
+      debugPrint("[AuthNotifier] Registration error: $e");
     }
   }
 
   Future<void> logout() async {
     await _secureStorage.deleteToken();
-    state = AuthState();
+    state = AsyncValue.data(AuthState.initial());
   }
 
   Future<void> loadUserFromToken() async {
-    if (state.token != null) return;
-    
     final tokenString = await _secureStorage.readToken();
-    if (tokenString != null && tokenString.isNotEmpty) {
-      try {
-        final user = await _authApi.getMe(token: tokenString);
-        if (user != null) {
-          state = AuthState(user: user, token: tokenString);
-        } else {
-          await _secureStorage.deleteToken();
-          state = AuthState();
-        }
-      } catch (_) {
+    if (tokenString == null || tokenString.isEmpty) {
+      state = AsyncValue.data(AuthState.initial());
+      return;
+    }
+
+    try {
+      final user = await _authApi.getMe(token: tokenString);
+      if (user != null) {
+        state = AsyncValue.data(AuthState(user: user, token: tokenString));
+      } else {
         await _secureStorage.deleteToken();
-        state = AuthState();
+        state = AsyncValue.data(AuthState.initial());
       }
+    } catch (e) {
+      await _secureStorage.deleteToken();
+      state = AsyncValue.error('Session expired. Please log in again. ($e)', StackTrace.current);
+      debugPrint("[AuthNotifier] Load user from token error: $e");
     }
   }
 
   Future<void> refreshUserData() async {
-    var token = state.token;
-    if (token == null) {
-      await loadUserFromToken();
-      token = state.token;
-    }
+    final currentStateData = state.valueOrNull;
+    final token = currentStateData?.token;
 
     if (token == null) {
+      await loadUserFromToken();
       return;
     }
 
     try {
       final user = await _authApi.getMe(token: token);
       if (user != null) {
-        state = state.copyWith(user: user);
+        state = AsyncValue.data(currentStateData!.copyWith(user: user));
       } else {
         await logout();
       }
-    } catch (_) {
-      // It's possible the token is expired, so log out.
+    } catch (e) {
+      debugPrint("[AuthNotifier] Refresh user data error: $e");
       await logout();
     }
   }
@@ -184,34 +173,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
     double? weightMultiplier,
     String? subscriptionLevel,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final token = state.token;
-      if (token == null) {
-        throw Exception("No auth token found.");
-      }
+    final currentStateData = state.valueOrNull;
+    final token = currentStateData?.token;
 
-      final updatedUser = await _authApi.updateUser(
-        token: token,
-        updates: {
-          if (gender != null) 'gender': gender,
-          if (weight != null) 'weight': weight,
-          if (weightMultiplier != null) 'weight_multiplier': weightMultiplier,
-          if (subscriptionLevel != null)
-            'subscription_level': subscriptionLevel,
-        },
-      );
+    if (token == null) {
+      debugPrint("[AuthNotifier] Cannot update user: No token found.");
+      return false;
+    }
+
+    try {
+      final updates = <String, dynamic>{};
+      if (gender != null) updates['gender'] = gender;
+      if (weight != null) updates['weight'] = weight;
+      if (weightMultiplier != null) updates['weight_multiplier'] = weightMultiplier;
+      if (subscriptionLevel != null) updates['subscription_level'] = subscriptionLevel;
+
+      if (updates.isEmpty) return true;
+
+      final updatedUser = await _authApi.updateUser(token: token, updates: updates);
 
       if (updatedUser != null) {
-        state = state.copyWith(user: updatedUser, isLoading: false);
+        state = AsyncValue.data(currentStateData!.copyWith(user: updatedUser));
         return true;
       } else {
-        state =
-            state.copyWith(isLoading: false, error: 'Failed to update user');
+        debugPrint("[AuthNotifier] updateUser failed: API returned null.");
         return false;
       }
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      debugPrint("[AuthNotifier] Error updating user: $e");
       return false;
     }
   }
@@ -221,10 +210,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String filename,
     String mimeType,
   ) async {
-    try {
-      final token = state.token;
-      if (token == null) return false;
+    final currentStateData = state.valueOrNull;
+    final token = currentStateData?.token;
 
+    if (token == null) {
+      debugPrint("[AuthNotifier] Cannot upload picture: No token found.");
+      return false;
+    }
+
+    try {
       final updatedUser = await _authApi.uploadProfilePictureFromBytes(
         token: token,
         bytes: bytes,
@@ -233,21 +227,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       if (updatedUser != null) {
-        state = state.copyWith(user: updatedUser);
+        state = AsyncValue.data(currentStateData!.copyWith(user: updatedUser));
         return true;
       }
     } catch (e) {
-      debugPrint('[❌] Exception during upload: $e');
+      debugPrint("[AuthNotifier ❌] Exception during profile picture upload: $e");
     }
     return false;
   }
   
-  // **START: CRITICAL ADDITION**
-  // Make sure to close the stream controller when the provider is disposed.
   @override
   void dispose() {
     _authStateChangeController.close();
     super.dispose();
   }
-  // **END: CRITICAL ADDITION**
 }
