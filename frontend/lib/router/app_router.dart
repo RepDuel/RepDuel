@@ -26,22 +26,28 @@ import '../presentation/scaffolds/main_scaffold.dart';
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // Listen to the auth provider to trigger redirects.
-  final authStateChanges = ref.watch(authProvider.notifier).stream;
+  // Listen to the auth provider's stream for automatic refresh.
+  // authStateStream emits AuthState, which is what GoRouterRefreshStream expects.
+  final authStateStream = ref.read(authProvider.notifier).authStateStream; 
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/profile',
-    // This is the critical addition. It tells GoRouter to re-evaluate its
-    // routes and redirects whenever the authentication state changes.
-    refreshListenable: GoRouterRefreshStream(authStateChanges),
+    initialLocation: '/profile', // Or '/login' if you want to force login check first
+    
+    // This tells GoRouter to re-evaluate its routes and redirects whenever
+    // the authentication state changes.
+    refreshListenable: GoRouterRefreshStream(authStateStream), 
+
     routes: [
+      // --- Authenticated Shell Routes ---
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
+          // The MainScaffold will likely also need to react to auth state,
+          // but for the shell itself, it just needs to render the children.
           return MainScaffold(navigationShell: navigationShell);
         },
         branches: [
-          StatefulShellBranch(
+          StatefulShellBranch( // Branch for '/normal'
             routes: [
               GoRoute(
                 path: '/normal',
@@ -50,7 +56,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          StatefulShellBranch(
+          StatefulShellBranch( // Branch for '/ranked'
             routes: [
               GoRoute(
                 path: '/ranked',
@@ -59,7 +65,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          StatefulShellBranch(
+          StatefulShellBranch( // Branch for '/routines'
             routes: [
               GoRoute(
                   path: '/routines',
@@ -75,7 +81,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                       path: 'edit',
                       name: 'editRoutine',
                       builder: (context, state) {
-                        final routine = state.extra as Routine;
+                        // Assuming Routine is non-nullable when passed as extra
+                        final routine = state.extra! as Routine; 
                         return CustomRoutineScreen.edit(initial: routine);
                       },
                     ),
@@ -83,7 +90,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                       path: 'play',
                       name: 'playRoutine',
                       builder: (context, state) {
-                        final routine = state.extra as Routine;
+                        // Assuming Routine is non-nullable when passed as extra
+                        final routine = state.extra! as Routine; 
                         return RoutinePlayScreen(routine: routine);
                       },
                     ),
@@ -98,7 +106,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ]),
             ],
           ),
-          StatefulShellBranch(
+          StatefulShellBranch( // Branch for '/profile'
             routes: [
               GoRoute(
                   path: '/profile',
@@ -120,6 +128,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      // --- Unauthenticated Routes ---
       GoRoute(
         path: '/login',
         name: 'login',
@@ -130,19 +139,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
       ),
+      // --- Subscription/Payment Routes ---
       GoRoute(
         path: '/subscribe',
         name: 'subscribe',
         builder: (context, state) => const SubscriptionScreen(),
-      ),
-      GoRoute(
-        path: '/leaderboard/:scenarioId',
-        name: 'liftLeaderboard',
-        builder: (context, state) {
-          final scenarioId = state.pathParameters['scenarioId']!;
-          final liftName = state.uri.queryParameters['liftName'] ?? 'Unknown';
-          return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
-        },
       ),
       GoRoute(
         path: '/payment-success',
@@ -154,29 +155,66 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'paymentCancel',
         builder: (context, state) => const PaymentCancelScreen(),
       ),
+      // --- Leaderboard Route ---
+      GoRoute(
+        path: '/leaderboard/:scenarioId',
+        name: 'liftLeaderboard',
+        builder: (context, state) {
+          final scenarioId = state.pathParameters['scenarioId']!;
+          final liftName = state.uri.queryParameters['liftName'] ?? 'Unknown';
+          return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
+        },
+      ),
     ],
+    // --- Redirect Logic ---
     redirect: (context, state) {
-      // Because of refreshListenable, this logic now runs automatically
-      // on login or logout.
-      final isLoggedIn = ref.read(authProvider).user != null;
+      // Access the current authentication state asynchronously using .watch()
+      // If the state is loading or errored, we ideally want to wait or show a specific UI.
+      // For redirect logic, we often want to check the 'data' state.
+      final authStateAsyncValue = ref.watch(authProvider);
+
+      // Check if the authentication state is still loading or has an error.
+      // If so, we should not redirect yet, allowing the UI to show loading/error.
+      // The `refreshListenable` will trigger this redirect again when auth state settles.
+      if (authStateAsyncValue.isLoading || authStateAsyncValue.hasError) {
+        return null; // Let the UI handle loading/error states
+      }
+
+      // If auth state is loaded successfully, extract the AuthState data.
+      final authState = authStateAsyncValue.value; 
+      final isLoggedIn = authState?.user != null && authState?.token != null;
       final path = state.uri.path;
       final isAuthRoute = (path == '/login' || path == '/register');
 
+      // --- Redirect Rules ---
       if (!isLoggedIn && !isAuthRoute) {
+        // User is logged out and trying to access a non-auth route.
+        debugPrint("Redirecting to /login: User logged out, path is $path");
         return '/login';
       }
       if (isLoggedIn && isAuthRoute) {
-        return '/profile';
+        // User is logged in and trying to access auth routes.
+        debugPrint("Redirecting to /profile: User logged in, path is $path");
+        return '/profile'; // Redirect to profile or home page
       }
-      return null;
+      
+      // If none of the above conditions are met, no redirect is needed.
+      return null; 
     },
   );
 });
 
 // Helper class to bridge a Stream to a Listenable for GoRouter.
+// This ensures GoRouter rebuilds/re-evaluates redirects when auth state changes.
 class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
+  // Use a Stream<AuthState> from the AuthNotifier
+  GoRouterRefreshStream(Stream<AuthState> stream) {
+    // We need to notify listeners immediately upon subscription, in case the stream
+    // is already emitting a value or is empty.
+    notifyListeners(); 
+    
+    // Listen to the stream and call notifyListeners() whenever a new AuthState is emitted.
+    // .asBroadcastStream() is important if multiple listeners might subscribe.
     stream.asBroadcastStream().listen((_) => notifyListeners());
   }
 }

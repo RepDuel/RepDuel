@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../../../core/config/env.dart';
-import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/auth_provider.dart'; // Import the auth provider correctly
 
 // --- Step 1: Create a Model for Type Safety ---
 
@@ -17,7 +17,6 @@ class LeaderboardEntry {
   LeaderboardEntry({required this.user, required this.weightLifted});
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
-    // This provides robust parsing. If 'user' is null, it will be handled gracefully.
     return LeaderboardEntry(
       user: LeaderboardUser.fromJson(json['user'] ?? {}),
       weightLifted: json['weight_lifted'] ?? 0,
@@ -39,37 +38,44 @@ class LeaderboardUser {
 
 // --- Step 2: Create a Provider for Data Fetching ---
 
-// We use a .family provider because we need to pass the `scenarioId` to it.
 final leaderboardProvider = FutureProvider.family<List<LeaderboardEntry>, String>((ref, scenarioId) async {
-  
-  // Best Practice: The API call is now inside the provider, not the widget.
+  // Get the token safely. This is crucial for authenticated requests.
+  // If the token is null (auth is loading/errored/logged out), the request will likely fail
+  // at the interceptor level, or the provider will be in a loading/error state anyway.
+  final token = ref.read(authProvider).valueOrNull?.token; // Safely get token
+
+  // If you strictly need the token for the URL itself (unlikely for this endpoint, but possible),
+  // you'd handle that here. For now, we assume the interceptor adds it.
+  // If the token is missing, the interceptor will block, and this provider will error.
+
   final url = '${Env.baseUrl}/api/v1/scores/scenario/$scenarioId/leaderboard';
   
   try {
-    final response = await http.get(Uri.parse(url));
+    final response = await http.get(
+      Uri.parse(url),
+      // Headers are typically handled by the HttpClient/Dio interceptor, 
+      // but you could add them here if needed for specific endpoints.
+      // headers: {'Authorization': 'Bearer $token'} // Example, usually handled by interceptor
+    );
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       
-      // Filter out entries with null users and parse into our strongly-typed model.
       return data
           .where((entry) => entry['user'] != null)
           .map((entry) => LeaderboardEntry.fromJson(entry))
           .toList();
     } else {
-      // Throw an exception to put the provider into an error state.
       throw Exception('Failed to load leaderboard: Status code ${response.statusCode}');
     }
   } catch (e) {
-    // Rethrow the error to be caught by AsyncValue.when in the UI.
     throw Exception('Failed to load leaderboard: $e');
   }
 });
 
 
-// --- Step 3: Refactor the Widget to be Stateless ---
+// --- Step 3: Refactor the Widget to use AsyncValue.when() ---
 
-// The widget is now a simple ConsumerWidget, no StatefulWidget or State needed.
 class LeaderboardScreen extends ConsumerWidget {
   final String scenarioId;
   final String liftName;
@@ -85,81 +91,115 @@ class LeaderboardScreen extends ConsumerWidget {
     // Watch the provider to get the state (data, loading, or error).
     final AsyncValue<List<LeaderboardEntry>> leaderboardData = ref.watch(leaderboardProvider(scenarioId));
     
-    // Get user preferences for displaying units.
-    final user = ref.watch(authProvider).user;
-    final isKg = user?.weightMultiplier == 1.0;
-    final multiplier = user?.weightMultiplier ?? 1.0;
-    final unit = isKg ? 'kg' : 'lbs';
+    // --- Safely Access User Data for Units ---
+    // Watch authProvider to get the AsyncValue<AuthState>
+    final authStateAsyncValue = ref.watch(authProvider);
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text('$liftName Leaderboard'),
+    // Use .when() to handle different auth states and extract user data.
+    return authStateAsyncValue.when(
+      loading: () => const Scaffold( // Show loading for auth state if not yet loaded
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
       ),
-      // Use AsyncValue.when for clean handling of all possible states.
-      body: leaderboardData.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
-        data: (scores) => Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 40,
-                    child: Text('Rank', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text('User', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                  Text('Score', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: scores.length,
-                itemBuilder: (_, index) {
-                  final scoreEntry = scores[index];
-                  
-                  // Use the data from our type-safe model.
-                  final adjustedScore = scoreEntry.weightLifted * multiplier;
-                  final displayScore = adjustedScore % 1 == 0
-                      ? adjustedScore.toInt().toString()
-                      : adjustedScore.toStringAsFixed(1);
+      error: (err, stack) => Scaffold( // Show error if auth state fails
+        backgroundColor: Colors.black,
+        body: Center(child: Text('Auth Error: $err', style: const TextStyle(color: Colors.red))),
+      ),
+      data: (authState) { // authState is the actual AuthState object
+        // Safely get the user from the loaded AuthState.
+        final user = authState.user; 
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        // Determine units based on user data. If user is null (logged out, etc.),
+        // default to sensible units (e.g., kg).
+        final isKg = user?.weightMultiplier == 1.0;
+        final multiplier = user?.weightMultiplier ?? 1.0;
+        final unit = isKg ? 'kg' : 'lbs';
+
+        // --- Now render the leaderboard based on leaderboardData ---
+        return Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            title: Text('$liftName Leaderboard'),
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+          ),
+          // Use AsyncValue.when for clean handling of all possible states for leaderboardData.
+          body: leaderboardData.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
+            data: (scores) {
+              // Handle the case where scores might be empty but data loaded successfully
+              if (scores.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No scores available yet. Be the first!', 
+                    style: TextStyle(color: Colors.white54, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+
+              return Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
                         SizedBox(
                           width: 40,
-                          child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                          child: Text('Rank', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            scoreEntry.user.username, // Safe access
-                            style: const TextStyle(color: Colors.white, fontSize: 16),
-                          ),
+                          child: Text('User', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
-                        Text(
-                          '$displayScore $unit',
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                        Text('Score', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ],
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: scores.length,
+                      itemBuilder: (_, index) {
+                        final scoreEntry = scores[index];
+                        
+                        final adjustedScore = scoreEntry.weightLifted * multiplier;
+                        final displayScore = adjustedScore % 1 == 0
+                            ? adjustedScore.toInt().toString()
+                            : adjustedScore.toStringAsFixed(1);
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 40,
+                                child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                // Safely access username from the model
+                                child: Text(
+                                  scoreEntry.user.username, 
+                                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                                ),
+                              ),
+                              Text(
+                                '$displayScore $unit',
+                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

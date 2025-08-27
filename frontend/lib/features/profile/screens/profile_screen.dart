@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:repduel/widgets/loading_spinner.dart';
 
-import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/auth_provider.dart'; // Import the auth provider
 import '../../../core/providers/energy_providers.dart';
 import '../widgets/energy_graph.dart';
 import '../widgets/workout_history_list.dart';
@@ -69,34 +69,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).user;
+    // Watch the authProvider which returns AsyncValue<AuthState>
+    final authStateAsyncValue = ref.watch(authProvider);
 
-    // **THIS IS THE CRITICAL FIX**
-    // This guard clause is the very first thing in the build method.
-    // It prevents the rest of the widget from trying to build with a null user
-    // during the logout transition, showing a safe loading screen instead.
-    if (user == null) {
-      return const Scaffold(
+    // Use .when() to handle loading, error, and data states gracefully.
+    return authStateAsyncValue.when(
+      loading: () => const Scaffold( // Display loading screen while auth state is loading
         backgroundColor: Colors.black,
         body: Center(child: LoadingSpinner()),
-      );
-    }
+      ),
+      error: (error, stackTrace) => Scaffold( // Display error message if auth fails to load
+        backgroundColor: Colors.black,
+        body: Center(child: Text('Error loading profile: $error', style: const TextStyle(color: Colors.red))),
+      ),
+      data: (authState) { // authState is the actual AuthState object here
+        // Now, check if the user data within the AuthState is null.
+        // This handles cases where the user is logged out or the initial state is empty.
+        final user = authState.user; 
 
-    // Now that we know the user is not null, it's safe to proceed.
-    // We fetch the energy data within a FutureBuilder for safety.
-    final energyFuture = ref.read(energyApiProvider).getLatestEnergy(user.id);
+        // If user is null even after loading, show a logged-out state or redirect.
+        // For this screen, showing a basic logged-out UI or redirecting via router is appropriate.
+        // We'll show a loading spinner for simplicity here, assuming the router will handle redirection.
+        if (user == null) {
+          // This case should ideally be handled by the router redirecting to login,
+          // but as a fallback, we show a loading spinner.
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(child: LoadingSpinner()),
+          );
+        }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        // --- User is logged in and available ---
+        // Now that we know the user is not null, it's safe to proceed.
+        // Fetch energy data, passing the user's ID.
+        final energyFuture = ref.read(energyApiProvider).getLatestEnergy(user.id);
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child:
-                    user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    // Safely access user.avatarUrl
+                    child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
                         ? Image.network(user.avatarUrl!,
                             width: 80, height: 80, fit: BoxFit.cover)
                         : Image.asset(
@@ -104,83 +122,90 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             width: 80,
                             height: 80,
                             fit: BoxFit.cover),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    // Safely access user.username
+                    child: Text(user.username,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 24)),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(user.username,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 24)),
+              const SizedBox(height: 32),
+              FutureBuilder<int>(
+                future: energyFuture,
+                builder: (context, snapshot) {
+                  // Handle connection state for the energy future
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  // Handle errors or missing data for energy score
+                  if (snapshot.hasError || !snapshot.hasData) {
+                    return const Text('Could not load energy score.', style: TextStyle(color: Colors.red));
+                  }
+
+                  final energy = snapshot.data ?? 0;
+                  final rank = getRank(energy);
+                  final color = getRankColor(rank);
+                  final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            const Text('Energy: ',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 18)),
+                            Text('$energy ',
+                                style: TextStyle(
+                                    color: color,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold)),
+                            SvgPicture.asset(iconPath,
+                                height: 24, width: 24),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: () {
+                                setState(() => _showGraph = !_showGraph);
+                              },
+                              child: Text(
+                                  _showGraph
+                                      ? 'Hide Graph'
+                                      : 'View Graph',
+                                  style:
+                                      const TextStyle(color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_showGraph) const SizedBox(height: 8),
+                      if (_showGraph)
+                        SizedBox(
+                            height: 200,
+                            // Pass the user's ID to the EnergyGraph
+                            child: EnergyGraph(userId: user.id)), 
+                    ],
+                  );
+                },
               ),
+              const SizedBox(height: 32),
+              const Text('Workout History',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              // Pass the user's ID to the WorkoutHistoryList
+              WorkoutHistoryList(userId: user.id), 
+              const SizedBox(height: 16),
             ],
           ),
-          const SizedBox(height: 32),
-          FutureBuilder<int>(
-            future: energyFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError || !snapshot.hasData) {
-                return const Text('Could not load energy score.', style: TextStyle(color: Colors.red));
-              }
-
-              final energy = snapshot.data ?? 0;
-              final rank = getRank(energy);
-              final color = getRankColor(rank);
-              final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        const Text('Energy: ',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 18)),
-                        Text('$energy ',
-                            style: TextStyle(
-                                color: color,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)),
-                        SvgPicture.asset(iconPath,
-                            height: 24, width: 24),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          onPressed: () {
-                            setState(() => _showGraph = !_showGraph);
-                          },
-                          child: Text(
-                              _showGraph
-                                  ? 'Hide Graph'
-                                  : 'View Graph',
-                              style:
-                                  const TextStyle(color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_showGraph) const SizedBox(height: 8),
-                  if (_showGraph)
-                    SizedBox(
-                        height: 200,
-                        child: EnergyGraph(userId: user.id)),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 32),
-          const Text('Workout History',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          WorkoutHistoryList(userId: user.id),
-          const SizedBox(height: 16),
-        ],
-      ),
+        );
+      },
     );
   }
 }

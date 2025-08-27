@@ -1,7 +1,7 @@
 // frontend/lib/features/routines/screens/routines_screen.dart
 
+import 'dart:async'; // For TimeoutException
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,8 +9,8 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/config/env.dart';
 import '../../../core/models/routine.dart';
-import '../../../core/providers/auth_provider.dart';
-import '../../../core/services/secure_storage_service.dart';
+import '../../../core/providers/auth_provider.dart'; // Import auth provider
+import '../../../core/services/secure_storage_service.dart'; // Might not be directly needed for token access anymore
 import '../widgets/add_routine_card.dart';
 import '../widgets/routine_card.dart';
 
@@ -22,29 +22,39 @@ class RoutinesScreen extends ConsumerStatefulWidget {
 }
 
 class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
-  late Future<List<Routine>> _future;
+  late Future<List<Routine>> _futureExercises; // Renamed to _futureExercises for clarity if it fetches exercises
   final Set<String> _deletingIds = {};
 
   static const _unauthorizedMessage = 'Unauthorized (401). Please log in.';
   static const _genericFailMessage = 'Failed to load routines';
+  static const _kgToLbs = 2.20462;
 
   @override
   void initState() {
     super.initState();
-    _future = _fetchRoutines();
+    // Fetch routines when the widget is initialized. This will be called after
+    // auth state is potentially resolved by the router or initial load.
+    _futureExercises = _fetchRoutines(); 
   }
 
+  // Fetch routines: This function now needs to safely access the token.
   Future<List<Routine>> _fetchRoutines() async {
-    final storage = SecureStorageService();
-    final token = await storage.readToken();
+    // Safely get token from authProvider
+    final token = ref.read(authProvider).valueOrNull?.token;
+
+    if (token == null) {
+      // If no token, the request would be blocked by the interceptor,
+      // but it's good practice to handle it here too to prevent unnecessary calls.
+      throw Exception(_unauthorizedMessage); 
+    }
 
     final response = await http.get(
       Uri.parse('${Env.baseUrl}/api/v1/routines/'),
       headers: {
         'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer $token', // Token is now guaranteed non-null here
       },
-    );
+    ).timeout(const Duration(seconds: 10)); // Added timeout for robustness
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -57,18 +67,31 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
   }
 
   Future<void> _refresh() async {
+    // Re-fetch routines. This should be called when auth state is ready.
     setState(() {
-      _future = _fetchRoutines();
+      _futureExercises = _fetchRoutines();
     });
-    await _future;
+    await _futureExercises; // Wait for fetch to complete
   }
 
   void _onAddRoutinePressed(List<Routine> routines) async {
-    final currentUser = ref.read(authProvider).user;
-    final isFree = currentUser?.subscriptionLevel == null ||
-        currentUser!.subscriptionLevel == 'free';
-    final hasReachedLimit =
-        routines.where((r) => r.userId == currentUser?.id).length >= 3;
+    // Safely access user and token
+    final authStateData = ref.read(authProvider).valueOrNull;
+    final user = authStateData?.user;
+    // final token = authStateData?.token; // Token not needed for this check, but user is.
+
+    if (user == null) {
+      // If user is null, they are not authenticated. Prompt login.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please log in to create routines.")),
+      );
+      GoRouter.of(context).go('/login');
+      return;
+    }
+
+    final isFree = user.subscriptionLevel == null || user.subscriptionLevel == 'free';
+    // Count routines belonging to the current user
+    final hasReachedLimit = routines.where((r) => r.userId == user.id).length >= 3;
 
     if (isFree && hasReachedLimit) {
       showDialog(
@@ -85,7 +108,8 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                context.push('/subscribe');
+                // Use GoRouter for navigation
+                GoRouter.of(context).push('/subscribe'); 
               },
               child: const Text('Upgrade'),
             ),
@@ -95,13 +119,13 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
       return;
     }
 
-    // Correctly navigate to CustomRoutineScreen using GoRouter
-    final changed = await context.push<bool>('/routines/custom');
-    if (changed == true && mounted) _refresh();
+    // Navigate to CustomRoutineScreen using GoRouter
+    final changed = await context.push<bool>('/routines/custom'); // Assuming '/routines/custom' is the correct route
+    if (changed == true && mounted) _refresh(); // Refresh if data changed
   }
 
   Future<void> _confirmAndDeleteRoutine(Routine routine) async {
-    if (_deletingIds.contains(routine.id)) return;
+    if (_deletingIds.contains(routine.id)) return; // Prevent concurrent deletion
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -123,22 +147,21 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) return; // User cancelled
 
     await _deleteRoutine(routine.id);
   }
 
   Future<void> _deleteRoutine(String routineId) async {
-    final storage = SecureStorageService();
-    final token = await storage.readToken();
+    // Safely get token
+    final token = ref.read(authProvider).valueOrNull?.token;
 
-    if (token == null || token.isEmpty) {
+    if (token == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('You must be logged in to delete routines.')),
+        const SnackBar(content: Text('You must be logged in to delete routines.')),
       );
-      context.go('/login');
+      GoRouter.of(context).go('/login'); // Redirect to login
       return;
     }
 
@@ -149,31 +172,28 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
     try {
       final res = await http.delete(
         Uri.parse('${Env.baseUrl}/api/v1/routines/$routineId'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {'Authorization': 'Bearer $token'}, // Use the safely retrieved token
       );
 
       if (!mounted) return;
 
-      if (res.statusCode == 204) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Routine deleted.')));
-        await _refresh();
+      if (res.statusCode == 204) { // Success, no content
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Routine deleted.')));
+        await _refresh(); // Refresh the list
       } else if (res.statusCode == 401) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Session expired. Please log in again.')),
+          const SnackBar(content: Text('Session expired. Please log in again.')),
         );
-        context.go('/login');
+        GoRouter.of(context).go('/login'); // Redirect to login
       } else if (res.statusCode == 403) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Not allowed to delete this routine.')),
         );
       } else if (res.statusCode == 404) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Routine not found (maybe already deleted).')),
+          const SnackBar(content: Text('Routine not found (maybe already deleted).')),
         );
-        await _refresh();
+        await _refresh(); // Refresh to reflect potential deletion
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Delete failed (HTTP ${res.statusCode}).')),
@@ -187,41 +207,40 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _deletingIds.remove(routineId);
+          _deletingIds.remove(routineId); // Remove from deleting set
         });
       }
     }
   }
 
   Future<void> _editRoutine(Routine routine) async {
-    // Correctly navigate to the edit screen using a named route and passing the object
-    final changed =
-        await context.pushNamed<bool>('editRoutine', extra: routine);
-    if (changed == true && mounted) _refresh();
+    // Use GoRouter for named navigation with extra data
+    final changed = await context.pushNamed<bool>('editRoutine', extra: routine);
+    if (changed == true && mounted) _refresh(); // Refresh if routine was changed
   }
 
   Widget _buildRoutineTile(Routine routine, String? currentUserId) {
     final isDeleting = _deletingIds.contains(routine.id);
-    final canEditDelete =
-        routine.userId != null && routine.userId == currentUserId;
+    // Check ownership using routine.userId and currentUserId
+    final canEditDelete = routine.userId != null && routine.userId == currentUserId;
 
     return Stack(
       children: [
         GestureDetector(
           onTap: () async {
-            // Correctly navigate using a named route and passing the object
-            await context.pushNamed('playRoutine', extra: routine);
-            if (!mounted) return;
-            _refresh();
+            // Navigate using GoRouter, passing the routine object as extra
+            final changed = await context.pushNamed<bool>('playRoutine', extra: routine);
+            if (changed == true && mounted) _refresh(); // Refresh if routine was played and state changed
           },
           child: RoutineCard(
             name: routine.name,
-            imageUrl: routine.imageUrl ??
-                'https://media.istockphoto.com/id/1147544807/vector/thumbnail-image-vector-graphic.jpg?s=612x612&w=0&k=20&c=rnCKVbdxqkjlcs3xH87-9gocETqpspHFXu5dIGB4wuM=',
+            // Provide a fallback image URL
+            imageUrl: routine.imageUrl ?? 'https://via.placeholder.com/150', 
             duration: '${routine.totalDurationMinutes} min',
-            difficultyLevel: 2,
+            difficultyLevel: 2, // Assuming difficulty is static or derived elsewhere
           ),
         ),
+        // Edit/Delete options only for the current user's routines
         if (canEditDelete)
           Positioned(
             top: 8,
@@ -240,23 +259,16 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                 itemBuilder: (context) => const [
                   PopupMenuItem(
                       value: 'edit',
-                      child: Row(children: [
-                        Icon(Icons.edit),
-                        SizedBox(width: 8),
-                        Text('Edit')
-                      ])),
+                      child: Row(children: [Icon(Icons.edit), SizedBox(width: 8), Text('Edit')])),
                   PopupMenuItem(
                       value: 'delete',
-                      child: Row(children: [
-                        Icon(Icons.delete_outline, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Delete')
-                      ])),
+                      child: Row(children: [Icon(Icons.delete_outline, color: Colors.red), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))])),
                 ],
                 icon: const Icon(Icons.more_vert, color: Colors.white70),
               ),
             ),
           ),
+        // Show loading indicator while deleting
         if (isDeleting)
           Positioned.fill(
             child: Container(
@@ -273,64 +285,112 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = ref.watch(authProvider).user;
-    final currentUserId = currentUser?.id;
+    // Watch the auth provider to get AsyncValue<AuthState>
+    final authStateAsyncValue = ref.watch(authProvider);
 
-    return FutureBuilder<List<Routine>>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    // Use .when() to handle loading, error, and data states for authentication.
+    return authStateAsyncValue.when(
+      loading: () => const Scaffold( // Display loading screen while auth state is loading
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stackTrace) => Scaffold( // Display error message if auth fails to load
+        backgroundColor: Colors.black,
+        body: Center(child: Text('Auth Error: $error', style: const TextStyle(color: Colors.red))),
+      ),
+      data: (authState) { // authState is the actual AuthState object here
+        final user = authState.user;
+        final token = authState.token; // Token is needed for fetching and deleting
 
-        if (snapshot.hasError) {
-          final message = snapshot.error?.toString() ?? _genericFailMessage;
-          final isUnauthorized = message.contains('401');
-
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(message,
-                    style: const TextStyle(color: Colors.white),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                if (isUnauthorized)
+        // If user or token is null, it means the user is not authenticated.
+        // The router should handle redirecting to login. We'll show a message here.
+        if (user == null || token == null) {
+          // This case should ideally be handled by the router redirecting to login.
+          // As a fallback, we show a message prompting login.
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Please log in to view your routines.', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  const SizedBox(height: 20),
                   ElevatedButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text('Login'))
-                else
-                  ElevatedButton(
-                      onPressed: _refresh, child: const Text('Retry')),
-              ],
+                    onPressed: () => GoRouter.of(context).go('/login'), // Use GoRouter for navigation
+                    child: const Text('Go to Login'),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
-        final routines = snapshot.data ?? <Routine>[];
+        // --- User is logged in and data is available ---
+        // Use FutureBuilder to fetch and display routines once auth is ready.
+        return FutureBuilder<List<Routine>>(
+          future: _futureExercises, // Use the future initialized in initState
+          builder: (context, snapshot) {
+            // Loading state for exercises
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        return RefreshIndicator(
-          onRefresh: _refresh,
-          child: GridView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: routines.length + 1,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount:
-                  (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.6,
-            ),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return AddRoutineCard(
-                    onPressed: () => _onAddRoutinePressed(routines));
-              }
-              final routine = routines[index - 1];
-              return _buildRoutineTile(routine, currentUserId);
-            },
-          ),
+            // Error state for exercises
+            if (snapshot.hasError) {
+              final message = snapshot.error?.toString() ?? _genericFailMessage;
+              final isUnauthorized = message.contains('401');
+
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      message,
+                      style: const TextStyle(color: Colors.white),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    if (isUnauthorized)
+                      ElevatedButton(
+                        onPressed: () => GoRouter.of(context).go('/login'), // Redirect on unauthorized
+                        child: const Text('Login'),
+                      )
+                    else
+                      ElevatedButton(
+                        onPressed: _refresh, // Retry fetching exercises
+                        child: const Text('Retry'),
+                      ),
+                  ],
+                ),
+              );
+            }
+
+            // Data ready for exercises
+            final routines = snapshot.data ?? <Routine>[];
+
+            return RefreshIndicator(
+              onRefresh: _refresh, // Refresh the list of routines
+              child: GridView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: routines.length + 1, // +1 for the "Add Routine" card
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6), // Responsive grid count
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.6, // Adjust aspect ratio as needed
+                ),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    // The first item is the "Add Routine" card
+                    return AddRoutineCard(onPressed: () => _onAddRoutinePressed(routines));
+                  }
+                  // For subsequent items, build RoutineCard
+                  final routine = routines[index - 1];
+                  return _buildRoutineTile(routine, user.id); // Pass current user ID
+                },
+              ),
+            );
+          },
         );
       },
     );
