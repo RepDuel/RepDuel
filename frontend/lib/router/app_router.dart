@@ -21,32 +21,60 @@ import '../features/profile/screens/theme_selector_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
-import '../features/routines/screens/routine_play_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../presentation/scaffolds/main_scaffold.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // The stream from the notifier is used to rebuild the router when auth state changes.
   final authStateStream = ref.watch(authProvider.notifier).authStateStream;
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/routines', // A safe default authenticated route
-    
-    // This correctly listens for auth changes to re-evaluate the route.
-    refreshListenable: GoRouterRefreshStream(authStateStream), 
-
+    initialLocation: '/routines',
+    refreshListenable: GoRouterRefreshStream(authStateStream),
     routes: [
+      // --- SHELLED ROUTES (Screens with the bottom navigation bar) ---
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainScaffold(navigationShell: navigationShell);
         },
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: '/normal', name: 'normal', builder: (context, state) => const NormalScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/ranked', name: 'ranked', builder: (context, state) => const RankedScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/routines', name: 'routines', builder: (context, state) => const RoutinesScreen())]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/normal', name: 'normal', builder: (context, state) => const NormalScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/ranked', name: 'ranked', builder: (context, state) => const RankedScreen()),
+          ]),
+          // --- THE FIX: Routines and its sub-routes are all nested here ---
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/routines',
+              name: 'routines',
+              builder: (context, state) => const RoutinesScreen(),
+              routes: [
+                GoRoute(
+                  path: 'custom', name: 'createRoutine',
+                  builder: (context, state) => const CustomRoutineScreen(),
+                ),
+                GoRoute(
+                  path: 'edit', name: 'editRoutine',
+                  builder: (context, state) {
+                    final routine = state.extra! as Routine; 
+                    return CustomRoutineScreen.edit(initial: routine);
+                  },
+                ),
+                GoRoute(
+                  path: 'exercise-list/:routineId', name: 'exerciseList',
+                  builder: (context, state) {
+                    final routineId = state.pathParameters['routineId']!;
+                    return ExerciseListScreen(routineId: routineId);
+                  },
+                ),
+              ]
+            ),
+          ]),
+          // --- THE FIX: Profile and its sub-routes are all nested here ---
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/profile', name: 'profile', builder: (context, state) => const ProfileScreen(),
@@ -58,7 +86,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
         ],
       ),
-      // Top-level (non-shelled) routes
+
+      // --- TOP-LEVEL ROUTES (Screens without the bottom navigation bar) ---
       GoRoute(path: '/login', name: 'login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/register', name: 'register', builder: (context, state) => const RegisterScreen()),
       GoRoute(path: '/subscribe', name: 'subscribe', builder: (context, state) => const SubscriptionScreen()),
@@ -70,28 +99,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           final scenarioId = state.pathParameters['scenarioId']!;
           final liftName = state.uri.queryParameters['liftName'] ?? 'Unknown';
           return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
-        },
-      ),
-      GoRoute(path: '/routines/custom', name: 'createRoutine', builder: (context, state) => const CustomRoutineScreen()),
-      GoRoute(
-        path: '/routines/edit', name: 'editRoutine',
-        builder: (context, state) {
-          final routine = state.extra! as Routine; 
-          return CustomRoutineScreen.edit(initial: routine);
-        },
-      ),
-      GoRoute(
-        path: '/routines/play', name: 'playRoutine',
-        builder: (context, state) {
-          final routine = state.extra! as Routine; 
-          return RoutinePlayScreen(routine: routine);
-        },
-      ),
-      GoRoute(
-        path: '/routines/exercise-list/:routineId', name: 'exerciseList',
-        builder: (context, state) {
-          final routineId = state.pathParameters['routineId']!;
-          return ExerciseListScreen(routineId: routineId);
         },
       ),
       GoRoute(
@@ -107,42 +114,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
     ],
-    
-    // --- REDIRECT LOGIC ---
     redirect: (context, state) {
-      // THIS IS THE FIX: Use ref.read for a stable, synchronous snapshot of the auth state.
       final authStateAsync = ref.read(authProvider);
-
-      // During initial app load, authState might be loading. It's safe to do nothing.
-      // The refreshListenable will re-trigger this redirect once the state settles.
-      if (authStateAsync.isLoading) {
-        return null;
-      }
-
+      if (authStateAsync.isLoading) return null;
+      
       final isLoggedIn = authStateAsync.valueOrNull?.user != null;
       final path = state.uri.path;
-      
-      // Define public routes that anyone can access.
       final publicRoutes = ['/login', '/register'];
       final isAuthRoute = publicRoutes.contains(path);
 
-      // --- Redirect Rules ---
-      if (!isLoggedIn && !isAuthRoute) {
-        debugPrint("Redirecting to /login: User logged out, path is $path");
-        return '/login';
-      }
-      if (isLoggedIn && isAuthRoute) {
-        debugPrint("Redirecting to /profile: User logged in, path is $path");
-        return '/profile';
-      }
+      if (!isLoggedIn && !isAuthRoute) return '/login';
+      if (isLoggedIn && isAuthRoute) return '/profile';
       
-      // No redirect needed.
       return null; 
     },
   );
 });
 
-// This helper class correctly bridges the auth stream to GoRouter's refresh mechanism.
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<AuthState> stream) {
     notifyListeners(); 

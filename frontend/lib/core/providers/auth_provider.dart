@@ -1,18 +1,16 @@
 // frontend/lib/core/providers/auth_provider.dart
 
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
+import '../models/token.dart';
 import '../services/secure_storage_service.dart';
-import 'api_providers.dart'; // Assuming this provides http clients
+import 'api_providers.dart';
 
-// --- State Class ---
 class AuthState {
   final User? user;
   final String? token;
@@ -23,32 +21,24 @@ class AuthState {
     return AuthState(user: user ?? this.user, token: token ?? this.token);
   }
 
-  // Factory for initial state (empty/logged out)
   factory AuthState.initial() => AuthState(user: null, token: null);
 }
 
-// --- Provider Definition ---
 final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<AuthState>>((ref) {
   final publicClient = ref.read(publicHttpClientProvider);
   final privateClient = ref.read(privateHttpClientProvider);
-  final authApi = AuthApiService(
-    publicClient: publicClient,
-    privateClient: privateClient,
-  );
+  final authApi = AuthApiService(publicClient: publicClient, privateClient: privateClient);
   final secureStorage = ref.read(secureStorageProvider);
   return AuthNotifier(authApi, secureStorage);
 });
 
-// --- StateNotifier ---
 class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   final AuthApiService _authApi;
   final SecureStorageService _secureStorage;
-
   final StreamController<AuthState> _authStateChangeController = StreamController<AuthState>.broadcast();
   Stream<AuthState> get authStateStream => _authStateChangeController.stream;
 
-  AuthNotifier(this._authApi, this._secureStorage)
-      : super(const AsyncValue.loading()) {
+  AuthNotifier(this._authApi, this._secureStorage) : super(const AsyncValue.loading()) {
     _initAuth();
   }
 
@@ -104,7 +94,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     try {
       final newUser = await _authApi.register(username, email, password);
       if (newUser != null) {
-        state = AsyncValue.data(AuthState.initial()); // Reset state to prompt login
+        state = AsyncValue.data(AuthState.initial());
         debugPrint("[AuthNotifier] Registration successful for $username.");
       } else {
         state = AsyncValue.error('Registration failed. Please try again.', StackTrace.current);
@@ -145,12 +135,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   Future<void> refreshUserData() async {
     final currentStateData = state.valueOrNull;
     final token = currentStateData?.token;
-
     if (token == null) {
       await loadUserFromToken();
       return;
     }
-
     try {
       final user = await _authApi.getMe(token: token);
       if (user != null) {
@@ -172,11 +160,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   }) async {
     final currentStateData = state.valueOrNull;
     final token = currentStateData?.token;
-
-    if (token == null) {
-      debugPrint("[AuthNotifier] Cannot update user: No token found.");
-      return false;
-    }
+    if (token == null) return false;
 
     try {
       final updates = <String, dynamic>{};
@@ -188,14 +172,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       if (updates.isEmpty) return true;
 
       final updatedUser = await _authApi.updateUser(token: token, updates: updates);
-
       if (updatedUser != null) {
         state = AsyncValue.data(currentStateData!.copyWith(user: updatedUser));
         return true;
-      } else {
-        debugPrint("[AuthNotifier] updateUser failed: API returned null.");
-        return false;
       }
+      return false;
     } catch (e) {
       debugPrint("[AuthNotifier] Error updating user: $e");
       return false;
@@ -209,20 +190,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   ) async {
     final currentStateData = state.valueOrNull;
     final token = currentStateData?.token;
-
-    if (token == null) {
-      debugPrint("[AuthNotifier] Cannot upload picture: No token found.");
-      return false;
-    }
+    if (token == null) return false;
 
     try {
       final updatedUser = await _authApi.uploadProfilePictureFromBytes(
-        token: token,
-        bytes: bytes,
-        filename: filename,
-        mimeType: mimeType,
+        token: token, bytes: bytes, filename: filename, mimeType: mimeType,
       );
-
       if (updatedUser != null) {
         state = AsyncValue.data(currentStateData!.copyWith(user: updatedUser));
         return true;
@@ -233,6 +206,26 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     return false;
   }
   
+  /// Updates the local user object's energy and rank without a full network refresh.
+  /// This is a lightweight operation designed to prevent rebuild loops.
+  void updateLocalUserEnergy({required double newEnergy, required String newRank}) {
+    final currentState = state.valueOrNull;
+    final currentUser = currentState?.user;
+
+    if (currentUser == null) {
+      return; // Can't update if there's no user.
+    }
+
+    // Create a new User object with the updated energy and rank.
+    final updatedUser = currentUser.copyWith(
+      energy: newEnergy,
+      rank: newRank,
+    );
+
+    // Set the new state with the updated user, preserving the token.
+    state = AsyncValue.data(currentState!.copyWith(user: updatedUser));
+  }
+
   @override
   void dispose() {
     _authStateChangeController.close();

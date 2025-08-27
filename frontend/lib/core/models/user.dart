@@ -12,7 +12,8 @@ class User {
   final String? gender;
   final double weightMultiplier;
   final String subscriptionLevel;
-  final double energy; // <<< 1. ADD THE ENERGY FIELD
+  final double energy;
+  final String? rank; // New field for user's overall rank
 
   User({
     required this.id,
@@ -26,8 +27,42 @@ class User {
     this.gender,
     this.weightMultiplier = 1.0,
     this.subscriptionLevel = 'free',
-    this.energy = 0.0, // <<< 2. ADD TO CONSTRUCTOR WITH A DEFAULT VALUE
+    this.energy = 0.0,
+    this.rank, // Added to constructor
   });
+
+  // copyWith allows us to create a new User instance with updated fields
+  User copyWith({
+    String? id,
+    String? username,
+    String? email,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? avatarUrl,
+    double? weight,
+    String? gender,
+    double? weightMultiplier,
+    String? subscriptionLevel,
+    double? energy,
+    String? rank,
+  }) {
+    return User(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      weight: weight ?? this.weight,
+      gender: gender ?? this.gender,
+      weightMultiplier: weightMultiplier ?? this.weightMultiplier,
+      subscriptionLevel: subscriptionLevel ?? this.subscriptionLevel,
+      energy: energy ?? this.energy,
+      rank: rank ?? this.rank,
+    );
+  }
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -43,9 +78,8 @@ class User {
       gender: json['gender'] as String?,
       weightMultiplier: (json['weight_multiplier'] as num?)?.toDouble() ?? 1.0,
       subscriptionLevel: json['subscription_level'] as String? ?? 'free',
-      // <<< 3. ADD PARSING LOGIC FOR ENERGY
-      // This safely handles if the API sends an int, double, or null.
       energy: (json['energy'] as num?)?.toDouble() ?? 0.0,
+      rank: json['rank'] as String?, // Parse from JSON
     );
   }
 
@@ -62,7 +96,8 @@ class User {
       'gender': gender,
       'weight_multiplier': weightMultiplier,
       'subscription_level': subscriptionLevel,
-      'energy': energy, // <<< 4. ADD TO THE JSON MAP
+      'energy': energy,
+      'rank': rank, // Add to JSON
     };
   }
 }

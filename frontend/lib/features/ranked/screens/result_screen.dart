@@ -17,16 +17,13 @@ import '../models/result_screen_data.dart';
 import '../utils/rank_utils.dart';
 import '../widgets/score_history_chart.dart';
 
-// --- ShareableResultCard (This can be moved to its own file in /widgets) ---
 class ShareableResultCard extends StatelessWidget {
   final String username;
   final String scenarioName;
   final String finalScore;
   final String rankName;
   final Color rankColor;
-
   const ShareableResultCard({super.key, required this.username, required this.scenarioName, required this.finalScore, required this.rankName, required this.rankColor});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -55,43 +52,28 @@ class ShareableResultCard extends StatelessWidget {
   }
 }
 
-// --- Provider for fetching all screen data ---
 final resultScreenDataProvider = FutureProvider.autoDispose.family<ResultScreenData, ({String scenarioId, double finalScore})>((ref, params) async {
   final user = ref.watch(authProvider).valueOrNull?.user;
   if (user == null) throw Exception("User not authenticated.");
-
   final client = ref.watch(privateHttpClientProvider);
-
-  // --- FIX IS HERE ---
-  // Manually construct the URL with query parameters
   final rankProgressUri = Uri.parse('${client.dio.options.baseUrl}/ranks/get_rank_progress').replace(queryParameters: {
     'scenario_id': params.scenarioId,
     'final_score': params.finalScore.toString(),
     'user_weight': (user.weight ?? 70.0).toString(),
     'user_gender': (user.gender ?? 'male').toLowerCase(),
   });
-  // --- END OF FIX ---
-
   final responses = await Future.wait([
     client.get('/scenarios/${params.scenarioId}/details'),
-    client.get(rankProgressUri.toString()), // Pass the full URI string
+    client.get(rankProgressUri.toString()),
   ]);
-
-  final scenarioData = responses[0].data;
-  final rankData = responses[1].data;
-
-  return ResultScreenData(scenario: scenarioData, rank: rankData);
+  return ResultScreenData(scenario: responses[0].data, rank: responses[1].data);
 });
 
-
-// --- Main Screen ---
 class ResultScreen extends ConsumerStatefulWidget {
   final double finalScore;
   final int previousBest;
   final String scenarioId;
-
   const ResultScreen({super.key, required this.finalScore, required this.previousBest, required this.scenarioId});
-
   @override
   ConsumerState<ResultScreen> createState() => _ResultScreenState();
 }
@@ -106,9 +88,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       await ref.read(shareServiceProvider).shareResult(
             context: context,
             screenshotController: _screenshotController,
-            // --- FIX IS HERE ---
-            username: username, // Pass the username
-            // --- END OF FIX ---
+            username: username,
             scenarioName: data.scenario['name'] as String? ?? 'Unnamed',
             finalScore: (widget.finalScore * weightMultiplier).toStringAsFixed(1),
             rankName: data.rank['current_rank'] as String? ?? 'Unranked',
@@ -124,16 +104,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The rest of the build method is identical to the previous version and is correct.
-    // I'm keeping it here for completeness.
     final authState = ref.watch(authProvider).valueOrNull;
     if (authState?.user == null) return _buildScaffold(const Center(child: Text("User not authenticated.")));
-
     final user = authState!.user!;
     final weightMultiplier = user.weightMultiplier;
-    
     final scoreForRankCalc = widget.finalScore > widget.previousBest ? widget.finalScore : widget.previousBest.toDouble();
-
     final resultProvider = resultScreenDataProvider((scenarioId: widget.scenarioId, finalScore: scoreForRankCalc));
     final screenDataAsync = ref.watch(resultProvider);
 
@@ -145,13 +120,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         final currentRank = data.rank['current_rank'] ?? 'Unranked';
         final nextThreshold = data.rank['next_rank_threshold'];
         final isMax = currentRank == 'Celestial';
-        
         final scoreToUse = widget.finalScore;
-
-        final progressValue = isMax ? 1.0 : (nextThreshold != null && nextThreshold > 0) 
-          ? (scoreToUse / nextThreshold).clamp(0.0, 1.0) 
-          : 0.0;
-
+        final progressValue = isMax ? 1.0 : (nextThreshold != null && nextThreshold > 0) ? (scoreToUse / nextThreshold).clamp(0.0, 1.0) : 0.0;
         return _buildScaffold(
           SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -187,7 +157,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 }),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () => context.pop(true), // Return true to signal a refresh
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14)),
                   child: const Text('Back to Menu'),
                 ),
@@ -195,31 +165,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             ),
           ),
           actions: [
-            // The Screenshot widget must not be const and must be inside the build method
-            // where it has access to the data it needs to render.
-            // A simple way is to wrap just the IconButton in a builder.
-            Builder(
-              builder: (context) {
-                // We must hide the screenshot widget itself from view.
-                return Offstage(
-                  offstage: true,
-                  child: Screenshot(
-                    controller: _screenshotController,
-                    child: ShareableResultCard(
-                      username: user.username,
-                      scenarioName: scenarioName,
-                      finalScore: (scoreToUse * weightMultiplier).toStringAsFixed(1),
-                      rankName: currentRank,
-                      rankColor: getRankColor(currentRank),
-                    ),
-                  ),
-                );
-              }
-            ),
-            IconButton(
-              icon: _isSharing ? const LoadingSpinner(size: 24) : const Icon(Icons.share),
-              onPressed: _isSharing ? null : () => _handleShare(data, user.username, weightMultiplier),
-            )
+            Builder(builder: (context) => Offstage(offstage: true, child: Screenshot(controller: _screenshotController, child: ShareableResultCard(username: user.username, scenarioName: scenarioName, finalScore: (scoreToUse * weightMultiplier).toStringAsFixed(1), rankName: currentRank, rankColor: getRankColor(currentRank))))),
+            IconButton(icon: _isSharing ? const LoadingSpinner(size: 24) : const Icon(Icons.share), onPressed: _isSharing ? null : () => _handleShare(data, user.username, weightMultiplier))
           ]
         );
       },
