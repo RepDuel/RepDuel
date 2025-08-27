@@ -1,44 +1,66 @@
 // frontend/lib/features/ranked/providers/score_history_provider.dart
 
+import 'dart:async'; // For exceptions
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show debugPrint; // For logging
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/env.dart';
-import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/auth_provider.dart'; // Import auth provider
 import '../models/score_history_entry.dart';
 
-final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistoryEntry>, String>((ref, scenarioId) async {
-  final user = ref.watch(authProvider).user;
-  if (user == null) throw Exception("User not authenticated");
-  
-  final url = '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
-  final token = ref.read(authProvider).token;
+final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistoryEntry>, String>(
+  (ref, scenarioId) async {
+    // Safely access user and token from authProvider
+    final authStateData = ref.read(authProvider).valueOrNull;
+    final user = authStateData?.user;
+    final token = authStateData?.token;
 
-  // Debug: Print score history request
-  print('Fetching score history for user: ${user.id}, scenario: $scenarioId');
-  print('Score History URL: $url');
-  print('Token available: ${token != null}');
+    // If user or token is null, the user is not authenticated.
+    // Throw an exception to indicate this, which will be caught by AsyncValue.
+    if (user == null || token == null) {
+      debugPrint("[ScoreHistoryProvider] User or token is null. User not authenticated.");
+      throw Exception("User not authenticated. Please log in.");
+    }
 
-  final response = await http.get(
-    Uri.parse(url),
-    headers: {
-      'Authorization': 'Bearer $token',
-    },
-  );
+    // Construct the URL using user ID.
+    final url = '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
+    
+    debugPrint('Fetching score history for user: ${user.id}, scenario: $scenarioId');
+    debugPrint('Score History URL: $url');
+    debugPrint('Token available: ${token.isNotEmpty}'); // Check token availability
 
-  // Debug: Print score history response
-  print('Score History Response Status: ${response.statusCode}');
-  print('Score History Response Body: ${response.body}');
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // Use the safely retrieved token
+        },
+      ).timeout(const Duration(seconds: 10)); // Add timeout for robustness
 
-  if (response.statusCode == 200) {
-    final List<dynamic> data = json.decode(response.body);
-    final entries = data.map((item) => ScoreHistoryEntry.fromJson(item)).toList();
-    entries.sort((a, b) => a.date.compareTo(b.date));
-    return entries;
-  } else if (response.statusCode == 403) {
-    throw Exception("Upgrade to Gold to see your history. Status: 403");
-  } else {
-    throw Exception("Failed to load score history. Status: ${response.statusCode}, Body: ${response.body}");
-  }
-});
+      debugPrint('Score History Response Status: ${response.statusCode}');
+      debugPrint('Score History Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final entries = data.map((item) => ScoreHistoryEntry.fromJson(item)).toList();
+        // Sort entries by date
+        entries.sort((a, b) => a.date.compareTo(b.date)); 
+        return entries;
+      } else if (response.statusCode == 403) {
+        // Specific error for subscription requirements
+        throw Exception("Upgrade to Gold to see your history. Status: 403");
+      } else {
+        // Generic error for other non-200 status codes
+        throw Exception("Failed to load score history. Status: ${response.statusCode}, Body: ${response.body}");
+      }
+    } catch (e) {
+      // Catch any exceptions (network errors, JSON decoding errors, etc.)
+      debugPrint("[ScoreHistoryProvider] Error fetching score history: $e");
+      // Rethrow the exception so AsyncValue can handle it.
+      throw Exception('Failed to load score history: $e');
+    }
+  },
+);
