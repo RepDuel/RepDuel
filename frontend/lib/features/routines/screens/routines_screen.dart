@@ -12,18 +12,12 @@ import '../../../widgets/loading_spinner.dart';
 import '../widgets/add_routine_card.dart';
 import '../widgets/routine_card.dart';
 
-// The provider is now more robust, handling auth state changes explicitly.
 final routinesProvider = FutureProvider.autoDispose<List<Routine>>((ref) async {
-  // Use .when to ensure we only fetch data when auth is fully resolved.
   return ref.watch(authProvider).when(
-    loading: () => Future.value([]), // Return empty list while auth is loading
-    error: (e, s) => throw e, // Propagate any auth errors
+    loading: () => Future.value([]),
+    error: (e, s) => throw e,
     data: (authState) async {
-      // If user is logged out, return an empty list.
-      if (authState.user == null) {
-        return [];
-      }
-      // Only when we have a confirmed user do we fetch routines.
+      if (authState.user == null) return [];
       final client = ref.watch(privateHttpClientProvider);
       final response = await client.get('/routines/');
       final List data = response.data;
@@ -38,10 +32,8 @@ class RoutinesScreen extends ConsumerWidget {
   void _onAddRoutinePressed(BuildContext context, WidgetRef ref, List<Routine> routines) {
     final user = ref.read(authProvider).valueOrNull?.user;
     if (user == null) return;
-
     final isFree = user.subscriptionLevel == 'free';
     final hasReachedLimit = routines.where((r) => r.userId == user.id).length >= 3;
-
     if (isFree && hasReachedLimit) {
       showDialog(
         context: context,
@@ -81,7 +73,6 @@ class RoutinesScreen extends ConsumerWidget {
         ],
       ),
     );
-
     if (confirmed == true) {
       try {
         final client = ref.read(privateHttpClientProvider);
@@ -99,7 +90,6 @@ class RoutinesScreen extends ConsumerWidget {
     final routinesAsync = ref.watch(routinesProvider);
     final currentUserId = ref.watch(authProvider).valueOrNull?.user?.id;
 
-    // The Scaffold no longer contains its own AppBar.
     return Scaffold(
       backgroundColor: Colors.black,
       body: RefreshIndicator(
@@ -110,19 +100,26 @@ class RoutinesScreen extends ConsumerWidget {
           data: (routines) {
             if (routines.isEmpty && !routinesAsync.isLoading) {
               return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("No routines found.", style: TextStyle(color: Colors.grey, fontSize: 18)),
-                      const SizedBox(height: 8),
-                      const Text("Pull down to refresh or create one!", style: TextStyle(color: Colors.grey)),
-                      const SizedBox(height: 20),
-                      AddRoutineCard(onPressed: () => _onAddRoutinePressed(context, ref, routines)),
-                    ],
+                // --- THIS IS THE FIX ---
+                child: SingleChildScrollView( // Wrap the Column in a SingleChildScrollView
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("No routines found.", style: TextStyle(color: Colors.grey, fontSize: 18)),
+                        const SizedBox(height: 8),
+                        const Text("Pull down to refresh or create one!", style: TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: 220,
+                          child: AddRoutineCard(onPressed: () => _onAddRoutinePressed(context, ref, routines)),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                // --- END OF FIX ---
               );
             }
             return GridView.builder(
@@ -144,7 +141,13 @@ class RoutinesScreen extends ConsumerWidget {
                 return Stack(
                   children: [
                     GestureDetector(
-                      onTap: () => context.pushNamed('exerciseList', pathParameters: {'routineId': routine.id}),
+                      onTap: () async {
+                        final result = await context.pushNamed<bool>('exerciseList', pathParameters: {'routineId': routine.id});
+                        // After returning from the routine, refresh the list in case something changed.
+                        if (result == true && context.mounted) {
+                          ref.invalidate(routinesProvider);
+                        }
+                      },
                       child: RoutineCard(
                         name: routine.name,
                         imageUrl: routine.imageUrl,
@@ -158,9 +161,12 @@ class RoutinesScreen extends ConsumerWidget {
                         right: 4,
                         child: PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert, color: Colors.white70),
-                          onSelected: (value) {
+                          onSelected: (value) async {
                             if (value == 'edit') {
-                              context.pushNamed('editRoutine', extra: routine);
+                              final result = await context.pushNamed<bool>('editRoutine', extra: routine);
+                              if (result == true && context.mounted) {
+                                ref.invalidate(routinesProvider);
+                              }
                             } else if (value == 'delete') {
                               _deleteRoutine(context, ref, routine.id);
                             }
