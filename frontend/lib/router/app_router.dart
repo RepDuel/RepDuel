@@ -3,8 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:repduel/features/routines/screens/add_exercise_screen.dart'; // Import AddExerciseScreen
 import 'package:repduel/features/routines/screens/exercise_play_screen.dart';
-import 'package:repduel/features/scenario/screens/scenario_screen.dart'; // Import ScenarioScreen
+import 'package:repduel/features/scenario/screens/scenario_screen.dart';
+import 'package:repduel/features/routines/screens/summary_screen.dart';
 
 import '../core/models/routine.dart';
 import '../core/models/routine_details.dart';
@@ -90,7 +92,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
         },
       ),
-      // The multi-set screen for routines
       GoRoute(
         path: '/exercise-play', name: 'exercise-play',
         builder: (context, state) {
@@ -103,16 +104,28 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
-      // The single-set screen for ranked lifts
       GoRoute(
-        path: '/scenario/:scenarioId',
-        name: 'scenario',
+        path: '/scenario/:scenarioId', name: 'scenario',
         builder: (context, state) {
           final scenarioId = state.pathParameters['scenarioId']!;
           final liftName = state.extra as String? ?? 'Ranked Lift';
           return ScenarioScreen(scenarioId: scenarioId, liftName: liftName);
         },
       ),
+      GoRoute(
+        path: '/summary', name: 'summary',
+        builder: (context, state) {
+          final totalVolume = state.extra as int? ?? 0;
+          return SummaryScreen(totalVolume: totalVolume);
+        },
+      ),
+      // --- THIS IS THE FIX ---
+      GoRoute(
+        path: '/add-exercise',
+        name: 'addExercise',
+        builder: (context, state) => const AddExerciseScreen(),
+      ),
+      // --- END OF FIX ---
     ],
     redirect: (context, state) {
       final authStateAsync = ref.read(authProvider);
