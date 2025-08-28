@@ -12,20 +12,34 @@ const Map<String, int> rankEnergy = {
 };
 
 Color getRankColor(String rank) {
-  switch (rank) {
-    case 'Iron': return Colors.grey[600]!;
-    case 'Bronze': return const Color(0xFFcd7f32);
-    case 'Silver': return const Color(0xFFc0c0c0);
-    case 'Gold': return const Color(0xFFffd700);
-    case 'Platinum': return const Color(0xFFe5e4e2);
-    case 'Diamond': return const Color(0xFFb9f2ff);
-    case 'Jade': return const Color(0xFF00A86B);
-    case 'Master': return const Color(0xFF9932CC);
-    case 'Grandmaster': return const Color(0xFFFF4500);
-    case 'Nova': return const Color(0xFFa45ee5);
-    case 'Astra': return const Color(0xFFff4040);
-    case 'Celestial': return const Color(0xFF00ffff);
-    default: return Colors.white;
+  // Using toLowerCase() to make the matching case-insensitive and more robust.
+  switch (rank.toLowerCase()) {
+    case 'iron':
+      return const Color(0xFF808080); // #808080
+    case 'bronze':
+      return const Color(0xFFcd7f32); // #cd7f32
+    case 'silver':
+      return const Color(0xFFc0c0c0); // #c0c0c0
+    case 'gold':
+      return const Color(0xFFefbf04); // #efbf04
+    case 'platinum':
+      return const Color(0xFF00ced1); // #00ced1
+    case 'diamond':
+      return const Color(0xFFb9f2ff); // #b9f2ff
+    case 'jade':
+      return const Color(0xFF62f40c); // #62f40c
+    case 'master':
+      return const Color(0xFFff00ff); // #ff00ff
+    case 'grandmaster':
+      return const Color(0xFFffde21); // #ffde21
+    case 'nova':
+      return const Color(0xFFa45ee5); // #a45ee5
+    case 'astra':
+      return const Color(0xFFff4040); // #ff4040
+    case 'celestial':
+      return const Color(0xFF00ffff); // #00ffff
+    default:
+      return Colors.white; // Default for "Unranked" or any unexpected value
   }
 }
 
