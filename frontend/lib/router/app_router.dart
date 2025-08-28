@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:repduel/features/routines/screens/exercise_play_screen.dart';
+import 'package:repduel/features/scenario/screens/scenario_screen.dart'; // Import ScenarioScreen
 
 import '../core/models/routine.dart';
 import '../core/models/routine_details.dart';
@@ -34,29 +35,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/routines',
     refreshListenable: GoRouterRefreshStream(authStateStream),
     routes: [
-      // --- SHELLED ROUTES (Screens with the bottom navigation bar) ---
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainScaffold(navigationShell: navigationShell);
         },
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/normal', name: 'normal', builder: (context, state) => const NormalScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/ranked', name: 'ranked', builder: (context, state) => const RankedScreen()),
-          ]),
-          // --- THE FIX: Routines and its sub-routes are all nested here ---
+          StatefulShellBranch(routes: [GoRoute(path: '/normal', name: 'normal', builder: (context, state) => const NormalScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/ranked', name: 'ranked', builder: (context, state) => const RankedScreen())]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/routines',
-              name: 'routines',
-              builder: (context, state) => const RoutinesScreen(),
+              path: '/routines', name: 'routines', builder: (context, state) => const RoutinesScreen(),
               routes: [
-                GoRoute(
-                  path: 'custom', name: 'createRoutine',
-                  builder: (context, state) => const CustomRoutineScreen(),
-                ),
+                GoRoute(path: 'custom', name: 'createRoutine', builder: (context, state) => const CustomRoutineScreen()),
                 GoRoute(
                   path: 'edit', name: 'editRoutine',
                   builder: (context, state) {
@@ -74,7 +64,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               ]
             ),
           ]),
-          // --- THE FIX: Profile and its sub-routes are all nested here ---
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/profile', name: 'profile', builder: (context, state) => const ProfileScreen(),
@@ -87,7 +76,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // --- TOP-LEVEL ROUTES (Screens without the bottom navigation bar) ---
+      // --- TOP-LEVEL ROUTES (no bottom nav bar) ---
       GoRoute(path: '/login', name: 'login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/register', name: 'register', builder: (context, state) => const RegisterScreen()),
       GoRoute(path: '/subscribe', name: 'subscribe', builder: (context, state) => const SubscriptionScreen()),
@@ -101,6 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
         },
       ),
+      // The multi-set screen for routines
       GoRoute(
         path: '/exercise-play', name: 'exercise-play',
         builder: (context, state) {
@@ -113,19 +103,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
+      // The single-set screen for ranked lifts
+      GoRoute(
+        path: '/scenario/:scenarioId',
+        name: 'scenario',
+        builder: (context, state) {
+          final scenarioId = state.pathParameters['scenarioId']!;
+          final liftName = state.extra as String? ?? 'Ranked Lift';
+          return ScenarioScreen(scenarioId: scenarioId, liftName: liftName);
+        },
+      ),
     ],
     redirect: (context, state) {
       final authStateAsync = ref.read(authProvider);
       if (authStateAsync.isLoading) return null;
-      
       final isLoggedIn = authStateAsync.valueOrNull?.user != null;
-      final path = state.uri.path;
       final publicRoutes = ['/login', '/register'];
-      final isAuthRoute = publicRoutes.contains(path);
-
+      final isAuthRoute = publicRoutes.contains(state.uri.path);
       if (!isLoggedIn && !isAuthRoute) return '/login';
       if (isLoggedIn && isAuthRoute) return '/profile';
-      
       return null; 
     },
   );
