@@ -6,7 +6,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/auth_provider.dart';
-// Correct import path for our rank utilities
 import '../utils/rank_utils.dart';
 
 class RankingTable extends ConsumerWidget {
@@ -38,9 +37,9 @@ class RankingTable extends ConsumerWidget {
     final user = ref.watch(authProvider).valueOrNull?.user;
     if (user == null) return const Center(child: Text('User not found.'));
     
+    // Read the official energy and rank from the single source of truth.
     final officialEnergy = user.energy.round();
     final officialRank = user.rank ?? 'Unranked';
-    // Call the top-level function directly
     final overallColor = getRankColor(officialRank);
     
     final weightMultiplier = user.weightMultiplier;
@@ -50,6 +49,7 @@ class RankingTable extends ConsumerWidget {
       final scoreInKg = userHighScores[lift] ?? 0.0;
       allLifts[lift] = scoreInKg * weightMultiplier;
     }
+
     return Column(
       children: [
         Row(
@@ -58,7 +58,12 @@ class RankingTable extends ConsumerWidget {
             const Text('Overall Energy: ', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             Text('$officialEnergy', style: TextStyle(color: overallColor, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(width: 8),
-            SvgPicture.asset('assets/images/ranks/${officialRank.toLowerCase()}.svg', height: 24, width: 24, colorFilter: ColorFilter.mode(overallColor, BlendMode.srcIn)),
+            // The SVG is now rendered with its original colors.
+            SvgPicture.asset(
+              'assets/images/ranks/${officialRank.toLowerCase()}.svg',
+              height: 24,
+              width: 24,
+            ),
             IconButton(icon: const Icon(Icons.leaderboard, color: Colors.blueAccent), onPressed: onEnergyLeaderboardTapped),
           ],
         ),
@@ -142,12 +147,12 @@ class _RankingRow extends StatelessWidget {
       final currentIndex = sortedRanks.indexWhere((e) => e.key == matchedRank);
       if (currentIndex > 0) { nextThreshold = _roundToNearest5((sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0) * userMultiplier); }
     } else { nextThreshold = sortedRanks.isNotEmpty ? _roundToNearest5((sortedRanks.last.value['lifts'][lowerLift] ?? 0) * userMultiplier) : 0; }
+    
     double progress = 0.0;
     if (isMax) { progress = 1.0; } 
     else if (nextThreshold > currentThreshold) { progress = ((score - currentThreshold) / (nextThreshold - currentThreshold)).clamp(0.0, 1.0); } 
     else if (nextThreshold > 0) { progress = (score / nextThreshold).clamp(0.0, 1.0); }
 
-    // Use the top-level functions directly.
     final energy = getInterpolatedEnergy(score: score, thresholds: standards, liftKey: lowerLift, userMultiplier: userMultiplier);
     final rankColor = getRankColor(matchedRank ?? 'Unranked');
     final iconPath = 'assets/images/ranks/${matchedRank?.toLowerCase() ?? 'unranked'}.svg';
@@ -173,7 +178,8 @@ class _RankingRow extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(flex: 2, child: Center(child: SvgPicture.asset(iconPath, height: 24, width: 24, colorFilter: ColorFilter.mode(rankColor, BlendMode.srcIn)))),
+            // The SVG is now rendered with its original colors.
+            Expanded(flex: 2, child: Center(child: SvgPicture.asset(iconPath, height: 24, width: 24))),
             Expanded(flex: 1, child: Center(child: Text(NumberFormat("###0").format(energy), style: const TextStyle(color: Colors.white)))),
             Expanded(flex: 1, child: IconButton(icon: const Icon(Icons.leaderboard, color: Colors.blueAccent), onPressed: onLeaderboardTap)),
           ],
