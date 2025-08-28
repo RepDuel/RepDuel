@@ -5,207 +5,85 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:repduel/widgets/loading_spinner.dart';
 
-import '../../../core/providers/auth_provider.dart'; // Import the auth provider
-import '../../../core/providers/energy_providers.dart';
+import '../../../core/providers/auth_provider.dart';
+// Correct import path for our rank utilities
+import '../../ranked/utils/rank_utils.dart';
 import '../widgets/energy_graph.dart';
 import '../widgets/workout_history_list.dart';
 
+final _showGraphProvider = StateProvider.autoDispose<bool>((ref) => false);
 
-class ProfileScreen extends ConsumerStatefulWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authStateAsync = ref.watch(authProvider);
 
-class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  bool _showGraph = false;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: authStateAsync.when(
+        loading: () => const Center(child: LoadingSpinner()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+        data: (authState) {
+          final user = authState.user;
+          if (user == null) {
+            return const Center(child: Text('Not logged in.'));
+          }
+          final rank = user.rank ?? 'Unranked';
+          final energy = user.energy.round();
+          // Call the top-level function directly
+          final rankColor = getRankColor(rank);
+          final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
+          final showGraph = ref.watch(_showGraphProvider);
 
-  String getRank(int energy) {
-    if (energy >= 1200) return 'Celestial';
-    if (energy >= 1100) return 'Astra';
-    if (energy >= 1000) return 'Nova';
-    if (energy >= 900) return 'Grandmaster';
-    if (energy >= 800) return 'Master';
-    if (energy >= 700) return 'Jade';
-    if (energy >= 600) return 'Diamond';
-    if (energy >= 500) return 'Platinum';
-    if (energy >= 400) return 'Gold';
-    if (energy >= 300) return 'Silver';
-    if (energy >= 200) return 'Bronze';
-    return 'Iron';
-  }
-
-  Color getRankColor(String rank) {
-    switch (rank) {
-      case 'Iron':
-        return Colors.grey;
-      case 'Bronze':
-        return const Color(0xFFcd7f32);
-      case 'Silver':
-        return const Color(0xFFc0c0c0);
-      case 'Gold':
-        return const Color(0xFFefbf04);
-      case 'Platinum':
-        return const Color(0xFF00ced1);
-      case 'Diamond':
-        return const Color(0xFFb9f2ff);
-      case 'Jade':
-        return const Color(0xFF62f40c);
-      case 'Master':
-        return const Color(0xFFff00ff);
-      case 'Grandmaster':
-        return const Color(0xFFffde21);
-      case 'Nova':
-        return const Color(0xFFa45ee5);
-      case 'Astra':
-        return const Color(0xFFff4040);
-      case 'Celestial':
-        return const Color(0xFF00ffff);
-      default:
-        return Colors.white;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Watch the authProvider which returns AsyncValue<AuthState>
-    final authStateAsyncValue = ref.watch(authProvider);
-
-    // Use .when() to handle loading, error, and data states gracefully.
-    return authStateAsyncValue.when(
-      loading: () => const Scaffold( // Display loading screen while auth state is loading
-        backgroundColor: Colors.black,
-        body: Center(child: LoadingSpinner()),
-      ),
-      error: (error, stackTrace) => Scaffold( // Display error message if auth fails to load
-        backgroundColor: Colors.black,
-        body: Center(child: Text('Error loading profile: $error', style: const TextStyle(color: Colors.red))),
-      ),
-      data: (authState) { // authState is the actual AuthState object here
-        // Now, check if the user data within the AuthState is null.
-        // This handles cases where the user is logged out or the initial state is empty.
-        final user = authState.user; 
-
-        // If user is null even after loading, show a logged-out state or redirect.
-        // For this screen, showing a basic logged-out UI or redirecting via router is appropriate.
-        // We'll show a loading spinner for simplicity here, assuming the router will handle redirection.
-        if (user == null) {
-          // This case should ideally be handled by the router redirecting to login,
-          // but as a fallback, we show a loading spinner.
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(child: LoadingSpinner()),
-          );
-        }
-
-        // --- User is logged in and available ---
-        // Now that we know the user is not null, it's safe to proceed.
-        // Fetch energy data, passing the user's ID.
-        final energyFuture = ref.read(energyApiProvider).getLatestEnergy(user.id);
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    // Safely access user.avatarUrl
-                    child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                        ? Image.network(user.avatarUrl!,
-                            width: 80, height: 80, fit: BoxFit.cover)
-                        : Image.asset(
-                            'assets/images/profile_placeholder.png',
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    // Safely access user.username
-                    child: Text(user.username,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 24)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              FutureBuilder<int>(
-                future: energyFuture,
-                builder: (context, snapshot) {
-                  // Handle connection state for the energy future
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  // Handle errors or missing data for energy score
-                  if (snapshot.hasError || !snapshot.hasData) {
-                    return const Text('Could not load energy score.', style: TextStyle(color: Colors.red));
-                  }
-
-                  final energy = snapshot.data ?? 0;
-                  final rank = getRank(energy);
-                  final color = getRankColor(rank);
-                  final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            const Text('Energy: ',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 18)),
-                            Text('$energy ',
-                                style: TextStyle(
-                                    color: color,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold)),
-                            SvgPicture.asset(iconPath,
-                                height: 24, width: 24),
-                            const SizedBox(width: 8),
-                            TextButton(
-                              onPressed: () {
-                                setState(() => _showGraph = !_showGraph);
-                              },
-                              child: Text(
-                                  _showGraph
-                                      ? 'Hide Graph'
-                                      : 'View Graph',
-                                  style:
-                                      const TextStyle(color: Colors.white)),
-                            ),
-                          ],
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                          ? Image.network(user.avatarUrl!, width: 80, height: 80, fit: BoxFit.cover)
+                          : Image.asset('assets/images/profile_placeholder.png', width: 80, height: 80, fit: BoxFit.cover),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(child: Text(user.username, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('Energy: ', style: TextStyle(color: Colors.white, fontSize: 18)),
+                        Text('$energy ', style: TextStyle(color: rankColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                        SvgPicture.asset(iconPath, height: 24, width: 24, colorFilter: ColorFilter.mode(rankColor, BlendMode.srcIn)),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => ref.read(_showGraphProvider.notifier).state = !showGraph,
+                          child: Text(showGraph ? 'Hide Graph' : 'View Graph', style: const TextStyle(color: Colors.blueAccent)),
                         ),
-                      ),
-                      if (_showGraph) const SizedBox(height: 8),
-                      if (_showGraph)
-                        SizedBox(
-                            height: 200,
-                            // Pass the user's ID to the EnergyGraph
-                            child: EnergyGraph(userId: user.id)), 
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 32),
-              const Text('Workout History',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              // Pass the user's ID to the WorkoutHistoryList
-              WorkoutHistoryList(userId: user.id), 
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
+                      ],
+                    ),
+                    if (showGraph) const SizedBox(height: 8),
+                    if (showGraph) SizedBox(height: 200, child: EnergyGraph(userId: user.id)),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                const Text('Workout History', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                WorkoutHistoryList(userId: user.id),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

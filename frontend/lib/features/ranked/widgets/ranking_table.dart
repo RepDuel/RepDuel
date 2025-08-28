@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/auth_provider.dart';
+// Correct import path for our rank utilities
 import '../utils/rank_utils.dart';
 
 class RankingTable extends ConsumerWidget {
@@ -15,8 +16,6 @@ class RankingTable extends ConsumerWidget {
   final Function(String liftName) onLiftTapped;
   final Function(String scenarioId) onLeaderboardTapped;
   final VoidCallback onEnergyLeaderboardTapped;
-  // 1. REMOVE the onEnergyComputed callback to break the infinite loop.
-  // final Function(int energy, String rank) onEnergyComputed;
 
   const RankingTable({
     super.key,
@@ -26,7 +25,6 @@ class RankingTable extends ConsumerWidget {
     required this.onLiftTapped,
     required this.onLeaderboardTapped,
     required this.onEnergyLeaderboardTapped,
-    // required this.onEnergyComputed, // Removed
   });
 
   static const scenarioIds = {
@@ -35,65 +33,33 @@ class RankingTable extends ConsumerWidget {
     'Deadlift': 'deadlift',
   };
 
-  String _getRankFromEnergy(double energy) {
-    final entries = RankUtils.rankEnergy.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    for (final entry in entries) {
-      if (energy >= entry.value) return entry.key;
-    }
-    return 'Unranked';
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider).valueOrNull;
-
-    if (authState?.user == null) {
-      return const Center(child: Text('User not found.'));
-    }
-    final user = authState!.user!;
+    final user = ref.watch(authProvider).valueOrNull?.user;
+    if (user == null) return const Center(child: Text('User not found.'));
+    
+    final officialEnergy = user.energy.round();
+    final officialRank = user.rank ?? 'Unranked';
+    // Call the top-level function directly
+    final overallColor = getRankColor(officialRank);
+    
     final weightMultiplier = user.weightMultiplier;
-
     final defaultLifts = ['Squat', 'Bench', 'Deadlift'];
     final allLifts = <String, double>{};
-
     for (var lift in defaultLifts) {
       final scoreInKg = userHighScores[lift] ?? 0.0;
       allLifts[lift] = scoreInKg * weightMultiplier;
     }
-    
-    final energies = allLifts.entries.map((entry) {
-      final liftKey = entry.key.toLowerCase();
-      final scoreWithMultiplier = entry.value;
-      return RankUtils.getInterpolatedEnergy(
-          score: scoreWithMultiplier,
-          thresholds: liftStandards,
-          liftKey: liftKey,
-          userMultiplier: weightMultiplier);
-    }).toList();
-
-    final averageEnergy = energies.isNotEmpty ? energies.reduce((a, b) => a + b) / energies.length : 0.0;
-    final overallRank = _getRankFromEnergy(averageEnergy);
-    final overallColor = getRankColor(overallRank);
-
-    // 2. REMOVE the post-frame callback. The widget no longer triggers side effects.
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   onEnergyComputed(averageEnergy.round(), overallRank);
-    // });
-
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             const Text('Overall Energy: ', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text('${averageEnergy.round()}', style: TextStyle(color: overallColor, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('$officialEnergy', style: TextStyle(color: overallColor, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(width: 8),
-            SvgPicture.asset('assets/images/ranks/${overallRank.toLowerCase()}.svg', height: 24, width: 24, colorFilter: ColorFilter.mode(overallColor, BlendMode.srcIn)),
-            IconButton(
-              icon: const Icon(Icons.leaderboard, color: Colors.blueAccent),
-              onPressed: onEnergyLeaderboardTapped,
-            ),
+            SvgPicture.asset('assets/images/ranks/${officialRank.toLowerCase()}.svg', height: 24, width: 24, colorFilter: ColorFilter.mode(overallColor, BlendMode.srcIn)),
+            IconButton(icon: const Icon(Icons.leaderboard, color: Colors.blueAccent), onPressed: onEnergyLeaderboardTapped),
           ],
         ),
         const SizedBox(height: 16),
@@ -150,70 +116,39 @@ class _RankingRow extends StatelessWidget {
   final VoidCallback onLeaderboardTap;
   final double userMultiplier;
 
-  const _RankingRow({
-    required this.lift,
-    required this.score,
-    required this.standards,
-    required this.onTap,
-    required this.onLeaderboardTap,
-    required this.userMultiplier,
-  });
+  const _RankingRow({ required this.lift, required this.score, required this.standards, required this.onTap, required this.onLeaderboardTap, required this.userMultiplier });
 
-  double _roundToNearest5(double value) {
-    return (value / 5).round() * 5.0;
-  }
+  double _roundToNearest5(double value) { return (value / 5).round() * 5.0; }
 
   @override
   Widget build(BuildContext context) {
     final lowerLift = lift.toLowerCase();
-    
-    final sortedRanks = standards.entries.toList()
-      ..sort((a, b) {
-        final scoreA = (a.value['lifts'][lowerLift] ?? 0) as num;
-        final scoreB = (b.value['lifts'][lowerLift] ?? 0) as num;
-        return scoreB.compareTo(scoreA); // Descending
-      });
-
+    final sortedRanks = standards.entries.toList()..sort((a, b) => (a.value['lifts'][lowerLift] ?? 0).compareTo(b.value['lifts'][lowerLift] ?? 0) * -1);
     String? matchedRank;
     double currentThreshold = 0.0;
     double nextThreshold = 0.0;
-
     for (final entry in sortedRanks) {
       final threshold = (entry.value['lifts'][lowerLift] ?? 0) as num;
       final adjustedThreshold = _roundToNearest5(threshold * userMultiplier);
-
       if (score >= adjustedThreshold) {
         matchedRank = entry.key;
         currentThreshold = adjustedThreshold;
         break;
       }
     }
-    
-    final bool isMax;
-    final highestRankName = sortedRanks.isNotEmpty ? sortedRanks.first.key : null;
-    isMax = (matchedRank != null && matchedRank == highestRankName);
-
-    if (isMax) {
-      nextThreshold = currentThreshold;
-    } else if (matchedRank != null) {
+    final bool isMax = (matchedRank != null && matchedRank == (sortedRanks.isNotEmpty ? sortedRanks.first.key : null));
+    if (isMax) { nextThreshold = currentThreshold; } 
+    else if (matchedRank != null) {
       final currentIndex = sortedRanks.indexWhere((e) => e.key == matchedRank);
-      if (currentIndex > 0) {
-        nextThreshold = _roundToNearest5((sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0) * userMultiplier);
-      }
-    } else {
-      nextThreshold = sortedRanks.isNotEmpty ? _roundToNearest5((sortedRanks.last.value['lifts'][lowerLift] ?? 0) * userMultiplier) : 0;
-    }
-
+      if (currentIndex > 0) { nextThreshold = _roundToNearest5((sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0) * userMultiplier); }
+    } else { nextThreshold = sortedRanks.isNotEmpty ? _roundToNearest5((sortedRanks.last.value['lifts'][lowerLift] ?? 0) * userMultiplier) : 0; }
     double progress = 0.0;
-    if (isMax) {
-      progress = 1.0;
-    } else if (nextThreshold > currentThreshold) {
-      progress = ((score - currentThreshold) / (nextThreshold - currentThreshold)).clamp(0.0, 1.0);
-    } else if (nextThreshold > 0) {
-      progress = (score / nextThreshold).clamp(0.0, 1.0);
-    }
+    if (isMax) { progress = 1.0; } 
+    else if (nextThreshold > currentThreshold) { progress = ((score - currentThreshold) / (nextThreshold - currentThreshold)).clamp(0.0, 1.0); } 
+    else if (nextThreshold > 0) { progress = (score / nextThreshold).clamp(0.0, 1.0); }
 
-    final energy = RankUtils.getInterpolatedEnergy(score: score, thresholds: standards, liftKey: lowerLift, userMultiplier: userMultiplier);
+    // Use the top-level functions directly.
+    final energy = getInterpolatedEnergy(score: score, thresholds: standards, liftKey: lowerLift, userMultiplier: userMultiplier);
     final rankColor = getRankColor(matchedRank ?? 'Unranked');
     final iconPath = 'assets/images/ranks/${matchedRank?.toLowerCase() ?? 'unranked'}.svg';
 
@@ -226,14 +161,15 @@ class _RankingRow extends StatelessWidget {
         child: Row(
           children: [
             Expanded(flex: 2, child: Text(lift, style: const TextStyle(color: Colors.white))),
-            Expanded(flex: 2, child: Center(child: Text(RankUtils.formatKg(score), style: const TextStyle(color: Colors.white)))),
+            Expanded(flex: 2, child: Center(child: Text(formatKg(score), style: const TextStyle(color: Colors.white)))),
             Expanded(
               flex: 2,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(height: 6, child: LinearProgressIndicator(value: progress, backgroundColor: Colors.grey[800], valueColor: AlwaysStoppedAnimation<Color>(rankColor))),
                   const SizedBox(height: 4),
-                  Text(isMax ? 'MAX RANK' : '${RankUtils.formatKg(score)} / ${RankUtils.formatKg(nextThreshold)}', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  Text(isMax ? 'MAX RANK' : '${formatKg(score)} / ${formatKg(nextThreshold)}', style: const TextStyle(color: Colors.white, fontSize: 12)),
                 ],
               ),
             ),

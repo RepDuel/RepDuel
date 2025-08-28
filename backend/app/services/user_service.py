@@ -33,13 +33,19 @@ async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
 
 
 async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
+    # --- THIS IS THE FIX ---
+    # Explicitly set the initial energy and rank for new users.
     user = User(
         username=user_in.username,
         email=user_in.email,
         hashed_password=hash_password(user_in.password),
         avatar_url=user_in.avatar_url,
         subscription_level="free",
+        energy=0, # Start new users with 0 energy
+        rank="Unranked", # Start new users as Unranked
     )
+    # --- END OF FIX ---
+
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -47,9 +53,10 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
 
 
 async def update_user(db: AsyncSession, user: User, updates: UserUpdate) -> User:
+    # This function is already correct and generic enough to handle the new fields.
     update_data = updates.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        if field == "password":
+        if field == "password" and value is not None:
             setattr(user, "hashed_password", hash_password(value))
         else:
             setattr(user, field, value)
