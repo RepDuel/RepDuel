@@ -2,80 +2,52 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:repduel/core/providers/api_providers.dart';
 
-import '../../../core/config/env.dart';
-import '../../../core/providers/auth_provider.dart'; // Import the auth provider correctly
+import '../../../core/providers/auth_provider.dart';
+import '../../../widgets/error_display.dart';
+import '../../../widgets/loading_spinner.dart';
 
-// --- Step 1: Create a Model for Type Safety ---
-
+// --- Data Models (can be moved to a separate models file) ---
 class LeaderboardEntry {
-  final LeaderboardUser user;
-  final num weightLifted;
+  final String username;
+  final String? avatarUrl;
+  final double scoreValue;
 
-  LeaderboardEntry({required this.user, required this.weightLifted});
+  LeaderboardEntry({required this.username, this.avatarUrl, required this.scoreValue});
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
     return LeaderboardEntry(
-      user: LeaderboardUser.fromJson(json['user'] ?? {}),
-      weightLifted: json['weight_lifted'] ?? 0,
+      // The user object is nested in the response
+      username: json['user']?['username'] ?? 'Anonymous',
+      avatarUrl: json['user']?['avatar_url'],
+      scoreValue: (json['score_value'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
 
-class LeaderboardUser {
-  final String username;
-
-  LeaderboardUser({required this.username});
-
-  factory LeaderboardUser.fromJson(Map<String, dynamic> json) {
-    return LeaderboardUser(
-      username: json['username'] ?? 'Anonymous',
-    );
-  }
-}
-
-// --- Step 2: Create a Provider for Data Fetching ---
-
-final leaderboardProvider = FutureProvider.family<List<LeaderboardEntry>, String>((ref, scenarioId) async {
-  // Get the token safely. This is crucial for authenticated requests.
-  // If the token is null (auth is loading/errored/logged out), the request will likely fail
-  // at the interceptor level, or the provider will be in a loading/error state anyway.
-  final token = ref.read(authProvider).valueOrNull?.token; // Safely get token
-
-  // If you strictly need the token for the URL itself (unlikely for this endpoint, but possible),
-  // you'd handle that here. For now, we assume the interceptor adds it.
-  // If the token is missing, the interceptor will block, and this provider will error.
-
-  final url = '${Env.baseUrl}/api/v1/scores/scenario/$scenarioId/leaderboard';
+// --- Provider for Data Fetching ---
+final leaderboardProvider = FutureProvider.autoDispose.family<List<LeaderboardEntry>, String>((ref, scenarioId) async {
+  // THIS IS THE FIX: Use the correct, authenticated HTTP client.
+  final client = ref.watch(privateHttpClientProvider);
   
   try {
-    final response = await http.get(
-      Uri.parse(url),
-      // Headers are typically handled by the HttpClient/Dio interceptor, 
-      // but you could add them here if needed for specific endpoints.
-      // headers: {'Authorization': 'Bearer $token'} // Example, usually handled by interceptor
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      
-      return data
-          .where((entry) => entry['user'] != null)
-          .map((entry) => LeaderboardEntry.fromJson(entry))
-          .toList();
-    } else {
-      throw Exception('Failed to load leaderboard: Status code ${response.statusCode}');
-    }
+    // The endpoint is for a specific scenario's leaderboard.
+    final response = await client.get('/scores/scenario/$scenarioId/leaderboard');
+    final List<dynamic> data = response.data;
+    
+    // Gracefully handle cases where the user object might be null in the response.
+    return data
+        .where((entry) => entry['user'] != null)
+        .map((entry) => LeaderboardEntry.fromJson(entry))
+        .toList();
   } catch (e) {
-    throw Exception('Failed to load leaderboard: $e');
+    // Re-throw a user-friendly error message.
+    throw Exception('Failed to load leaderboard. Please try again.');
   }
 });
 
-
-// --- Step 3: Refactor the Widget to use AsyncValue.when() ---
-
+// --- UI Widget ---
 class LeaderboardScreen extends ConsumerWidget {
   final String scenarioId;
   final String liftName;
@@ -84,122 +56,51 @@ class LeaderboardScreen extends ConsumerWidget {
     super.key,
     required this.scenarioId,
     required this.liftName,
-  });
+});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the provider to get the state (data, loading, or error).
-    final AsyncValue<List<LeaderboardEntry>> leaderboardData = ref.watch(leaderboardProvider(scenarioId));
+    final leaderboardDataAsync = ref.watch(leaderboardProvider(scenarioId));
+    // We only need the auth state for the unit multiplier.
+    final weightMultiplier = ref.watch(authProvider.select((state) => state.valueOrNull?.user?.weightMultiplier ?? 1.0));
+    final unit = weightMultiplier > 1.5 ? 'lbs' : 'kg';
     
-    // --- Safely Access User Data for Units ---
-    // Watch authProvider to get the AsyncValue<AuthState>
-    final authStateAsyncValue = ref.watch(authProvider);
-
-    // Use .when() to handle different auth states and extract user data.
-    return authStateAsyncValue.when(
-      loading: () => const Scaffold( // Show loading for auth state if not yet loaded
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text('$liftName Leaderboard'),
         backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator()),
       ),
-      error: (err, stack) => Scaffold( // Show error if auth state fails
-        backgroundColor: Colors.black,
-        body: Center(child: Text('Auth Error: $err', style: const TextStyle(color: Colors.red))),
-      ),
-      data: (authState) { // authState is the actual AuthState object
-        // Safely get the user from the loaded AuthState.
-        final user = authState.user; 
+      body: leaderboardDataAsync.when(
+        loading: () => const Center(child: LoadingSpinner()),
+        error: (err, stack) => Center(child: ErrorDisplay(message: err.toString(), onRetry: () => ref.refresh(leaderboardProvider(scenarioId)))),
+        data: (scores) {
+          if (scores.isEmpty) {
+            return const Center(
+              child: Text('No scores yet. Be the first!', style: TextStyle(color: Colors.white54, fontSize: 16)),
+            );
+          }
 
-        // Determine units based on user data. If user is null (logged out, etc.),
-        // default to sensible units (e.g., kg).
-        final isKg = user?.weightMultiplier == 1.0;
-        final multiplier = user?.weightMultiplier ?? 1.0;
-        final unit = isKg ? 'kg' : 'lbs';
+          return ListView.builder(
+            itemCount: scores.length,
+            itemBuilder: (_, index) {
+              final entry = scores[index];
+              final adjustedScore = entry.scoreValue * weightMultiplier;
+              final displayScore = adjustedScore % 1 == 0 ? adjustedScore.toInt().toString() : adjustedScore.toStringAsFixed(1);
 
-        // --- Now render the leaderboard based on leaderboardData ---
-        return Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            title: Text('$liftName Leaderboard'),
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
-          ),
-          // Use AsyncValue.when for clean handling of all possible states for leaderboardData.
-          body: leaderboardData.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
-            data: (scores) {
-              // Handle the case where scores might be empty but data loaded successfully
-              if (scores.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'No scores available yet. Be the first!', 
-                    style: TextStyle(color: Colors.white54, fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              }
-
-              return Column(
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Text('Rank', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text('User', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                        Text('Score', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: scores.length,
-                      itemBuilder: (_, index) {
-                        final scoreEntry = scores[index];
-                        
-                        final adjustedScore = scoreEntry.weightLifted * multiplier;
-                        final displayScore = adjustedScore % 1 == 0
-                            ? adjustedScore.toInt().toString()
-                            : adjustedScore.toStringAsFixed(1);
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 40,
-                                child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 16)),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                // Safely access username from the model
-                                child: Text(
-                                  scoreEntry.user.username, 
-                                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                                ),
-                              ),
-                              Text(
-                                '$displayScore $unit',
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.grey[800],
+                  backgroundImage: entry.avatarUrl != null ? NetworkImage(entry.avatarUrl!) : null,
+                  child: entry.avatarUrl == null ? const Icon(Icons.person, color: Colors.white54) : null,
+                ),
+                title: Text('${index + 1}. ${entry.username}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                trailing: Text('$displayScore $unit', style: const TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.w500)),
               );
             },
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
