@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/models/routine_details.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/error_display.dart';
@@ -12,13 +13,15 @@ import '../utils/rank_utils.dart';
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
 
-// --- Data Models & Providers (These are correct and remain the same) ---
+// --- Data Models & Providers ---
+
 class RankedScreenData {
   final Map<String, dynamic> liftStandards;
   final Map<String, double> userHighScores;
   RankedScreenData({required this.liftStandards, required this.userHighScores});
 }
 
+// THIS IS THE FIX: Restoring the full implementation of the providers.
 final liftStandardsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) throw Exception("User not authenticated.");
@@ -49,8 +52,8 @@ final rankedScreenDataProvider = FutureProvider.autoDispose<RankedScreenData>((r
   final highScores = await ref.watch(highScoresProvider.future);
   return RankedScreenData(liftStandards: standards, userHighScores: highScores);
 });
+// --- END OF FIX ---
 
-// --- THE WIDGET ---
 class RankedScreen extends ConsumerStatefulWidget {
   const RankedScreen({super.key});
   @override
@@ -59,16 +62,17 @@ class RankedScreen extends ConsumerStatefulWidget {
 
 class _RankedScreenState extends ConsumerState<RankedScreen> {
   bool _showBenchmarks = false;
+  
+  static const scenarioIds = {
+    'Squat': 'back_squat',
+    'Bench': 'barbell_bench_press',
+    'Deadlift': 'deadlift',
+  };
 
   @override
   Widget build(BuildContext context) {
-    // --- THIS IS THE FIX ---
-    // This listener handles the side-effect of submitting the new energy score
-    // without causing a rebuild loop.
     ref.listen<AsyncValue<RankedScreenData>>(rankedScreenDataProvider, (previous, next) {
-      // We only want to act when we get new, valid data.
       if (next is! AsyncData) return;
-
       final data = next.value;
       final user = ref.read(authProvider).valueOrNull?.user;
       if (data == null || user == null) return;
@@ -97,17 +101,14 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
           }
         }
         
-        // CRUCIAL CHECK: Only submit if the calculated energy is different from the stored energy.
-        // This prevents the infinite loop.
         if (roundedEnergy != user.energy.round()) {
           debugPrint("New energy ($roundedEnergy) is different from old (${user.energy.round()}). Submitting...");
           final client = ref.read(privateHttpClientProvider);
           client.post('/energy/submit', data: {
             'user_id': user.id,
-            'energy': roundedEnergy,
+            'energy': roundedEnergy.toDouble(),
             'rank': overallRank,
           }).then((_) {
-            // After successful submission, do a lightweight local update.
             ref.read(authProvider.notifier).updateLocalUserEnergy(
               newEnergy: roundedEnergy.toDouble(),
               newRank: overallRank,
@@ -118,7 +119,6 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
         }
       }
     });
-    // --- END OF FIX ---
 
     final rankedDataAsync = ref.watch(rankedScreenDataProvider);
 
@@ -143,16 +143,18 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                       userHighScores: data.userHighScores,
                       onViewBenchmarks: () => setState(() => _showBenchmarks = true),
                       onLiftTapped: (liftName) async {
-                        final scenarioMap = {'Squat': 'back_squat', 'Bench': 'barbell_bench_press', 'Deadlift': 'deadlift'};
-                        final scenarioId = scenarioMap[liftName];
+                        final scenarioId = scenarioIds[liftName];
                         if (scenarioId == null) return;
                         final shouldRefresh = await context.push<bool>('/scenario/$scenarioId', extra: liftName);
                         if (shouldRefresh == true && mounted) {
                            ref.invalidate(highScoresProvider);
                         }
                       },
-                      onLeaderboardTapped: (scenarioId) => context.push('/leaderboard/$scenarioId'),
-                      onEnergyLeaderboardTapped: () => context.push('/leaderboard/energy'),
+                      onLeaderboardTapped: (scenarioId) {
+                         final liftName = scenarioIds.entries.firstWhere((e) => e.value == scenarioId, orElse: () => const MapEntry('Lift', '')).key;
+                         context.push('/leaderboard/$scenarioId?liftName=$liftName');
+                      },
+                      onEnergyLeaderboardTapped: () => context.pushNamed('energyLeaderboard'),
                     ),
             );
           },

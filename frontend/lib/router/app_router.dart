@@ -3,7 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:repduel/features/routines/screens/add_exercise_screen.dart'; // Import AddExerciseScreen
+import 'package:repduel/features/leaderboard/screens/energy_leaderboard_screen.dart'; // Import EnergyLeaderboardScreen
+import 'package:repduel/features/routines/screens/add_exercise_screen.dart';
 import 'package:repduel/features/routines/screens/exercise_play_screen.dart';
 import 'package:repduel/features/scenario/screens/scenario_screen.dart';
 import 'package:repduel/features/routines/screens/summary_screen.dart';
@@ -92,6 +93,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
         },
       ),
+      GoRoute(path: '/add-exercise', name: 'addExercise', builder: (context, state) => const AddExerciseScreen()),
       GoRoute(
         path: '/exercise-play', name: 'exercise-play',
         builder: (context, state) {
@@ -121,9 +123,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       // --- THIS IS THE FIX ---
       GoRoute(
-        path: '/add-exercise',
-        name: 'addExercise',
-        builder: (context, state) => const AddExerciseScreen(),
+        path: '/leaderboard-energy', // A distinct path
+        name: 'energyLeaderboard',
+        builder: (context, state) => const EnergyLeaderboardScreen(),
       ),
       // --- END OF FIX ---
     ],
