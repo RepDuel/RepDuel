@@ -76,9 +76,21 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       }
 
       final client = ref.read(privateHttpClientProvider);
-      final highscoreResponse = await client.get('/scores/user/${user.id}/scenario/${widget.scenarioId}/highscore');
-      final previousBest = (highscoreResponse.data['score_value'] as num?)?.round() ?? 0;
 
+      // --- THIS IS THE FIX ---
+      int previousBest = 0;
+      try {
+        // Attempt to fetch the high score.
+        final highscoreResponse = await client.get('/scores/user/${user.id}/scenario/${widget.scenarioId}/highscore');
+        previousBest = (highscoreResponse.data['score_value'] as num?)?.round() ?? 0;
+      } catch (e) {
+        // If it fails (e.g., 404 for a new user), we gracefully assume the previous best is 0.
+        debugPrint("No previous high score found. Setting to 0. Error: $e");
+        previousBest = 0;
+      }
+      // --- END OF FIX ---
+
+      // Now we can safely proceed to POST the new score.
       await client.post('/scores/scenario/${widget.scenarioId}/', data: {
         'user_id': user.id,
         'weight_lifted': weightInKg,
@@ -106,9 +118,9 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The build method is correct and remains unchanged.
     final scenarioDetailsAsync = ref.watch(scenarioDetailsProvider(widget.scenarioId));
     final unitLabel = (ref.watch(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0) > 1.5 ? 'lbs' : 'kg';
-    
     return Scaffold(
       appBar: AppBar(title: Text(widget.liftName), backgroundColor: Colors.black, elevation: 0),
       backgroundColor: Colors.black,
@@ -176,7 +188,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         children: [
           Expanded(child: _buildInputFieldWithLabel(controller: _weightController, label: 'Weight ($unitLabel)')),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 11.0),
+            padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 8.0),
             child: const Text('x', style: TextStyle(color: Colors.white, fontSize: 24)),
           ),
           Expanded(child: _buildInputFieldWithLabel(controller: _repsController, label: 'Reps')),
