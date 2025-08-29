@@ -1,13 +1,13 @@
 // frontend/lib/features/ranked/providers/score_history_provider.dart
 
-import 'dart:async'; // For exceptions
+import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show debugPrint; // For logging
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/env.dart';
-import '../../../core/providers/auth_provider.dart'; // Import auth provider
+import '../../../core/providers/auth_provider.dart';
 import '../models/score_history_entry.dart';
 
 final scoreHistoryProvider = FutureProvider.autoDispose.family<List<ScoreHistoryEntry>, String>(

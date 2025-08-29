@@ -178,7 +178,6 @@ class _RankingRow extends StatelessWidget {
                 ],
               ),
             ),
-            // The SVG is now rendered with its original colors.
             Expanded(flex: 2, child: Center(child: SvgPicture.asset(iconPath, height: 24, width: 24))),
             Expanded(flex: 1, child: Center(child: Text(NumberFormat("###0").format(energy), style: const TextStyle(color: Colors.white)))),
             Expanded(flex: 1, child: IconButton(icon: const Icon(Icons.leaderboard, color: Colors.blueAccent), onPressed: onLeaderboardTap)),

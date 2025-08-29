@@ -21,7 +21,6 @@ class RankedScreenData {
   RankedScreenData({required this.liftStandards, required this.userHighScores});
 }
 
-// THIS IS THE FIX: Restoring the full implementation of the providers.
 final liftStandardsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) throw Exception("User not authenticated.");
@@ -52,7 +51,6 @@ final rankedScreenDataProvider = FutureProvider.autoDispose<RankedScreenData>((r
   final highScores = await ref.watch(highScoresProvider.future);
   return RankedScreenData(liftStandards: standards, userHighScores: highScores);
 });
-// --- END OF FIX ---
 
 class RankedScreen extends ConsumerStatefulWidget {
   const RankedScreen({super.key});

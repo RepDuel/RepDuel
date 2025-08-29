@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 // All functions are now top-level for easy, direct access after import.
-
 const Map<String, int> rankEnergy = {
   'Iron': 100, 'Bronze': 200, 'Silver': 300, 'Gold': 400,
   'Platinum': 500, 'Diamond': 600, 'Jade': 700, 'Master': 800,
