@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:repduel/features/leaderboard/screens/energy_leaderboard_screen.dart'; // Import EnergyLeaderboardScreen
+import 'package:repduel/features/leaderboard/screens/energy_leaderboard_screen.dart';
 import 'package:repduel/features/routines/screens/add_exercise_screen.dart';
 import 'package:repduel/features/routines/screens/exercise_play_screen.dart';
 import 'package:repduel/features/scenario/screens/scenario_screen.dart';
@@ -43,71 +43,116 @@ final routerProvider = Provider<GoRouter>((ref) {
           return MainScaffold(navigationShell: navigationShell);
         },
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: '/normal', name: 'normal', builder: (context, state) => const NormalScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/ranked', name: 'ranked', builder: (context, state) => const RankedScreen())]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/routines', name: 'routines', builder: (context, state) => const RoutinesScreen(),
-              routes: [
-                GoRoute(path: 'custom', name: 'createRoutine', builder: (context, state) => const CustomRoutineScreen()),
-                GoRoute(
-                  path: 'edit', name: 'editRoutine',
-                  builder: (context, state) {
-                    final routine = state.extra! as Routine; 
-                    return CustomRoutineScreen.edit(initial: routine);
-                  },
-                ),
-                GoRoute(
-                  path: 'exercise-list/:routineId', name: 'exerciseList',
-                  builder: (context, state) {
-                    final routineId = state.pathParameters['routineId']!;
-                    return ExerciseListScreen(routineId: routineId);
-                  },
-                ),
-              ]
-            ),
+                path: '/normal',
+                name: 'normal',
+                builder: (context, state) => const NormalScreen())
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/profile', name: 'profile', builder: (context, state) => const ProfileScreen(),
-              routes: [
-                GoRoute(path: 'settings', name: 'settings', builder: (context, state) => const SettingsScreen()),
-                GoRoute(path: 'theme-selector', name: 'themeSelector', builder: (context, state) => const ThemeSelectorScreen()),
-              ]
-            ),
+                path: '/ranked',
+                name: 'ranked',
+                builder: (context, state) => const RankedScreen())
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/routines',
+                name: 'routines',
+                builder: (context, state) => const RoutinesScreen(),
+                routes: [
+                  GoRoute(
+                      path: 'custom',
+                      name: 'createRoutine',
+                      builder: (context, state) => const CustomRoutineScreen()),
+                  GoRoute(
+                      path: 'edit',
+                      name: 'editRoutine',
+                      builder: (context, state) => CustomRoutineScreen.edit(
+                          initial: state.extra! as Routine)),
+                  GoRoute(
+                      path: 'exercise-list/:routineId',
+                      name: 'exerciseList',
+                      builder: (context, state) => ExerciseListScreen(
+                          routineId: state.pathParameters['routineId']!)),
+                ]),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/profile',
+                name: 'profile',
+                builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                      path: 'settings',
+                      name: 'settings',
+                      builder: (context, state) => const SettingsScreen()),
+                  GoRoute(
+                      path: 'theme-selector',
+                      name: 'themeSelector',
+                      builder: (context, state) => const ThemeSelectorScreen()),
+                ]),
           ]),
         ],
       ),
 
-      // --- TOP-LEVEL ROUTES (no bottom nav bar) ---
-      GoRoute(path: '/login', name: 'login', builder: (context, state) => const LoginScreen()),
-      GoRoute(path: '/register', name: 'register', builder: (context, state) => const RegisterScreen()),
-      GoRoute(path: '/subscribe', name: 'subscribe', builder: (context, state) => const SubscriptionScreen()),
-      GoRoute(path: '/payment-success', name: 'paymentSuccess', builder: (context, state) => const PaymentSuccessScreen()),
-      GoRoute(path: '/payment-cancel', name: 'paymentCancel', builder: (context, state) => const PaymentCancelScreen()),
+      // --- STANDALONE ROUTES (no bottom nav bar) ---
       GoRoute(
-        path: '/leaderboard/:scenarioId', name: 'liftLeaderboard',
+          path: '/login',
+          name: 'login',
+          builder: (context, state) => const LoginScreen()),
+      GoRoute(
+          path: '/register',
+          name: 'register',
+          builder: (context, state) => const RegisterScreen()),
+
+      GoRoute(
+        path: '/subscribe',
+        name: 'subscribe',
+        builder: (context, state) => const SubscriptionScreen(),
+        routes: [
+          GoRoute(
+              path: 'payment-success',
+              name: 'paymentSuccess',
+              builder: (context, state) => const PaymentSuccessScreen()),
+          GoRoute(
+              path: 'payment-cancel',
+              name: 'paymentCancel',
+              builder: (context, state) => const PaymentCancelScreen()),
+        ],
+      ),
+
+      GoRoute(
+        path: '/leaderboard/:scenarioId',
+        name: 'liftLeaderboard',
         builder: (context, state) {
           final scenarioId = state.pathParameters['scenarioId']!;
           final liftName = state.uri.queryParameters['liftName'] ?? 'Unknown';
           return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
         },
       ),
-      GoRoute(path: '/add-exercise', name: 'addExercise', builder: (context, state) => const AddExerciseScreen()),
       GoRoute(
-        path: '/exercise-play', name: 'exercise-play',
+          path: '/add-exercise',
+          name: 'addExercise',
+          builder: (context, state) => const AddExerciseScreen()),
+
+      // The original, correct implementation for this route.
+      GoRoute(
+        path: '/exercise-play',
+        name: 'exercise-play',
         builder: (context, state) {
           final exercise = state.extra as Scenario;
           return ExercisePlayScreen(
-            exerciseId: exercise.id, 
-            exerciseName: exercise.name, 
-            sets: exercise.sets, 
-            reps: exercise.reps
-          );
+              exerciseId: exercise.id,
+              exerciseName: exercise.name,
+              sets: exercise.sets,
+              reps: exercise.reps);
         },
       ),
+
       GoRoute(
-        path: '/scenario/:scenarioId', name: 'scenario',
+        path: '/scenario/:scenarioId',
+        name: 'scenario',
         builder: (context, state) {
           final scenarioId = state.pathParameters['scenarioId']!;
           final liftName = state.extra as String? ?? 'Ranked Lift';
@@ -115,19 +160,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/summary', name: 'summary',
-        builder: (context, state) {
-          final totalVolume = state.extra as int? ?? 0;
-          return SummaryScreen(totalVolume: totalVolume);
-        },
+        path: '/summary',
+        name: 'summary',
+        builder: (context, state) =>
+            SummaryScreen(totalVolume: state.extra as int? ?? 0),
       ),
-      // --- THIS IS THE FIX ---
       GoRoute(
-        path: '/leaderboard-energy', // A distinct path
+        path: '/leaderboard-energy',
         name: 'energyLeaderboard',
         builder: (context, state) => const EnergyLeaderboardScreen(),
       ),
-      // --- END OF FIX ---
     ],
     redirect: (context, state) {
       final authStateAsync = ref.read(authProvider);
@@ -137,14 +179,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = publicRoutes.contains(state.uri.path);
       if (!isLoggedIn && !isAuthRoute) return '/login';
       if (isLoggedIn && isAuthRoute) return '/profile';
-      return null; 
+      return null;
     },
   );
 });
 
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<AuthState> stream) {
-    notifyListeners(); 
+    notifyListeners();
     stream.asBroadcastStream().listen((_) => notifyListeners());
   }
 }

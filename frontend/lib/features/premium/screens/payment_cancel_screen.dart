@@ -1,25 +1,20 @@
-// frontend/lib/features/premium/screens/payment_cancel_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class PaymentCancelScreen extends ConsumerWidget {
+class PaymentCancelScreen extends StatelessWidget {
   const PaymentCancelScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    Color withOpacity(Color color, double opacity) =>
-        color.withAlpha((opacity * 255).round());
-
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        // The close button provides a clean exit from the payment flow.
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => _navigateToSubscription(context),
+          onPressed: () => context.go('/profile'),
         ),
       ),
       body: SafeArea(
@@ -33,13 +28,13 @@ class PaymentCancelScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const SizedBox(height: 40),
-                      _buildCancelIcon(withOpacity),
+                      _buildCancelIcon(),
                       const SizedBox(height: 32),
                       _buildTitle(),
                       const SizedBox(height: 16),
                       _buildDescription(),
                       const SizedBox(height: 48),
-                      _buildBenefitsReminder(withOpacity),
+                      _buildBenefitsReminder(),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -53,21 +48,18 @@ class PaymentCancelScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCancelIcon(Color Function(Color, double) withOpacity) {
+  Widget _buildCancelIcon() {
     return Container(
       width: 100,
       height: 100,
       decoration: BoxDecoration(
-        color: withOpacity(Colors.orange, 0.2),
+        color: Colors.red.withAlpha(51),
         shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.orange,
-          width: 2,
-        ),
+        border: Border.all(color: Colors.red, width: 2),
       ),
       child: const Icon(
-        Icons.pause_circle_outline,
-        color: Colors.orange,
+        Icons.cancel_outlined,
+        color: Colors.red,
         size: 50,
       ),
     );
@@ -75,91 +67,63 @@ class PaymentCancelScreen extends ConsumerWidget {
 
   Widget _buildTitle() {
     return const Text(
-      'Payment Cancelled',
+      'Payment Canceled',
       style: TextStyle(
-        color: Colors.white,
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-      ),
+          color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
       textAlign: TextAlign.center,
     );
   }
 
   Widget _buildDescription() {
     return const Text(
-      'No worries! Your payment was cancelled and you haven\'t been charged.',
-      style: TextStyle(
-        color: Colors.white70,
-        fontSize: 16,
-        height: 1.5,
-      ),
+      'Your payment process was canceled. You have not been charged.',
+      style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
       textAlign: TextAlign.center,
     );
   }
 
-  Widget _buildBenefitsReminder(Color Function(Color, double) withOpacity) {
+  Widget _buildBenefitsReminder() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: withOpacity(Colors.amber, 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.amber.withAlpha(77), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(
-                Icons.star,
-                color: Colors.amber,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              const Text(
+              Icon(Icons.star, color: Colors.amber, size: 20),
+              SizedBox(width: 8),
+              Text(
                 'Premium Benefits You\'re Missing:',
                 style: TextStyle(
-                  color: Colors.amber,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                    color: Colors.amber,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildBenefitItem(Icons.fitness_center, 'Unlimited custom routines'),
-          _buildBenefitItem(Icons.analytics, 'Advanced progress tracking'),
-          _buildBenefitItem(Icons.leaderboard, 'Global leaderboards'),
-          _buildBenefitItem(Icons.cloud_sync, 'Cloud sync across devices'),
-          _buildBenefitItem(Icons.support, 'Priority customer support'),
+          _buildBenefitItem('View historical progress charts'),
+          _buildBenefitItem('Support the development of RepDuel'),
         ],
       ),
     );
   }
 
-  Widget _buildBenefitItem(IconData icon, String text) {
+  Widget _buildBenefitItem(String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: Colors.white70,
-            size: 16,
-          ),
+          const Icon(Icons.check, color: Colors.green, size: 16),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-            ),
-          ),
+              child: Text(text,
+                  style: const TextStyle(color: Colors.white70, fontSize: 14))),
         ],
       ),
     );
@@ -170,52 +134,36 @@ class PaymentCancelScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ElevatedButton(
-          onPressed: () => _navigateToSubscription(context),
+          // --- THIS IS THE FIX ---
+          // Use context.go() to navigate to a known, safe state. This is robust
+          // and works correctly even after a full-page web redirect.
+          onPressed: () => context.go('/subscribe'),
+          // --- END OF FIX ---
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.amber,
             foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text(
-            'Try Again',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          child: const Text('Try Again',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         ),
         const SizedBox(height: 12),
         OutlinedButton(
-          onPressed: () => _navigateToHome(context),
+          // This already correctly uses go() to provide a clean exit.
+          onPressed: () => context.go('/profile'),
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.white,
             side: const BorderSide(color: Colors.white24),
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text(
-            'Continue with Free Version',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          child: const Text('Not Now',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
         ),
       ],
     );
-  }
-
-  void _navigateToSubscription(BuildContext context) {
-    context.go('/subscribe');
-  }
-
-  void _navigateToHome(BuildContext context) {
-    context.go('/profile');
   }
 }

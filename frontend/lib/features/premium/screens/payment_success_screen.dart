@@ -1,6 +1,7 @@
 // frontend/lib/features/premium/screens/payment_success_screen.dart
 
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,16 +23,20 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
   @override
   void initState() {
     super.initState();
+    // Start polling for the subscription update after the first frame is rendered.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pollForSubscriptionUpdate();
     });
   }
 
+  /// Periodically polls the backend to check if the subscription status has been
+  /// updated via the Stripe webhook.
   Future<void> _pollForSubscriptionUpdate() async {
-    const maxRetries = 10;
+    const maxRetries = 10; // Poll for up to 20 seconds
     const retryDelay = Duration(seconds: 2);
 
     for (int i = 0; i < maxRetries; i++) {
+      // Fetch the latest user data from the server.
       await ref.read(authProvider.notifier).refreshUserData();
 
       final user = ref.read(authProvider).valueOrNull?.user;
@@ -39,6 +44,7 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
         debugPrint("Subscription status confirmed on attempt ${i + 1}.");
 
         if (mounted) {
+          // Update the UI to show the success state.
           setState(() {
             _statusMessage = 'Upgrade complete!';
             _isSuccess = true;
@@ -52,19 +58,22 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
             ),
           );
 
+          // Wait briefly so the user sees the success message.
           await Future.delayed(const Duration(seconds: 2));
 
-          // The mounted check must happen *after* the await, immediately
-          // before using the BuildContext to satisfy the linter.
+          // Guard against navigation if the widget was disposed during the delay.
           if (!mounted) return;
+          // Use context.go() to cleanly exit the payment flow and reset the stack.
           context.go('/profile');
         }
-        return;
+        return; // Exit the loop on success.
       }
 
+      // Wait before the next retry.
       await Future.delayed(retryDelay);
     }
 
+    // Handle timeout case.
     if (mounted) {
       debugPrint("Timed out waiting for subscription update.");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,7 +83,7 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
           duration: Duration(seconds: 5),
         ),
       );
-      // This context use is safe as there is no await before it.
+      // Still exit the flow cleanly. The update will appear on next app launch.
       context.go('/profile');
     }
   }

@@ -17,7 +17,7 @@ class PaywallLock extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: Colors.grey.withAlpha((0.1 * 255).round()),
+            color: Colors.grey.withAlpha(26),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.white24)),
         child: Column(

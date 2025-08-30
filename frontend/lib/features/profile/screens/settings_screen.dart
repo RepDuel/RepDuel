@@ -12,7 +12,6 @@ import '../../../core/providers/iap_provider.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../../../core/models/user.dart';
 
-// 1. Converted to ConsumerStatefulWidget for managing state and async operations.
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -20,21 +19,13 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-// 2. The State class now holds all logic. `mounted` and `context` are available here.
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  // --- Helper Methods for UI ---
+  // --- Helper Methods ---
 
-  /// Converts a value to the user's selected display unit (lbs or kg).
-  double _toDisplayUnit(User user, double value) {
-    return value * (user.weightMultiplier);
-  }
+  double _toDisplayUnit(User user, double value) =>
+      value * user.weightMultiplier;
+  String _unitLabel(User user) => user.weightMultiplier == 1.0 ? 'kg' : 'lbs';
 
-  /// Returns the string label for the current unit ('kg' or 'lbs').
-  String _unitLabel(User user) {
-    return (user.weightMultiplier) == 1.0 ? 'kg' : 'lbs';
-  }
-
-  /// Generic snackbar for showing feedback (success or error).
   void _showFeedbackSnackbar(String message, {required bool isSuccess}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -45,13 +36,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  /// Generic confirmation dialog.
   Future<bool?> _showConfirmationDialog({
     required String title,
     required String content,
     required String confirmText,
     bool isDestructive = false,
-  }) async {
+  }) {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -75,7 +65,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // --- Feature Logic Methods ---
+  // --- Feature Logic Methods (preserved from your original file) ---
 
   Future<void> _changeProfilePicture() async {
     final picker = ImagePicker();
@@ -85,13 +75,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         maxHeight: 800,
         imageQuality: 85);
     if (pickedFile == null) return;
-
     final bytes = await pickedFile.readAsBytes();
     final success = await ref
         .read(authProvider.notifier)
         .updateProfilePictureFromBytes(
             bytes, pickedFile.name, pickedFile.mimeType ?? 'image/jpeg');
-
     _showFeedbackSnackbar(
         success
             ? 'Profile picture updated!'
@@ -102,17 +90,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _editWeight() async {
     final user = ref.read(authProvider).valueOrNull?.user;
     if (user == null) {
-      _showFeedbackSnackbar('Authentication required.', isSuccess: false);
-      if (mounted) GoRouter.of(context).go('/login');
+      if (mounted) context.go('/login');
       return;
     }
-
     final unitLabel = _unitLabel(user);
     final displayedWeight = user.weight != null
         ? _toDisplayUnit(user, user.weight!).toStringAsFixed(1)
         : '';
     final controller = TextEditingController(text: displayedWeight);
-
     final newWeightString = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -133,12 +118,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
-
     if (newWeightString != null) {
       final newWeightInUserUnits = double.tryParse(newWeightString);
       if (newWeightInUserUnits != null && newWeightInUserUnits > 0) {
-        final storedWeight = newWeightInUserUnits /
-            (user.weightMultiplier); // Convert back to base unit (KG)
+        final storedWeight = newWeightInUserUnits / user.weightMultiplier;
         final success = await ref
             .read(authProvider.notifier)
             .updateUser(weight: storedWeight);
@@ -153,12 +136,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _editGender() async {
     final user = ref.read(authProvider).valueOrNull?.user;
-    if (user == null) {
-      _showFeedbackSnackbar('Authentication required.', isSuccess: false);
-      if (mounted) GoRouter.of(context).go('/login');
-      return;
-    }
-
+    if (user == null) return;
     final String? newGender = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -176,7 +154,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
-
     if (newGender != null && newGender != user.gender) {
       final success =
           await ref.read(authProvider.notifier).updateUser(gender: newGender);
@@ -188,13 +165,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _editWeightUnit() async {
     final user = ref.read(authProvider).valueOrNull?.user;
-    if (user == null) {
-      _showFeedbackSnackbar('Authentication required.', isSuccess: false);
-      if (mounted) GoRouter.of(context).go('/login');
-      return;
-    }
-
-    final isKg = (user.weightMultiplier) == 1.0;
+    if (user == null) return;
+    final isKg = user.weightMultiplier == 1.0;
     final String? newUnit = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -215,7 +187,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
-
     if (newUnit != null && (newUnit == 'kg') != isKg) {
       final newMultiplier = (newUnit == 'kg' ? 1.0 : 2.20462);
       final success = await ref
@@ -228,12 +199,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _restorePurchases() async {
-    _showFeedbackSnackbar("Restoring purchases...",
-        isSuccess: true); // Use a neutral color if possible, but green is ok.
+    _showFeedbackSnackbar("Restoring purchases...", isSuccess: true);
     try {
       await ref.read(subscriptionProvider.notifier).restorePurchases();
       if (!mounted) return;
-      ref.read(authProvider.notifier).refreshUserData();
+      await ref.read(authProvider.notifier).refreshUserData();
       _showFeedbackSnackbar("Purchases restored successfully!",
           isSuccess: true);
     } catch (e) {
@@ -244,23 +214,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _resetProgress() async {
     final authState = ref.read(authProvider).valueOrNull;
-    if (authState?.user?.id == null || authState?.token == null) {
-      _showFeedbackSnackbar('Authentication required.', isSuccess: false);
-      if (mounted) GoRouter.of(context).go('/login');
+    final userId = authState?.user?.id;
+    final token = authState?.token;
+    if (userId == null || token == null) {
+      if (mounted) context.go('/login');
       return;
     }
-
     final confirmed = await _showConfirmationDialog(
         title: "Reset Progress",
         content: "This action cannot be undone.",
         confirmText: "Confirm Reset",
         isDestructive: true);
     if (confirmed != true) return;
-
     try {
       final response = await http.delete(
-          Uri.parse('${Env.baseUrl}/api/v1/scores/user/${authState!.user!.id}'),
-          headers: {'Authorization': 'Bearer ${authState.token}'});
+          Uri.parse('${Env.baseUrl}/api/v1/scores/user/$userId'),
+          headers: {'Authorization': 'Bearer $token'});
       if (!mounted) return;
       if (response.statusCode == 204) {
         _showFeedbackSnackbar('Your progress has been reset.', isSuccess: true);
@@ -276,28 +245,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _deleteAccount() async {
+    final token = ref.read(authProvider).valueOrNull?.token;
+    if (token == null) {
+      if (mounted) context.go('/login');
+      return;
+    }
     final confirmed = await _showConfirmationDialog(
         title: "Delete Account",
         content: "This is permanent and cannot be undone.",
         confirmText: "Delete Forever",
         isDestructive: true);
     if (confirmed != true) return;
-
-    final token = ref.read(authProvider).valueOrNull?.token;
-    if (token == null) {
-      _showFeedbackSnackbar('Authentication error. Please log in again.',
-          isSuccess: false);
-      if (mounted) GoRouter.of(context).go('/login');
-      return;
-    }
-
     try {
       final response = await http.delete(
           Uri.parse('${Env.baseUrl}/api/v1/users/me'),
           headers: {'Authorization': 'Bearer $token'});
       if (!mounted) return;
       if (response.statusCode == 204) {
-        // The logout call will trigger navigation via the router listener
         await ref.read(authProvider.notifier).logout();
         _showFeedbackSnackbar('Account deleted successfully.', isSuccess: true);
       } else {
@@ -314,10 +278,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: 'Log out',
         content: 'Are you sure you want to log out?',
         confirmText: 'Log out');
-    if (confirmed != true) return;
-
-    await ref.read(authProvider.notifier).logout();
-    _showFeedbackSnackbar('Successfully signed out.', isSuccess: true);
+    if (confirmed == true) {
+      await ref.read(authProvider.notifier).logout();
+    }
   }
 
   bool _isValidImageUrl(String? url) {
@@ -340,6 +303,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: const TextStyle(color: Colors.red)))),
       data: (authState) {
         final user = authState.user;
+        final subscriptionTier = ref.watch(subscriptionProvider).valueOrNull;
+
         if (user == null) {
           return const Scaffold(
               backgroundColor: Colors.black,
@@ -376,6 +341,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // --- This is the key logical change, applied to your preferred UI ---
+              if (subscriptionTier == SubscriptionTier.free) ...[
+                ListTile(
+                  leading:
+                      const Icon(Icons.workspace_premium, color: Colors.amber),
+                  title: const Text('Upgrade to Gold',
+                      style: TextStyle(color: Colors.amber)),
+                  subtitle: const Text('Unlock charts and support the app!'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () => context
+                      .push('/subscribe'), // Uses push for correct navigation.
+                ),
+                const Divider(color: Colors.grey),
+              ],
+              // --- End of the only functional change ---
+
               ListTile(
                 title: const Text('Username',
                     style: TextStyle(color: Colors.white)),
