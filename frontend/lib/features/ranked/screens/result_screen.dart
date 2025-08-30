@@ -148,9 +148,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider).valueOrNull;
-    if (authState?.user == null)
+    if (authState?.user == null) {
       return _buildScaffold(
           const Center(child: Text("User not authenticated.")));
+    }
     final user = authState!.user!;
     final weightMultiplier = user.weightMultiplier;
 
