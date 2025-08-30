@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/models/routine_details.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/error_display.dart';
@@ -21,7 +20,8 @@ class RankedScreenData {
   RankedScreenData({required this.liftStandards, required this.userHighScores});
 }
 
-final liftStandardsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final liftStandardsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) throw Exception("User not authenticated.");
   final bodyweightKg = user.weight ?? 90.7;
@@ -31,22 +31,23 @@ final liftStandardsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
   return response.data as Map<String, dynamic>;
 });
 
-final highScoresProvider = FutureProvider.autoDispose<Map<String, double>>((ref) async {
+final highScoresProvider =
+    FutureProvider.autoDispose<Map<String, double>>((ref) async {
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) return {};
   final client = ref.watch(privateHttpClientProvider);
   final liftIds = ['back_squat', 'barbell_bench_press', 'deadlift'];
   final liftNames = ['Squat', 'Bench', 'Deadlift'];
-  final scoreFutures = liftIds.map((id) => 
-    client.get('/scores/user/${user.id}/scenario/$id/highscore')
+  final scoreFutures = liftIds.map((id) => client
+      .get('/scores/user/${user.id}/scenario/$id/highscore')
       .then((res) => (res.data['score_value'] as num?)?.toDouble() ?? 0.0)
-      .catchError((_) => 0.0)
-  );
+      .catchError((_) => 0.0));
   final scores = await Future.wait(scoreFutures);
   return Map.fromIterables(liftNames, scores);
 });
 
-final rankedScreenDataProvider = FutureProvider.autoDispose<RankedScreenData>((ref) async {
+final rankedScreenDataProvider =
+    FutureProvider.autoDispose<RankedScreenData>((ref) async {
   final standards = await ref.watch(liftStandardsProvider.future);
   final highScores = await ref.watch(highScoresProvider.future);
   return RankedScreenData(liftStandards: standards, userHighScores: highScores);
@@ -60,7 +61,7 @@ class RankedScreen extends ConsumerStatefulWidget {
 
 class _RankedScreenState extends ConsumerState<RankedScreen> {
   bool _showBenchmarks = false;
-  
+
   static const scenarioIds = {
     'Squat': 'back_squat',
     'Bench': 'barbell_bench_press',
@@ -69,12 +70,13 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<RankedScreenData>>(rankedScreenDataProvider, (previous, next) {
+    ref.listen<AsyncValue<RankedScreenData>>(rankedScreenDataProvider,
+        (previous, next) {
       if (next is! AsyncData) return;
       final data = next.value;
       final user = ref.read(authProvider).valueOrNull?.user;
       if (data == null || user == null) return;
-      
+
       final weightMultiplier = user.weightMultiplier;
       final energies = data.userHighScores.entries.map((entry) {
         final scoreWithMultiplier = entry.value * weightMultiplier;
@@ -87,10 +89,12 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
       }).toList();
 
       if (energies.isNotEmpty) {
-        final averageEnergy = energies.reduce((a, b) => a + b) / energies.length;
+        final averageEnergy =
+            energies.reduce((a, b) => a + b) / energies.length;
         final roundedEnergy = averageEnergy.round();
-        
-        final entries = rankEnergy.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+        final entries = rankEnergy.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
         String overallRank = 'Unranked';
         for (final entry in entries) {
           if (averageEnergy >= entry.value) {
@@ -98,9 +102,10 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
             break;
           }
         }
-        
+
         if (roundedEnergy != user.energy.round()) {
-          debugPrint("New energy ($roundedEnergy) is different from old (${user.energy.round()}). Submitting...");
+          debugPrint(
+              "New energy ($roundedEnergy) is different from old (${user.energy.round()}). Submitting...");
           final client = ref.read(privateHttpClientProvider);
           client.post('/energy/submit', data: {
             'user_id': user.id,
@@ -108,9 +113,9 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
             'rank': overallRank,
           }).then((_) {
             ref.read(authProvider.notifier).updateLocalUserEnergy(
-              newEnergy: roundedEnergy.toDouble(),
-              newRank: overallRank,
-            );
+                  newEnergy: roundedEnergy.toDouble(),
+                  newRank: overallRank,
+                );
           }).catchError((e) {
             debugPrint("Error submitting energy: $e");
           });
@@ -126,7 +131,10 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
         onRefresh: () => ref.refresh(rankedScreenDataProvider.future),
         child: rankedDataAsync.when(
           loading: () => const Center(child: LoadingSpinner()),
-          error: (err, stack) => Center(child: ErrorDisplay(message: err.toString(), onRetry: () => ref.invalidate(rankedScreenDataProvider))),
+          error: (err, stack) => Center(
+              child: ErrorDisplay(
+                  message: err.toString(),
+                  onRetry: () => ref.invalidate(rankedScreenDataProvider))),
           data: (data) {
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -134,25 +142,34 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
               child: _showBenchmarks
                   ? BenchmarksTable(
                       standards: data.liftStandards,
-                      onViewRankings: () => setState(() => _showBenchmarks = false),
+                      onViewRankings: () =>
+                          setState(() => _showBenchmarks = false),
                     )
                   : RankingTable(
                       liftStandards: data.liftStandards,
                       userHighScores: data.userHighScores,
-                      onViewBenchmarks: () => setState(() => _showBenchmarks = true),
+                      onViewBenchmarks: () =>
+                          setState(() => _showBenchmarks = true),
                       onLiftTapped: (liftName) async {
                         final scenarioId = scenarioIds[liftName];
                         if (scenarioId == null) return;
-                        final shouldRefresh = await context.push<bool>('/scenario/$scenarioId', extra: liftName);
+                        final shouldRefresh = await context.push<bool>(
+                            '/scenario/$scenarioId',
+                            extra: liftName);
                         if (shouldRefresh == true && mounted) {
-                           ref.invalidate(highScoresProvider);
+                          ref.invalidate(highScoresProvider);
                         }
                       },
                       onLeaderboardTapped: (scenarioId) {
-                         final liftName = scenarioIds.entries.firstWhere((e) => e.value == scenarioId, orElse: () => const MapEntry('Lift', '')).key;
-                         context.push('/leaderboard/$scenarioId?liftName=$liftName');
+                        final liftName = scenarioIds.entries
+                            .firstWhere((e) => e.value == scenarioId,
+                                orElse: () => const MapEntry('Lift', ''))
+                            .key;
+                        context.push(
+                            '/leaderboard/$scenarioId?liftName=$liftName');
                       },
-                      onEnergyLeaderboardTapped: () => context.pushNamed('energyLeaderboard'),
+                      onEnergyLeaderboardTapped: () =>
+                          context.pushNamed('energyLeaderboard'),
                     ),
             );
           },

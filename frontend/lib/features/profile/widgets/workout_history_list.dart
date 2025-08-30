@@ -2,19 +2,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart'; // Assuming this might be used elsewhere, though not in this snippet
 
 import '../../../core/providers/workout_history_provider.dart';
 import '../../../core/models/routine_submission_read.dart';
-import '../../../core/providers/auth_provider.dart'; // Import auth provider
+import '../../../core/providers/auth_provider.dart';
 
-class WorkoutHistoryList extends ConsumerWidget { // Changed to ConsumerWidget
+class WorkoutHistoryList extends ConsumerWidget {
+  // Changed to ConsumerWidget
   final String userId;
 
   const WorkoutHistoryList({super.key, required this.userId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { // Added WidgetRef ref
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Added WidgetRef ref
     // Watch the workout history provider.
     final historyAsyncValue = ref.watch(workoutHistoryProvider(userId));
 
@@ -24,7 +25,8 @@ class WorkoutHistoryList extends ConsumerWidget { // Changed to ConsumerWidget
 
     // Determine units based on user data. If auth state is loading, error, or user is null,
     // default to kg.
-    final userMultiplier = authStateAsyncValue.valueOrNull?.user?.weightMultiplier ?? 1.0;
+    final userMultiplier =
+        authStateAsyncValue.valueOrNull?.user?.weightMultiplier ?? 1.0;
     final isLbs = userMultiplier > 1.5; // Heuristic for lbs
     const kgToLbs = 2.20462;
     final unit = isLbs ? 'lb' : 'kg';
@@ -41,18 +43,24 @@ class WorkoutHistoryList extends ConsumerWidget { // Changed to ConsumerWidget
       return id
           .split('_')
           .where((p) => p.isNotEmpty) // Filter out empty parts
-          .map((p) => p[0].toUpperCase() + p.substring(1)) // Capitalize first letter
+          .map((p) =>
+              p[0].toUpperCase() + p.substring(1)) // Capitalize first letter
           .join(' '); // Join back with spaces
     }
 
     // Use .when() to handle the states of the workout history provider.
     return historyAsyncValue.when(
-      loading: () => const Center(child: CircularProgressIndicator()), // Show loading indicator
-      error: (e, s) => Center(child: Text('Error: $e', style: const TextStyle(color: Colors.red))), // Show error message
-      data: (entries) { // Build UI when data is available
+      loading: () => const Center(
+          child: CircularProgressIndicator()), // Show loading indicator
+      error: (e, s) => Center(
+          child: Text('Error: $e',
+              style: const TextStyle(color: Colors.red))), // Show error message
+      data: (entries) {
+        // Build UI when data is available
         // Handle the case where workout history is empty.
         if (entries.isEmpty) {
-          return const Center( // Center the message
+          return const Center(
+            // Center the message
             child: Text(
               'No workouts logged yet.',
               style: TextStyle(color: Colors.white54, fontSize: 16),
@@ -72,7 +80,9 @@ class WorkoutHistoryList extends ConsumerWidget { // Changed to ConsumerWidget
             // Calculate total volume in user's preferred unit.
             final totalVolumeUser = entry.scenarios.fold<double>(
               0.0,
-              (sum, s) => sum + toUserUnit(s.totalVolume), // Convert each scenario's volume
+              (sum, s) =>
+                  sum +
+                  toUserUnit(s.totalVolume), // Convert each scenario's volume
             );
 
             // Group scenario submissions by scenarioId for display.
@@ -120,13 +130,16 @@ class WorkoutHistoryList extends ConsumerWidget { // Changed to ConsumerWidget
                         ];
 
                         for (final s in grp.value) {
-                          final weightUser = toUserUnit(s.weight); // Convert weight
+                          final weightUser =
+                              toUserUnit(s.weight); // Convert weight
                           items.add(Text(
                             '${formatNum(weightUser)}$unit x ${s.reps}', // Display with unit
                             style: const TextStyle(color: Colors.white),
                           ));
                         }
-                        items.add(const SizedBox(height: 8)); // Add spacing after each scenario group
+                        items.add(const SizedBox(
+                            height:
+                                8)); // Add spacing after each scenario group
                         return items;
                       }),
                       Text(

@@ -17,10 +17,9 @@ class PaywallLock extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white24)
-        ),
+            color: Colors.grey.withAlpha((0.1 * 255).round()),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white24)),
         child: Column(
           children: [
             const Icon(Icons.lock_outline, color: Colors.amber, size: 40),
@@ -28,7 +27,8 @@ class PaywallLock extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 16, height: 1.4),
             ),
           ],
         ),

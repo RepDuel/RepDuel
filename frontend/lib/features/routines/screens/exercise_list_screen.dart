@@ -10,10 +10,9 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../providers/set_data_provider.dart';
-import 'add_exercise_screen.dart';
-import 'summary_screen.dart';
 
-final routineDetailsProvider = FutureProvider.autoDispose.family<RoutineDetails, String>((ref, routineId) async {
+final routineDetailsProvider = FutureProvider.autoDispose
+    .family<RoutineDetails, String>((ref, routineId) async {
   final client = ref.watch(privateHttpClientProvider);
   final response = await client.get('/routines/$routineId');
   return RoutineDetails.fromJson(response.data);
@@ -45,14 +44,15 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     }
     setState(() => _totalVolumeKg += newVolume);
   }
-  
+
   double _calc1RM(double weightKg, int reps) {
     if (reps <= 1) return weightKg;
     return weightKg * (1 + reps / 30.0);
   }
-  
+
   void _navigateToAddExercise() async {
-    final newExercise = await context.push<Map<String, dynamic>>('/add-exercise');
+    final newExercise =
+        await context.push<Map<String, dynamic>>('/add-exercise');
     if (newExercise != null) {
       setState(() => _localAddedExercises.add(newExercise));
     }
@@ -63,7 +63,10 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     setState(() => _isFinishing = true);
     final user = ref.read(authProvider).valueOrNull?.user;
     if (user == null) {
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Authentication error.")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Authentication error.")));
+      }
       setState(() => _isFinishing = false);
       return;
     }
@@ -71,7 +74,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     try {
       final client = ref.read(privateHttpClientProvider);
       final allPerformedSets = ref.read(routineSetProvider);
-      
+
       // --- THIS IS THE FIX ---
       // Create the flat list of scenarios (sets) that the backend expects.
       final scenariosPayload = allPerformedSets.map((set) {
@@ -80,7 +83,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
           "sets": 1, // Each object represents one set.
           "reps": set.reps,
           "weight": set.weight,
-          "total_volume": set.reps * set.weight, // Calculate total volume for this single set.
+          "total_volume": set.reps *
+              set.weight, // Calculate total volume for this single set.
         };
       }).toList();
 
@@ -99,16 +103,26 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
       // The logic for submitting best scores is separate and likely correct.
       final Map<String, List<PerformedSet>> groupedSetsForBestScores = {};
-      for (final s in allPerformedSets) { groupedSetsForBestScores.putIfAbsent(s.scenarioId, () => []).add(s); }
+      for (final s in allPerformedSets) {
+        groupedSetsForBestScores.putIfAbsent(s.scenarioId, () => []).add(s);
+      }
       for (final entry in groupedSetsForBestScores.entries) {
         PerformedSet? bestSet;
         double best1RM = -1;
         for (final set in entry.value) {
           final oneRm = _calc1RM(set.weight, set.reps);
-          if (oneRm > best1RM) { best1RM = oneRm; bestSet = set; }
+          if (oneRm > best1RM) {
+            best1RM = oneRm;
+            bestSet = set;
+          }
         }
         if (bestSet != null) {
-          await client.post('/scores/scenario/${entry.key}/', data: { 'user_id': user.id, 'weight_lifted': bestSet.weight, 'reps': bestSet.reps, 'sets': 1 });
+          await client.post('/scores/scenario/${entry.key}/', data: {
+            'user_id': user.id,
+            'weight_lifted': bestSet.weight,
+            'reps': bestSet.reps,
+            'sets': 1
+          });
         }
       }
 
@@ -116,20 +130,26 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final displayVolume = isLbs ? _totalVolumeKg * 2.20462 : _totalVolumeKg;
 
       ref.read(routineSetProvider.notifier).clear();
-      if(mounted) {
+      if (mounted) {
         context.pushReplacement('/summary', extra: displayVolume.round());
       }
     } catch (e) {
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to finish routine: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to finish routine: $e")));
+      }
     } finally {
-      if(mounted) setState(() => _isFinishing = false);
+      if (mounted) setState(() => _isFinishing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final routineDetailsAsync = ref.watch(routineDetailsProvider(widget.routineId));
-    final isLbs = (ref.watch(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0) > 1.5;
+    final routineDetailsAsync =
+        ref.watch(routineDetailsProvider(widget.routineId));
+    final isLbs =
+        (ref.watch(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0) >
+            1.5;
     final displayVolume = isLbs ? _totalVolumeKg * 2.20462 : _totalVolumeKg;
 
     return Scaffold(
@@ -145,16 +165,26 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       backgroundColor: Colors.black,
       body: routineDetailsAsync.when(
         loading: () => const Center(child: LoadingSpinner()),
-        error: (err, stack) => Center(child: ErrorDisplay(message: err.toString(), onRetry: () => ref.refresh(routineDetailsProvider(widget.routineId)))),
+        error: (err, stack) => Center(
+            child: ErrorDisplay(
+                message: err.toString(),
+                onRetry: () =>
+                    ref.refresh(routineDetailsProvider(widget.routineId)))),
         data: (details) {
-          final allExercises = [...details.scenarios, ..._localAddedExercises.map((e) => Scenario.fromJson(e))];
+          final allExercises = [
+            ...details.scenarios,
+            ..._localAddedExercises.map((e) => Scenario.fromJson(e))
+          ];
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text('Total Volume: ${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}', style: const TextStyle(color: Colors.white70, fontSize: 16)),
+                  child: Text(
+                      'Total Volume: ${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}',
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 16)),
                 ),
                 const Divider(color: Colors.white24),
                 Expanded(
@@ -162,21 +192,34 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                     itemCount: allExercises.length,
                     itemBuilder: (context, index) {
                       final exercise = allExercises[index];
-                      final completedSetsCount = ref.watch(routineSetProvider.select((sets) => sets.where((s) => s.scenarioId == exercise.id).length));
+                      final completedSetsCount = ref.watch(
+                          routineSetProvider.select((sets) => sets
+                              .where((s) => s.scenarioId == exercise.id)
+                              .length));
                       final isCompleted = completedSetsCount >= exercise.sets;
                       return Card(
-                        color: isCompleted ? Colors.green.withOpacity(0.2) : Colors.white12,
+                        color: isCompleted
+                            ? Colors.green.withAlpha(51)
+                            : Colors.white12,
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
-                          title: Text(exercise.name, style: const TextStyle(color: Colors.white, fontSize: 18)),
-                          subtitle: Text('Sets: ${exercise.sets} | Reps: ${exercise.reps}', style: const TextStyle(color: Colors.white70)),
-                          trailing: const Icon(Icons.play_arrow, color: Colors.greenAccent, size: 28),
+                          title: Text(exercise.name,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 18)),
+                          subtitle: Text(
+                              'Sets: ${exercise.sets} | Reps: ${exercise.reps}',
+                              style: const TextStyle(color: Colors.white70)),
+                          trailing: const Icon(Icons.play_arrow,
+                              color: Colors.greenAccent, size: 28),
                           onTap: () async {
-                            final setData = await context.push<List<Map<String, dynamic>>>(
+                            final setData =
+                                await context.push<List<Map<String, dynamic>>>(
                               '/exercise-play',
                               extra: exercise,
                             );
-                            if (setData != null) { _updateVolume(setData); }
+                            if (setData != null) {
+                              _updateVolume(setData);
+                            }
                           },
                         ),
                       );
@@ -184,11 +227,31 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _navigateToAddExercise, child: const Text('Add Exercise'))),
+                SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                        onPressed: _navigateToAddExercise,
+                        child: const Text('Add Exercise'))),
                 const SizedBox(height: 8),
-                SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _isFinishing ? null : _finishRoutine, style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: _isFinishing ? const LoadingSpinner(size: 20) : const Text('Finish Routine'))),
+                SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                        onPressed: _isFinishing ? null : _finishRoutine,
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green),
+                        child: _isFinishing
+                            ? const LoadingSpinner(size: 20)
+                            : const Text('Finish Routine'))),
                 const SizedBox(height: 8),
-                SizedBox(width: double.infinity, child: TextButton(onPressed: () { ref.read(routineSetProvider.notifier).clear(); context.pop(); }, child: const Text('Quit Routine', style: TextStyle(color: Colors.red)))),
+                SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                        onPressed: () {
+                          ref.read(routineSetProvider.notifier).clear();
+                          context.pop();
+                        },
+                        child: const Text('Quit Routine',
+                            style: TextStyle(color: Colors.red)))),
                 SizedBox(height: MediaQuery.of(context).padding.bottom),
               ],
             ),

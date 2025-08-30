@@ -22,7 +22,8 @@ Future<void> main() async {
     try {
       await dotenv.load(fileName: ".env");
     } catch (e) {
-      print("Note: .env file not found or failed to load. Using compile-time environment variables instead.");
+      debugPrint(
+          "Note: .env file not found or failed to load. Using compile-time environment variables instead.");
     }
   } else {
     // For mobile, load the .env file normally

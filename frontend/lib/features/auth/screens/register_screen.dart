@@ -35,19 +35,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final email = _emailController.text.trim();
       final username = _usernameController.text.trim();
       final password = _passwordController.text;
-      
-      // Let the listener handle the result
+
       await ref.read(authProvider.notifier).register(username, email, password);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 1. LISTEN FOR SIDE-EFFECTS (Success, Error, Navigation)
     ref.listen<AsyncValue<AuthState>>(authProvider, (previous, next) {
       next.whenOrNull(
         error: (error, stackTrace) {
-          // Show a snackbar with the error message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(error.toString()),
@@ -56,11 +53,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
         },
         data: (authState) {
-          // On successful registration, our AuthNotifier resets state, which doesn't trigger a navigation here.
-          // But it's good practice to check. A better success indicator is needed.
-          // We'll show a success snackbar and navigate.
-          final didRegisterSuccessfully = previous is AsyncLoading<AuthState> && authState.user == null;
-          
+          final didRegisterSuccessfully =
+              previous is AsyncLoading<AuthState> && authState.user == null;
           if (didRegisterSuccessfully) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -74,9 +68,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
     });
 
-    // 2. WATCH THE STATE FOR BUILDING THE UI
     final authStateAsync = ref.watch(authProvider);
     final isLoading = authStateAsync.isLoading;
+
+    Color withOpacity(Color color, double opacity) =>
+        color.withAlpha((opacity * 255).round());
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -92,34 +88,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 3. FIX CONTROLLER NAMES
                 TextFormField(
-                  controller: _usernameController, // Fixed
+                  controller: _usernameController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'Username',
                     labelStyle: const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.5))),
-                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent, width: 2.0)),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: withOpacity(Colors.white, 0.5)),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: Colors.tealAccent, width: 2.0),
+                    ),
                   ),
-                  validator: (value) => value!.isEmpty ? 'Please enter a username' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Please enter a username' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _emailController, // Fixed
+                  controller: _emailController,
                   style: const TextStyle(color: Colors.white),
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.5))),
-                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent, width: 2.0)),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: withOpacity(Colors.white, 0.5)),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: Colors.tealAccent, width: 2.0),
+                    ),
                   ),
                   validator: (value) {
-                     if (value == null || value.isEmpty || !value.contains('@')) {
+                    if (value == null ||
+                        value.isEmpty ||
+                        !value.contains('@')) {
                       return 'Please enter a valid email';
                     }
                     return null;
@@ -127,14 +136,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _passwordController, // Fixed
+                  controller: _passwordController,
                   obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'Password',
                     labelStyle: const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.5))),
-                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent, width: 2.0)),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: withOpacity(Colors.white, 0.5)),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: Colors.tealAccent, width: 2.0),
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.length < 6) {
@@ -151,9 +166,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     backgroundColor: Colors.tealAccent[400],
                     foregroundColor: Colors.black,
                     minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0)),
                   ),
-                  child: isLoading 
+                  child: isLoading
                       ? const LoadingSpinner(size: 24)
                       : const Text('Sign Up'),
                 ),
@@ -162,7 +178,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   onPressed: () => context.go('/login'),
                   child: Text(
                     'Already have an account? Log in',
-                    style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                    style: TextStyle(color: withOpacity(Colors.white, 0.7)),
                   ),
                 ),
               ],

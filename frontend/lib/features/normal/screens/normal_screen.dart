@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/env.dart';
-import '../../leaderboard/screens/leaderboard_screen.dart';
 import '../../scenario/screens/scenario_screen.dart';
 
 class NormalScreen extends StatefulWidget {
@@ -130,9 +129,8 @@ class _NormalScreenState extends State<NormalScreen> {
                         itemCount: scenarios.length,
                         itemBuilder: (context, index) {
                           final scenario = scenarios[index];
-                          final name =
-                              (scenario['name'] ?? 'Unnamed Scenario')
-                                  .toString();
+                          final name = (scenario['name'] ?? 'Unnamed Scenario')
+                              .toString();
                           final id = scenario['id']?.toString();
 
                           return Container(

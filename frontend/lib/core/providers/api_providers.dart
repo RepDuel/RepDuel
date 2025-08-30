@@ -1,6 +1,5 @@
 // frontend/lib/core/providers/api_providers.dart
 
-import 'package:flutter/foundation.dart' show kIsWeb; // Import kIsWeb for conditional logic
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:dio/dio.dart';
@@ -12,8 +11,7 @@ import '../config/env.dart';
 import '../services/secure_storage_service.dart';
 import '../utils/http_client.dart';
 import '../providers/auth_provider.dart'; // Import the auth provider
-import '../api/auth_interceptor.dart';   // Import the auth interceptor
-import '../models/guild.dart';          // Import Guild model
+import '../models/guild.dart'; // Import Guild model
 
 // --- Secure Storage ---
 final secureStorageProvider = Provider<SecureStorageService>((ref) {
@@ -24,7 +22,7 @@ final secureStorageProvider = Provider<SecureStorageService>((ref) {
 final dioBaseOptionsProvider = Provider<BaseOptions>((ref) => BaseOptions(
       baseUrl: '${Env.baseUrl}/api/v1',
       // Use longer timeouts for production, though these are examples.
-      connectTimeout: const Duration(seconds: 10), 
+      connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
     ));
 
@@ -44,7 +42,7 @@ final publicHttpClientProvider = Provider<HttpClient>((ref) {
 final authTokenProvider = Provider<String?>((ref) {
   // Watch the authProvider which returns AsyncValue<AuthState>
   final authStateAsyncValue = ref.watch(authProvider);
-  
+
   // Safely access the token from the AuthState within the AsyncValue.
   // .valueOrNull returns the AuthState if it's in a 'data' state, otherwise null.
   // Then, safely access '.token' from the AuthState.
@@ -59,17 +57,19 @@ class AuthInterceptor extends Interceptor {
   AuthInterceptor(this._ref); // Constructor to receive Ref
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  void onRequest(
+      RequestOptions options, RequestInterceptorHandler handler) async {
     // Get the token safely using the authTokenProvider.
-    final token = _ref.read(authTokenProvider); 
+    final token = _ref.read(authTokenProvider);
 
     // IMPORTANT: If auth state is loading or error, token will be null.
     // Per our "Elon Musk" approach, we block requests if the token is null.
     if (token == null) {
       // If auth is loading, we could optionally delay, but blocking is simpler and safer.
       // If auth is errored or logged out, we definitely block.
-      debugPrint("AuthInterceptor: Token not found or auth not ready. Blocking request to ${options.path}");
-      
+      debugPrint(
+          "AuthInterceptor: Token not found or auth not ready. Blocking request to ${options.path}");
+
       // Option A: Block the request by returning an error.
       // This is the most direct approach to prevent invalid requests.
       return handler.reject(DioException(
@@ -77,7 +77,7 @@ class AuthInterceptor extends Interceptor {
         error: DioExceptionType.unknown, // Use a generic error type
         message: "Authentication token not available.",
       ));
-      
+
       // If you wanted Option B (Proceed without token), you'd just call handler.next(options); here.
       // If you wanted Option C (Delay), it would be much more complex.
     }
@@ -91,16 +91,15 @@ class AuthInterceptor extends Interceptor {
 // Provider for the AuthInterceptor itself.
 final authInterceptorProvider = Provider<AuthInterceptor>((ref) {
   // Pass the Ref to the interceptor so it can access authTokenProvider.
-  return AuthInterceptor(ref); 
+  return AuthInterceptor(ref);
 });
-
 
 // Private client: Uses Dio with the AuthInterceptor.
 final privateHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
   // Add the AuthInterceptor using the provider.
-  dio.interceptors.add(ref.read(authInterceptorProvider)); 
-  
+  dio.interceptors.add(ref.read(authInterceptorProvider));
+
   // Add logging interceptor for debugging if needed in development
   // if (kDebugMode) {
   //   dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
@@ -117,7 +116,7 @@ final authApiProvider = Provider<AuthApiService>((ref) {
     publicClient: ref.read(publicHttpClientProvider),
     // Note: passing privateClient here relies on its interceptor.
     // If AuthApiService itself needs auth context, you might pass authProvider or tokenProvider.
-    privateClient: ref.read(privateHttpClientProvider), 
+    privateClient: ref.read(privateHttpClientProvider),
   );
 });
 
@@ -137,5 +136,5 @@ final myGuildsProvider = FutureProvider<List<Guild>>((ref) async {
   // and the request inside guildService.getMyGuilds() will fail if the interceptor blocks it.
   final guildService = ref.watch(guildApiProvider);
   // This call implicitly uses the privateHttpClient which has the AuthInterceptor.
-  return guildService.getMyGuilds(); 
+  return guildService.getMyGuilds();
 });

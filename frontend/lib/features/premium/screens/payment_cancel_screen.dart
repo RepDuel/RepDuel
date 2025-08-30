@@ -9,6 +9,9 @@ class PaymentCancelScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Color withOpacity(Color color, double opacity) =>
+        color.withAlpha((opacity * 255).round());
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -29,15 +32,15 @@ class PaymentCancelScreen extends ConsumerWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 40), // Add top spacing
-                      _buildCancelIcon(),
+                      const SizedBox(height: 40),
+                      _buildCancelIcon(withOpacity),
                       const SizedBox(height: 32),
                       _buildTitle(),
                       const SizedBox(height: 16),
                       _buildDescription(),
                       const SizedBox(height: 48),
-                      _buildBenefitsReminder(),
-                      const SizedBox(height: 40), // Add bottom spacing
+                      _buildBenefitsReminder(withOpacity),
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
@@ -50,12 +53,12 @@ class PaymentCancelScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCancelIcon() {
+  Widget _buildCancelIcon(Color Function(Color, double) withOpacity) {
     return Container(
       width: 100,
       height: 100,
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.2),
+        color: withOpacity(Colors.orange, 0.2),
         shape: BoxShape.circle,
         border: Border.all(
           color: Colors.orange,
@@ -94,14 +97,14 @@ class PaymentCancelScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBenefitsReminder() {
+  Widget _buildBenefitsReminder(Color Function(Color, double) withOpacity) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.amber.withOpacity(0.3),
+          color: withOpacity(Colors.amber, 0.3),
           width: 1,
         ),
       ),
@@ -110,7 +113,7 @@ class PaymentCancelScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.star,
                 color: Colors.amber,
                 size: 20,

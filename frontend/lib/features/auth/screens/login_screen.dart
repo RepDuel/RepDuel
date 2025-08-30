@@ -28,25 +28,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    // Hide keyboard
     FocusScope.of(context).unfocus();
 
     if (_formKey.currentState?.validate() ?? false) {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
-      // Let the listener handle the result
       await ref.read(authProvider.notifier).login(email, password);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 1. LISTEN FOR SIDE-EFFECTS (Errors & Navigation)
-    // This doesn't rebuild the widget, it just performs actions.
     ref.listen<AsyncValue<AuthState>>(authProvider, (previous, next) {
       next.whenOrNull(
         error: (error, stackTrace) {
-          // Show a snackbar with the error message on failure
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(error.toString()),
@@ -55,7 +50,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
         },
         data: (authState) {
-          // On successful login, navigate away
           if (authState.user != null) {
             context.go('/profile');
           }
@@ -63,10 +57,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     });
 
-    // 2. WATCH THE STATE FOR BUILDING THE UI
     final authStateAsync = ref.watch(authProvider);
     final isLoading = authStateAsync.isLoading;
     final theme = ref.watch(themeProvider);
+
+    Color withOpacity(Color color, double opacity) =>
+        color.withAlpha((opacity * 255).round());
 
     return Scaffold(
       backgroundColor: theme.background,
@@ -85,7 +81,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 3. THE FORM IS ALWAYS VISIBLE (unless navigating away)
                 TextFormField(
                   controller: _emailController,
                   style: TextStyle(color: theme.primary),
@@ -93,11 +88,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: TextStyle(color: theme.primary),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.primary.withOpacity(0.5))),
-                    focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.accent, width: 2.0)),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: withOpacity(theme.primary, 0.5)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: theme.accent, width: 2.0),
+                    ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty || !value.contains('@')) {
+                    if (value == null ||
+                        value.isEmpty ||
+                        !value.contains('@')) {
                       return 'Please enter a valid email';
                     }
                     return null;
@@ -111,25 +113,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Password',
                     labelStyle: TextStyle(color: theme.primary),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.primary.withOpacity(0.5))),
-                    focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.accent, width: 2.0)),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: withOpacity(theme.primary, 0.5)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: theme.accent, width: 2.0),
+                    ),
                   ),
-                  validator: (value) => value!.isEmpty ? 'Please enter your password' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Please enter your password' : null,
                   onFieldSubmitted: (_) => isLoading ? null : _submit(),
                 ),
                 const SizedBox(height: 24),
-                
-                // 4. BUTTON SHOWS LOADING STATE AND IS DISABLED
                 ElevatedButton(
-                  onPressed: isLoading ? null : _submit, // Disable button when loading
+                  onPressed: isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.accent,
                     foregroundColor: theme.background,
                     minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0)),
                   ),
-                  child: isLoading 
-                      ? const LoadingSpinner(size: 24) // Show spinner inside button
+                  child: isLoading
+                      ? const LoadingSpinner(size: 24)
                       : const Text('Login'),
                 ),
                 const SizedBox(height: 16),
@@ -137,7 +144,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () => context.go('/register'),
                   child: Text(
                     'Don\'t have an account? Sign up',
-                    style: TextStyle(color: theme.primary.withOpacity(0.7)),
+                    style: TextStyle(color: withOpacity(theme.primary, 0.7)),
                   ),
                 ),
               ],

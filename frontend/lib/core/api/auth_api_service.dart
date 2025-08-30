@@ -1,6 +1,5 @@
 // frontend/lib/core/api/auth_api_service.dart
 
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../models/user.dart';
@@ -50,7 +49,7 @@ class AuthApiService {
     // This call is special. It's used for the initial auth check.
     // To avoid the interceptor race condition, we use the PUBLIC client
     // and manually add the Authorization header.
-    
+
     // If no token is provided, we can't get the user.
     if (token == null || token.isEmpty) {
       return null;
@@ -69,12 +68,12 @@ class AuthApiService {
   }
   // --- END OF FIX ---
 
-
   // All other private calls below will continue to use the _privateClient
   // and its interceptor, which is correct for calls made *after* login.
 
   Future<User?> updateUser({
-    required String token, // 'token' here is mostly for legacy calls, the interceptor handles it.
+    required String
+        token, // 'token' here is mostly for legacy calls, the interceptor handles it.
     required Map<String, dynamic> updates,
   }) async {
     // The private client's interceptor will add the token automatically.
@@ -88,7 +87,7 @@ class AuthApiService {
     }
     return null;
   }
-  
+
   Future<User?> uploadProfilePictureFromBytes({
     required String token, // Legacy, not strictly needed with the interceptor
     required Uint8List bytes,

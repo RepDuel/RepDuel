@@ -11,14 +11,13 @@ class PaymentSuccessScreen extends ConsumerStatefulWidget {
   const PaymentSuccessScreen({super.key});
 
   @override
-  ConsumerState<PaymentSuccessScreen> createState() => _PaymentSuccessScreenState();
+  ConsumerState<PaymentSuccessScreen> createState() =>
+      _PaymentSuccessScreenState();
 }
 
 class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
-  // --- THIS IS THE FIX: Add state to manage the UI ---
   String _statusMessage = 'Finalizing your upgrade...';
   bool _isSuccess = false;
-  // --- END OF FIX ---
 
   @override
   void initState() {
@@ -34,19 +33,17 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
 
     for (int i = 0; i < maxRetries; i++) {
       await ref.read(authProvider.notifier).refreshUserData();
-      
+
       final user = ref.read(authProvider).valueOrNull?.user;
       if (user != null && user.subscriptionLevel != 'free') {
         debugPrint("Subscription status confirmed on attempt ${i + 1}.");
-        
-        // --- THIS IS THE FIX: Update UI before navigating ---
+
         if (mounted) {
           setState(() {
             _statusMessage = 'Upgrade complete!';
             _isSuccess = true;
           });
-          
-          // Show a success snackbar
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Welcome to RepDuel Gold!'),
@@ -55,25 +52,29 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
             ),
           );
 
-          // Wait 2 seconds on the success screen before redirecting
           await Future.delayed(const Duration(seconds: 2));
+
+          // The mounted check must happen *after* the await, immediately
+          // before using the BuildContext to satisfy the linter.
+          if (!mounted) return;
           context.go('/profile');
         }
-        // --- END OF FIX ---
-        return; 
+        return;
       }
-      
+
       await Future.delayed(retryDelay);
     }
-    
+
     if (mounted) {
       debugPrint("Timed out waiting for subscription update.");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Payment successful! Your account will be updated shortly."),
+          content:
+              Text("Payment successful! Your account will be updated shortly."),
           duration: Duration(seconds: 5),
         ),
       );
+      // This context use is safe as there is no await before it.
       context.go('/profile');
     }
   }
@@ -86,20 +87,19 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // --- THIS IS THE FIX: Animate between spinner and checkmark ---
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
               child: _isSuccess
-                  ? const Icon(Icons.check_circle, color: Colors.green, size: 64)
-                  : const LoadingSpinner(),
+                  ? const Icon(Icons.check_circle,
+                      color: Colors.green, size: 64, key: ValueKey('success'))
+                  : const LoadingSpinner(key: ValueKey('loading')),
             ),
-            // --- END OF FIX ---
             const SizedBox(height: 24),
             Text(
               _statusMessage,
               style: const TextStyle(color: Colors.white, fontSize: 18),
             ),
-            if (!_isSuccess) // Only show this message while loading
+            if (!_isSuccess)
               const Padding(
                 padding: EdgeInsets.only(top: 12.0),
                 child: Text(

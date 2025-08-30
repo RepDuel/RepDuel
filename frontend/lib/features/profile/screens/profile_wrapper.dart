@@ -12,13 +12,19 @@ class ProfileWrapper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final isAuthenticated = authState.token != null;
+    final authAsync = ref.watch(authProvider);
 
-    if (isAuthenticated) {
-      return const ProfileScreen();
-    } else {
-      return const RegisterScreen();
-    }
+    return authAsync.when(
+      data: (authState) {
+        final isAuthenticated = authState.token != null;
+        if (isAuthenticated) {
+          return const ProfileScreen();
+        } else {
+          return const RegisterScreen();
+        }
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('Error: $error')),
+    );
   }
 }
