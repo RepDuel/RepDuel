@@ -1,23 +1,19 @@
-// frontend/lib/features/routines/screens/custom_routine_screen.dart
-
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../../../core/config/env.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../screens/add_exercise_screen.dart';
 import '../../../core/models/routine.dart';
-import '../../../core/services/secure_storage_service.dart';
+import '../../../core/providers/api_providers.dart';
+import 'add_exercise_screen.dart';
 
 enum RoutineEditorMode { create, edit }
 
-class CustomRoutineScreen extends StatefulWidget {
-  /// Create mode
+class CustomRoutineScreen extends ConsumerStatefulWidget {
   const CustomRoutineScreen({super.key})
       : mode = RoutineEditorMode.create,
         initial = null;
 
-  /// Edit mode convenience constructor
   const CustomRoutineScreen.edit({super.key, required this.initial})
       : mode = RoutineEditorMode.edit;
 
@@ -25,22 +21,20 @@ class CustomRoutineScreen extends StatefulWidget {
   final Routine? initial;
 
   @override
-  State<CustomRoutineScreen> createState() => _CustomRoutineScreenState();
+  ConsumerState<CustomRoutineScreen> createState() =>
+      _CustomRoutineScreenState();
 }
 
-class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
-  // Local list of selected exercises
+class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
   final List<_CustomExercise> _items = [];
   bool _saving = false;
 
-  // Details fields
   late final TextEditingController _nameCtrl;
   late final TextEditingController _imgCtrl;
 
   @override
   void initState() {
     super.initState();
-    // Prefill from initial when editing
     if (widget.mode == RoutineEditorMode.edit && widget.initial != null) {
       final r = widget.initial!;
       _nameCtrl = TextEditingController(text: r.name);
@@ -48,7 +42,11 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
       _items.addAll(
         r.scenarios.map((s) => _CustomExercise(
               scenarioId: s.scenarioId,
+              // --- THIS IS THE FIX ---
+              // The `ScenarioSet` object 's' does not have a `scenarioName` property.
+              // Reverting to the original logic that uses `scenarioId` as a placeholder.
               name: s.scenarioId,
+              // --- END OF FIX ---
               sets: s.sets,
               reps: s.reps,
             )),
@@ -71,43 +69,33 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
       context,
       MaterialPageRoute(builder: (_) => const AddExerciseScreen()),
     );
-    if (!mounted) return;
-    if (result != null) {
-      setState(() {
-        _items.add(
-          _CustomExercise(
-            scenarioId: result['scenario_id'] as String,
-            name: (result['name'] as String?) ?? 'Unnamed Exercise',
-            sets: (result['sets'] as int?) ?? 1,
-            reps: (result['reps'] as int?) ?? 5,
-          ),
-        );
-      });
-    }
+    if (!mounted || result == null) return;
+
+    setState(() {
+      _items.add(
+        _CustomExercise(
+          scenarioId: result['scenario_id'] as String,
+          name: (result['name'] as String?) ?? 'Unnamed Exercise',
+          sets: (result['sets'] as int?) ?? 1,
+          reps: (result['reps'] as int?) ?? 5,
+        ),
+      );
+    });
   }
 
-  void _removeAt(int index) {
-    setState(() => _items.removeAt(index));
-  }
-
-  void _incSets(int index) {
-    setState(() =>
-        _items[index] = _items[index].copyWith(sets: _items[index].sets + 1));
-  }
-
+  void _removeAt(int index) => setState(() => _items.removeAt(index));
+  void _incSets(int index) => setState(() =>
+      _items[index] = _items[index].copyWith(sets: _items[index].sets + 1));
   void _decSets(int index) {
-    if (_items[index].sets <= 0) return;
+    if (_items[index].sets <= 1) return;
     setState(() =>
         _items[index] = _items[index].copyWith(sets: _items[index].sets - 1));
   }
 
-  void _incReps(int index) {
-    setState(() =>
-        _items[index] = _items[index].copyWith(reps: _items[index].reps + 1));
-  }
-
+  void _incReps(int index) => setState(() =>
+      _items[index] = _items[index].copyWith(reps: _items[index].reps + 1));
   void _decReps(int index) {
-    if (_items[index].reps <= 0) return;
+    if (_items[index].reps <= 1) return;
     setState(() =>
         _items[index] = _items[index].copyWith(reps: _items[index].reps - 1));
   }
@@ -115,15 +103,13 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
   Future<void> _saveRoutine() async {
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one exercise first.')),
-      );
+          const SnackBar(content: Text('Add at least one exercise first.')));
       return;
     }
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a routine name.')),
-      );
+          const SnackBar(content: Text('Please enter a routine name.')));
       return;
     }
 
@@ -137,74 +123,38 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                 "scenario_id": e.scenarioId,
                 "name": e.name,
                 "sets": e.sets,
-                "reps": e.reps,
+                "reps": e.reps
               })
           .toList(),
     };
 
-    final storage = SecureStorageService();
-    final token = await storage.readToken();
-
     try {
-      late final http.Response res;
+      final client = ref.read(privateHttpClientProvider);
 
       if (widget.mode == RoutineEditorMode.edit && widget.initial != null) {
-        // PUT /routines/{id}
-        final id = widget.initial!.id;
-        res = await http.put(
-          Uri.parse('${Env.baseUrl}/api/v1/routines/$id'),
-          headers: {
-            'Content-Type': 'application/json',
-            if (token != null && token.isNotEmpty)
-              'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(payload),
-        );
+        await client.dio.put('/routines/${widget.initial!.id}', data: payload);
       } else {
-        // POST /routines/
-        res = await http.post(
-          Uri.parse('${Env.baseUrl}/api/v1/routines/'),
-          headers: {
-            'Content-Type': 'application/json',
-            if (token != null && token.isNotEmpty)
-              'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(payload),
-        );
+        await client.dio.post('/routines/', data: payload);
       }
 
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.mode == RoutineEditorMode.edit
-                ? 'Routine updated.'
-                : 'Routine saved.'),
-          ),
-        );
-        Navigator.of(context).pop(true); // let caller refresh
-      } else if (res.statusCode == 401) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please log in.')),
-        );
-      } else if (res.statusCode == 403) {
-        if (!mounted) return;
-        final errorMsg = jsonDecode(res.body)['detail'] ?? 'Forbidden.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMsg)),
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed (HTTP ${res.statusCode}).')),
-        );
-      }
-    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Network error: $e')),
+        SnackBar(
+            content: Text(widget.mode == RoutineEditorMode.edit
+                ? 'Routine updated.'
+                : 'Routine saved.')),
       );
+      context.pop(true); // Pop with 'true' to signal success
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final errorMsg = e.response?.data?['detail'] ??
+          'Failed to save routine. Please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('An unexpected error occurred: ${e.toString()}')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -219,78 +169,66 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Routine' : 'Custom Routine'),
+        title: Text(isEdit ? 'Edit Routine' : 'Create Routine'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: _saving ? null : () => Navigator.pop(context),
+          onPressed: _saving ? null : () => context.pop(),
         ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Name + Image URL inputs (always visible)
             TextField(
               controller: _nameCtrl,
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
-                labelText: 'Routine name',
-                labelStyle: TextStyle(color: Colors.white70),
-                hintText: 'e.g., Push Day',
-                hintStyle: TextStyle(color: Colors.white54),
-                enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24)),
-                focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white54)),
-              ),
+                  labelText: 'Routine name',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24)),
+                  focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white54))),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _imgCtrl,
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
-                labelText: 'Image URL (optional)',
-                labelStyle: TextStyle(color: Colors.white70),
-                hintText: 'https://...',
-                hintStyle: TextStyle(color: Colors.white54),
-                enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24)),
-                focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white54)),
-              ),
+                  labelText: 'Image URL (optional)',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24)),
+                  focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white54))),
             ),
             const SizedBox(height: 16),
-
-            // List of exercises
             Expanded(
               child: _items.isEmpty
                   ? const Center(
                       child: Text(
-                        'No exercises yet.\nTap "Add Exercise" to start.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
-                      ),
-                    )
+                          'No exercises yet.\nTap "Add Exercise" to start.',
+                          textAlign: TextAlign.center,
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 16)))
                   : Column(
                       children: [
-                        // FIXED HEADER
                         const Row(
                           children: [
                             Expanded(
-                              flex: 3,
-                              child: Text('Name', style: headerStyle),
-                            ),
+                                flex: 3,
+                                child: Text('Name', style: headerStyle)),
                             Expanded(
-                              flex: 2,
-                              child: Text('Sets', style: headerStyle),
-                            ),
+                                flex: 2,
+                                child: Center(
+                                    child: Text('Sets', style: headerStyle))),
                             Expanded(
-                              flex: 2,
-                              child: Text('Reps', style: headerStyle),
-                            ),
+                                flex: 2,
+                                child: Center(
+                                    child: Text('Reps', style: headerStyle))),
                             SizedBox(width: 48),
                           ],
                         ),
@@ -302,84 +240,70 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                                 const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final e = _items[index];
-                              // FIXED DATA ROW
                               return Row(
                                 children: [
-                                  // Name
                                   Expanded(
-                                    flex: 3,
-                                    child: Text(
-                                      e.name,
-                                      style: cellStyle,
-                                      softWrap: false,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  // Sets controls
+                                      flex: 3,
+                                      child: Text(e.name,
+                                          style: cellStyle,
+                                          softWrap: false,
+                                          overflow: TextOverflow.ellipsis)),
                                   Expanded(
                                     flex: 2,
                                     child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          onPressed: _saving
-                                              ? null
-                                              : () => _decSets(index),
-                                          icon: const Icon(Icons.remove,
-                                              color: Colors.white70),
-                                          tooltip: 'Decrease sets',
-                                        ),
-                                        Text('${e.sets}', style: cellStyle),
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          onPressed: _saving
-                                              ? null
-                                              : () => _incSets(index),
-                                          icon: const Icon(Icons.add,
-                                              color: Colors.white70),
-                                          tooltip: 'Increase sets',
-                                        ),
-                                      ],
-                                    ),
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          IconButton(
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              onPressed: _saving
+                                                  ? null
+                                                  : () => _decSets(index),
+                                              icon: const Icon(Icons.remove,
+                                                  color: Colors.white70)),
+                                          Text('${e.sets}', style: cellStyle),
+                                          IconButton(
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              onPressed: _saving
+                                                  ? null
+                                                  : () => _incSets(index),
+                                              icon: const Icon(Icons.add,
+                                                  color: Colors.white70)),
+                                        ]),
                                   ),
-                                  // Reps controls
                                   Expanded(
                                     flex: 2,
                                     child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          onPressed: _saving
-                                              ? null
-                                              : () => _decReps(index),
-                                          icon: const Icon(Icons.remove,
-                                              color: Colors.white70),
-                                          tooltip: 'Decrease reps',
-                                        ),
-                                        Text('${e.reps}', style: cellStyle),
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          onPressed: _saving
-                                              ? null
-                                              : () => _incReps(index),
-                                          icon: const Icon(Icons.add,
-                                              color: Colors.white70),
-                                          tooltip: 'Increase reps',
-                                        ),
-                                      ],
-                                    ),
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          IconButton(
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              onPressed: _saving
+                                                  ? null
+                                                  : () => _decReps(index),
+                                              icon: const Icon(Icons.remove,
+                                                  color: Colors.white70)),
+                                          Text('${e.reps}', style: cellStyle),
+                                          IconButton(
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              onPressed: _saving
+                                                  ? null
+                                                  : () => _incReps(index),
+                                              icon: const Icon(Icons.add,
+                                                  color: Colors.white70)),
+                                        ]),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete_outline,
-                                        color: Colors.redAccent),
-                                    tooltip: 'Remove',
-                                    onPressed:
-                                        _saving ? null : () => _removeAt(index),
-                                  ),
+                                      icon: const Icon(Icons.delete_outline,
+                                          color: Colors.redAccent),
+                                      onPressed: _saving
+                                          ? null
+                                          : () => _removeAt(index)),
                                 ],
                               );
                             },
@@ -391,8 +315,6 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
           ],
         ),
       ),
-
-      // Bottom CTAs: Add Exercise | Save
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
@@ -403,11 +325,10 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                 child: OutlinedButton(
                   onPressed: _saving ? null : _addExercise,
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.green),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    textStyle: const TextStyle(fontSize: 16),
-                  ),
+                      side: const BorderSide(color: Colors.green),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      textStyle: const TextStyle(fontSize: 16)),
                   child: const Text('Add Exercise'),
                 ),
               ),
@@ -416,17 +337,16 @@ class _CustomRoutineScreenState extends State<CustomRoutineScreen> {
                 child: ElevatedButton(
                   onPressed: _items.isEmpty || _saving ? null : _saveRoutine,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    textStyle: const TextStyle(fontSize: 16),
-                  ),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      textStyle: const TextStyle(fontSize: 16)),
                   child: _saving
                       ? const SizedBox(
                           height: 18,
                           width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
                       : Text(isEdit ? 'Save Changes' : 'Save Routine'),
                 ),
               ),
@@ -444,12 +364,11 @@ class _CustomExercise {
   final int sets;
   final int reps;
 
-  _CustomExercise({
-    required this.scenarioId,
-    required this.name,
-    required this.sets,
-    required this.reps,
-  });
+  _CustomExercise(
+      {required this.scenarioId,
+      required this.name,
+      required this.sets,
+      required this.reps});
 
   _CustomExercise copyWith({int? sets, int? reps}) => _CustomExercise(
         scenarioId: scenarioId,
