@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    APP_URL: str
     BASE_URL: str
     DATABASE_URL: PostgresDsn
     JWT_SECRET_KEY: str

@@ -13,40 +13,29 @@ import '../widgets/add_routine_card.dart';
 import '../widgets/routine_card.dart';
 
 final routinesProvider = FutureProvider.autoDispose<List<Routine>>((ref) async {
-  // --- THIS IS THE FIX ---
-  // Reverted to the correct .when() pattern for handling the AsyncValue from the authProvider.
-  // StateNotifierProvider does not have a `.future` getter.
   return ref.watch(authProvider).when(
-        loading: () => Future.value(
-            []), // While auth is loading, return an empty list future.
+        loading: () => Future.value([]),
         error: (e, s) => throw e,
         data: (authState) async {
-          if (authState.user == null) {
-            return []; // If user is not logged in, return an empty list.
-          }
+          if (authState.user == null) return [];
           final client = ref.watch(privateHttpClientProvider);
           final response = await client.get('/routines/');
           final List data = response.data;
           return data.map((json) => Routine.fromJson(json)).toList();
         },
       );
-  // --- END OF FIX ---
 });
 
 class RoutinesScreen extends ConsumerWidget {
   const RoutinesScreen({super.key});
 
-  /// Handles the logic for adding a new routine, including the free user limit.
-  /// It now awaits the result from the create screen to trigger a refresh.
   Future<void> _onAddRoutinePressed(
       BuildContext context, WidgetRef ref, List<Routine> routines) async {
     final user = ref.read(authProvider).valueOrNull?.user;
     if (user == null) return;
-
     final isFree = user.subscriptionLevel == 'free';
     final hasReachedLimit =
         routines.where((r) => r.userId == user.id).length >= 3;
-
     if (isFree && hasReachedLimit) {
       showDialog(
         context: context,
@@ -69,7 +58,6 @@ class RoutinesScreen extends ConsumerWidget {
         ),
       );
     } else {
-      // Await the result. If a routine was saved, the create screen will pop 'true'.
       final result = await context.pushNamed<bool>('createRoutine');
       if (result == true && context.mounted) {
         ref.invalidate(routinesProvider);
@@ -77,7 +65,6 @@ class RoutinesScreen extends ConsumerWidget {
     }
   }
 
-  /// Handles deleting a routine after user confirmation.
   Future<void> _deleteRoutine(
       BuildContext context, WidgetRef ref, String routineId) async {
     final confirmed = await showDialog<bool>(
@@ -128,12 +115,18 @@ class RoutinesScreen extends ConsumerWidget {
                   onRetry: () => ref.invalidate(routinesProvider))),
           data: (routines) {
             if (routines.isEmpty) {
+              // --- THIS IS THE FIX ---
+              // The Center widget forces its child to fit. By wrapping the Column
+              // in a SingleChildScrollView, we allow the content to scroll if it
+              // is taller than the available space, preventing the overflow.
               return Center(
                 child: SingleChildScrollView(
-                  physics:
-                      const AlwaysScrollableScrollPhysics(), // Allows pull-to-refresh
-                  child: SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.7,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Container(
+                    // Set a minimum height to help with centering on large screens.
+                    constraints: BoxConstraints(
+                        minHeight: MediaQuery.of(context).size.height * 0.7),
+                    padding: const EdgeInsets.all(20.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -154,6 +147,7 @@ class RoutinesScreen extends ConsumerWidget {
                   ),
                 ),
               );
+              // --- END OF FIX ---
             }
             return GridView.builder(
               padding: const EdgeInsets.all(12),
@@ -196,7 +190,6 @@ class RoutinesScreen extends ConsumerWidget {
                               color: Colors.white70),
                           onSelected: (value) async {
                             if (value == 'edit') {
-                              // Await the result. If the edit screen pops 'true', refresh the list.
                               final result = await context.pushNamed<bool>(
                                   'editRoutine',
                                   extra: routine);

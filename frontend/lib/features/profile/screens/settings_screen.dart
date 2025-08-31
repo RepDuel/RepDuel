@@ -1,12 +1,14 @@
 // frontend/lib/features/profile/screens/settings_screen.dart
 
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/config/env.dart';
+import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/iap_provider.dart';
 import '../../../widgets/loading_spinner.dart';
@@ -20,6 +22,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  bool _isManagingSubscription = false;
+
   // --- Helper Methods ---
 
   double _toDisplayUnit(User user, double value) =>
@@ -65,7 +69,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // --- Feature Logic Methods (preserved from your original file) ---
+  // --- Feature Logic Methods ---
+
+  Future<void> _manageSubscription() async {
+    if (_isManagingSubscription) return;
+    setState(() => _isManagingSubscription = true);
+
+    try {
+      final client = ref.read(privateHttpClientProvider);
+      final response = await client.dio.post('/payments/create-portal-session');
+
+      final portalUrlString = response.data['portal_url'] as String?;
+      if (portalUrlString == null || portalUrlString.isEmpty) {
+        throw Exception("Could not retrieve subscription portal URL.");
+      }
+
+      final portalUrl = Uri.parse(portalUrlString);
+      if (!await canLaunchUrl(portalUrl)) {
+        throw Exception("Could not launch subscription portal.");
+      }
+      await launchUrl(portalUrl, webOnlyWindowName: kIsWeb ? '_self' : null);
+    } on DioException catch (e) {
+      final errorMsg =
+          e.response?.data?['detail'] ?? 'Failed to open subscription portal.';
+      _showFeedbackSnackbar(errorMsg, isSuccess: false);
+    } catch (e) {
+      _showFeedbackSnackbar(e.toString(), isSuccess: false);
+    } finally {
+      if (mounted) {
+        setState(() => _isManagingSubscription = false);
+      }
+    }
+  }
 
   Future<void> _changeProfilePicture() async {
     final picker = ImagePicker();
@@ -89,10 +124,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _editWeight() async {
     final user = ref.read(authProvider).valueOrNull?.user;
-    if (user == null) {
-      if (mounted) context.go('/login');
-      return;
-    }
+    if (user == null) return;
     final unitLabel = _unitLabel(user);
     final displayedWeight = user.weight != null
         ? _toDisplayUnit(user, user.weight!).toStringAsFixed(1)
@@ -212,67 +244,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Future<void> _resetProgress() async {
-    final authState = ref.read(authProvider).valueOrNull;
-    final userId = authState?.user?.id;
-    final token = authState?.token;
-    if (userId == null || token == null) {
-      if (mounted) context.go('/login');
-      return;
-    }
-    final confirmed = await _showConfirmationDialog(
-        title: "Reset Progress",
-        content: "This action cannot be undone.",
-        confirmText: "Confirm Reset",
-        isDestructive: true);
-    if (confirmed != true) return;
-    try {
-      final response = await http.delete(
-          Uri.parse('${Env.baseUrl}/api/v1/scores/user/$userId'),
-          headers: {'Authorization': 'Bearer $token'});
-      if (!mounted) return;
-      if (response.statusCode == 204) {
-        _showFeedbackSnackbar('Your progress has been reset.', isSuccess: true);
-        ref.read(authProvider.notifier).refreshUserData();
-      } else {
-        _showFeedbackSnackbar(
-            'Failed to reset progress. Code: ${response.statusCode}',
-            isSuccess: false);
-      }
-    } catch (e) {
-      _showFeedbackSnackbar('An error occurred: $e', isSuccess: false);
-    }
-  }
-
-  Future<void> _deleteAccount() async {
-    final token = ref.read(authProvider).valueOrNull?.token;
-    if (token == null) {
-      if (mounted) context.go('/login');
-      return;
-    }
-    final confirmed = await _showConfirmationDialog(
-        title: "Delete Account",
-        content: "This is permanent and cannot be undone.",
-        confirmText: "Delete Forever",
-        isDestructive: true);
-    if (confirmed != true) return;
-    try {
-      final response = await http.delete(
-          Uri.parse('${Env.baseUrl}/api/v1/users/me'),
-          headers: {'Authorization': 'Bearer $token'});
-      if (!mounted) return;
-      if (response.statusCode == 204) {
-        await ref.read(authProvider.notifier).logout();
-        _showFeedbackSnackbar('Account deleted successfully.', isSuccess: true);
-      } else {
-        _showFeedbackSnackbar('Failed to delete account. Please try again.',
-            isSuccess: false);
-      }
-    } catch (e) {
-      _showFeedbackSnackbar('An error occurred: $e', isSuccess: false);
-    }
-  }
-
   Future<void> _logout() async {
     final confirmed = await _showConfirmationDialog(
         title: 'Log out',
@@ -341,9 +312,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // --- This is the key logical change, applied to your preferred UI ---
-              if (subscriptionTier == SubscriptionTier.free) ...[
+              if (subscriptionTier == SubscriptionTier.free)
                 ListTile(
                   leading:
                       const Icon(Icons.workspace_premium, color: Colors.amber),
@@ -351,18 +320,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       style: TextStyle(color: Colors.amber)),
                   subtitle: const Text('Unlock charts and support the app!'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => context
-                      .push('/subscribe'), // Uses push for correct navigation.
+                  onTap: () => context.push('/subscribe'),
+                )
+              else if (subscriptionTier != null) // Handles gold, platinum, etc.
+                ListTile(
+                  leading: const Icon(Icons.credit_card, color: Colors.green),
+                  title: const Text('Manage Subscription'),
+                  subtitle: Text(
+                      'You are a ${subscriptionTier.name.toUpperCase()} member.'),
+                  trailing: _isManagingSubscription
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 3))
+                      : const Icon(Icons.launch, size: 18),
+                  onTap: _manageSubscription,
                 ),
-                const Divider(color: Colors.grey),
-              ],
-              // --- End of the only functional change ---
-
+              const Divider(color: Colors.grey),
               ListTile(
-                title: const Text('Username',
-                    style: TextStyle(color: Colors.white)),
-                subtitle: Text(user.username,
-                    style: const TextStyle(color: Colors.grey)),
+                title: const Text('Username'),
+                subtitle: Text(user.username),
                 trailing:
                     const Icon(Icons.edit_off, color: Colors.grey, size: 18),
                 onTap: () => _showFeedbackSnackbar(
@@ -371,80 +348,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const Divider(color: Colors.grey),
               ListTile(
-                title:
-                    const Text('Gender', style: TextStyle(color: Colors.white)),
-                subtitle: Text(user.gender ?? "Not specified",
-                    style: const TextStyle(color: Colors.grey)),
-                trailing: const Icon(Icons.edit, color: Colors.white),
+                title: const Text('Gender'),
+                subtitle: Text(user.gender ?? "Not specified"),
+                trailing: const Icon(Icons.edit, size: 18),
                 onTap: _editGender,
               ),
               const Divider(color: Colors.grey),
               ListTile(
-                title:
-                    const Text('Weight', style: TextStyle(color: Colors.white)),
-                subtitle: Text(
-                    user.weight != null
-                        ? "${_toDisplayUnit(user, user.weight!).toStringAsFixed(1)} ${_unitLabel(user)}"
-                        : "Not specified",
-                    style: const TextStyle(color: Colors.grey)),
-                trailing: const Icon(Icons.edit, color: Colors.white),
+                title: const Text('Weight'),
+                subtitle: Text(user.weight != null
+                    ? "${_toDisplayUnit(user, user.weight!).toStringAsFixed(1)} ${_unitLabel(user)}"
+                    : "Not specified"),
+                trailing: const Icon(Icons.edit, size: 18),
                 onTap: _editWeight,
               ),
               const Divider(color: Colors.grey),
               ListTile(
-                title: const Text('Weight Unit',
-                    style: TextStyle(color: Colors.white)),
-                subtitle: Text(
-                    _unitLabel(user) == 'kg'
-                        ? "Kilograms (kg)"
-                        : "Pounds (lbs)",
-                    style: const TextStyle(color: Colors.grey)),
-                trailing: const Icon(Icons.edit, color: Colors.white),
+                title: const Text('Weight Unit'),
+                subtitle: Text(_unitLabel(user) == 'kg'
+                    ? "Kilograms (kg)"
+                    : "Pounds (lbs)"),
+                trailing: const Icon(Icons.edit, size: 18),
                 onTap: _editWeightUnit,
               ),
               const Divider(color: Colors.grey),
               ListTile(
-                title: const Text('Restore Purchases',
-                    style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Re-sync your subscription status',
-                    style: TextStyle(color: Colors.grey)),
-                trailing: const Icon(Icons.restore, color: Colors.white),
+                title: const Text('Restore Purchases'),
+                subtitle: const Text('Re-sync your subscription status'),
+                trailing: const Icon(Icons.restore, size: 18),
                 onTap: _restorePurchases,
               ),
               const Divider(color: Colors.grey),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.0),
-                child: Text('Danger Zone',
-                    style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-              ),
               ListTile(
-                title: const Text('Reset Progress',
-                    style: TextStyle(color: Colors.red)),
-                subtitle: const Text('Delete all your workout scores',
-                    style: TextStyle(color: Colors.redAccent, fontSize: 12)),
-                trailing:
-                    const Icon(Icons.delete_forever, color: Colors.redAccent),
-                onTap: _resetProgress,
-              ),
-              const Divider(color: Colors.grey),
-              ListTile(
-                title: const Text('Delete Account',
-                    style: TextStyle(
-                        color: Colors.red, fontWeight: FontWeight.bold)),
-                subtitle: const Text('Permanently erase your account and data',
-                    style: TextStyle(color: Colors.redAccent, fontSize: 12)),
-                trailing:
-                    const Icon(Icons.warning_amber_rounded, color: Colors.red),
-                onTap: _deleteAccount,
-              ),
-              const Divider(color: Colors.grey),
-              ListTile(
-                title: const Text('Log out',
-                    style: TextStyle(color: Colors.white)),
-                trailing: const Icon(Icons.logout, color: Colors.white),
+                title: const Text('Log out'),
+                trailing: const Icon(Icons.logout),
                 onTap: _logout,
               ),
             ],
