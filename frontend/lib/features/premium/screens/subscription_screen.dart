@@ -1,3 +1,5 @@
+// frontend/lib/features/premium/screens/subscription_screen.dart
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -103,6 +105,13 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(subscriptionProvider, (previous, next) {
+      final tier = next.valueOrNull;
+      if (tier == SubscriptionTier.gold || tier == SubscriptionTier.platinum) {
+        context.go('/payment-success');
+      }
+    });
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -111,7 +120,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.go('/profile'),
+          onPressed: () => context.pop(),
         ),
       ),
       body: SingleChildScrollView(
@@ -168,9 +177,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 TextButton(
                   onPressed: _handleRestore,
                   child: const Text('Restore Purchases',
-                      style: TextStyle(
-                          color:
-                              Colors.white70)), // <-- FIX #2: Corrected color
+                      style: TextStyle(color: Colors.white70)),
                 ),
               ],
             ),
