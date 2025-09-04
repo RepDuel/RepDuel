@@ -1,8 +1,9 @@
-// frontend/lib/features/premium/screens/subscription_screen.dart
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:repduel/core/providers/iap_provider.dart';
 import 'package:repduel/core/providers/stripe_provider.dart';
 
@@ -20,15 +21,55 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     setState(() => _isPurchasing = true);
 
     try {
-      await ref.read(stripeServiceProvider).subscribeToPlan(
-        onDisplayError: (error) {
+      if (kIsWeb) {
+        await ref.read(stripeServiceProvider).subscribeToPlan(
+          onDisplayError: (error) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(error), backgroundColor: Colors.red),
+              );
+            }
+          },
+        );
+      } else {
+        final offerings = await ref.read(offeringsProvider.future);
+        final currentOffering = offerings.current;
+
+        if (currentOffering != null &&
+            currentOffering.availablePackages.isNotEmpty) {
+          final packageToPurchase = currentOffering.availablePackages.first;
+          await ref
+              .read(subscriptionProvider.notifier)
+              .purchasePackage(packageToPurchase);
+        } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(error), backgroundColor: Colors.red),
+              const SnackBar(
+                  content: Text("No products found."),
+                  backgroundColor: Colors.orange),
             );
           }
-        },
-      );
+        }
+      }
+    } on PlatformException catch (e) {
+      final errorCode = PurchasesErrorHelper.getErrorCode(e);
+      if (errorCode != PurchasesErrorCode.purchaseCancelledError) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text("Purchase failed: ${e.message}"),
+                backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text("An error occurred: ${e.toString()}"),
+              backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isPurchasing = false);
@@ -68,8 +109,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         title: const Text('Upgrade to Gold'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // Provides a consistent and reliable exit from the subscription flow,
-        // preventing the user from getting stuck.
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => context.go('/profile'),
@@ -129,7 +168,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 TextButton(
                   onPressed: _handleRestore,
                   child: const Text('Restore Purchases',
-                      style: TextStyle(color: Colors.white70)),
+                      style: TextStyle(
+                          color:
+                              Colors.white70)), // <-- FIX #2: Corrected color
                 ),
               ],
             ),
