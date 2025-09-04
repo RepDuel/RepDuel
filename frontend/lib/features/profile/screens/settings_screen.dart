@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/api_providers.dart';
@@ -23,8 +24,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isManagingSubscription = false;
-
-  // --- Helper Methods ---
 
   double _toDisplayUnit(User user, double value) =>
       value * user.weightMultiplier;
@@ -69,38 +68,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // --- Feature Logic Methods ---
-
+  // ========== THIS IS THE CORRECT IMPLEMENTATION ==========
   Future<void> _manageSubscription() async {
     if (_isManagingSubscription) return;
     setState(() => _isManagingSubscription = true);
 
     try {
-      final client = ref.read(privateHttpClientProvider);
-      final response = await client.dio.post('/payments/create-portal-session');
+      if (kIsWeb) {
+        // --- Web Flow (Stripe Portal) ---
+        final client = ref.read(privateHttpClientProvider);
+        final response =
+            await client.dio.post('/payments/create-portal-session');
+        final portalUrlString = response.data['portal_url'] as String?;
+        if (portalUrlString == null || portalUrlString.isEmpty) {
+          throw Exception("Could not retrieve subscription portal URL.");
+        }
+        final portalUrl = Uri.parse(portalUrlString);
+        await launchUrl(portalUrl, webOnlyWindowName: '_self');
+      } else {
+        // --- Native iOS/Android Flow (RevenueCat Management URL) ---
+        final customerInfo = await Purchases.getCustomerInfo();
+        final managementURL = customerInfo.managementURL;
 
-      final portalUrlString = response.data['portal_url'] as String?;
-      if (portalUrlString == null || portalUrlString.isEmpty) {
-        throw Exception("Could not retrieve subscription portal URL.");
-      }
+        if (managementURL == null) {
+          throw Exception("Could not find subscription management URL.");
+        }
 
-      final portalUrl = Uri.parse(portalUrlString);
-      if (!await canLaunchUrl(portalUrl)) {
-        throw Exception("Could not launch subscription portal.");
+        final uri = Uri.parse(managementURL);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          throw Exception("Could not launch URL: $managementURL");
+        }
       }
-      await launchUrl(portalUrl, webOnlyWindowName: kIsWeb ? '_self' : null);
     } on DioException catch (e) {
       final errorMsg =
           e.response?.data?['detail'] ?? 'Failed to open subscription portal.';
       _showFeedbackSnackbar(errorMsg, isSuccess: false);
     } catch (e) {
-      _showFeedbackSnackbar(e.toString(), isSuccess: false);
+      _showFeedbackSnackbar(e.toString().replaceFirst("Exception: ", ""),
+          isSuccess: false);
     } finally {
       if (mounted) {
         setState(() => _isManagingSubscription = false);
       }
     }
   }
+  // ========================================================
 
   Future<void> _changeProfilePicture() async {
     final picker = ImagePicker();
@@ -322,7 +336,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () => context.push('/subscribe'),
                 )
-              else if (subscriptionTier != null) // Handles gold, platinum, etc.
+              else if (subscriptionTier != null)
                 ListTile(
                   leading: const Icon(Icons.credit_card, color: Colors.green),
                   title: const Text('Manage Subscription'),
