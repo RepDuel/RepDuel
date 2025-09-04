@@ -80,18 +80,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Future<void> _handleRestore() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Restoring purchases...")),
-    );
+    setState(() => _isPurchasing = true);
     try {
       await ref.read(subscriptionProvider.notifier).restorePurchases();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Purchases restored successfully!"),
-              backgroundColor: Colors.green),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,15 +91,28 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               backgroundColor: Colors.red),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isPurchasing = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(subscriptionProvider, (previous, next) {
+    ref.listen<AsyncValue<SubscriptionTier>>(subscriptionProvider,
+        (previous, next) {
       final tier = next.valueOrNull;
+
       if (tier == SubscriptionTier.gold || tier == SubscriptionTier.platinum) {
-        context.go('/payment-success');
+        if (ModalRoute.of(context)?.isCurrent ?? false) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text("Success! Premium features unlocked."),
+                backgroundColor: Colors.green),
+          );
+          context.pop();
+        }
       }
     });
 
@@ -175,7 +179,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 TextButton(
-                  onPressed: _handleRestore,
+                  onPressed: _isPurchasing ? null : _handleRestore,
                   child: const Text('Restore Purchases',
                       style: TextStyle(color: Colors.white70)),
                 ),
