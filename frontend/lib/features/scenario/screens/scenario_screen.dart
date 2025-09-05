@@ -113,9 +113,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         context.pop(true);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(e.toString().replaceFirst("Exception: ", ""))));
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
