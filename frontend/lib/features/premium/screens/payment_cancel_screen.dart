@@ -1,3 +1,5 @@
+// frontend/lib/features/premium/screens/payment_cancel_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,7 +13,6 @@ class PaymentCancelScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // The close button provides a clean exit from the payment flow.
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () => context.go('/profile'),
@@ -23,44 +24,23 @@ class PaymentCancelScreen extends StatelessWidget {
           child: Column(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 40),
-                      _buildCancelIcon(),
-                      const SizedBox(height: 32),
-                      _buildTitle(),
-                      const SizedBox(height: 16),
-                      _buildDescription(),
-                      const SizedBox(height: 48),
-                      _buildBenefitsReminder(),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
+                child: ListView(
+                  children: [
+                    const SizedBox(height: 24),
+                    _buildTitle(),
+                    const SizedBox(height: 12),
+                    _buildDescription(),
+                    const SizedBox(height: 40),
+                    _buildBenefitsReminder(),
+                  ],
                 ),
               ),
+              const SizedBox(height: 20), // Spacing before buttons
               _buildActionButtons(context),
             ],
           ),
+          // =====================================
         ),
-      ),
-    );
-  }
-
-  Widget _buildCancelIcon() {
-    return Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        color: Colors.red.withAlpha(51),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.red, width: 2),
-      ),
-      child: const Icon(
-        Icons.cancel_outlined,
-        color: Colors.red,
-        size: 50,
       ),
     );
   }
@@ -69,7 +49,7 @@ class PaymentCancelScreen extends StatelessWidget {
     return const Text(
       'Payment Canceled',
       style: TextStyle(
-          color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+          color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
       textAlign: TextAlign.center,
     );
   }
@@ -134,11 +114,7 @@ class PaymentCancelScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ElevatedButton(
-          // --- THIS IS THE FIX ---
-          // Use context.go() to navigate to a known, safe state. This is robust
-          // and works correctly even after a full-page web redirect.
           onPressed: () => context.go('/subscribe'),
-          // --- END OF FIX ---
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.amber,
             foregroundColor: Colors.black,
@@ -151,7 +127,6 @@ class PaymentCancelScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         OutlinedButton(
-          // This already correctly uses go() to provide a clean exit.
           onPressed: () => context.go('/profile'),
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.white,

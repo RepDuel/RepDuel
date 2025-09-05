@@ -49,16 +49,20 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
 
       _ref.listen<AsyncValue<AuthState>>(authProvider, (_, next) {
         final user = next.valueOrNull?.user;
-        if (user != null) {
-          debugPrint(
-              "[SubscriptionNotifier] User logged in. Identifying with RevenueCat as ${user.id}.");
-          Purchases.logIn(user.id);
-          _updateSubscriptionStatus();
+        if (!kIsWeb) {
+          if (user != null) {
+            debugPrint(
+                "[SubscriptionNotifier] User logged in. Identifying with RevenueCat as ${user.id}.");
+            Purchases.logIn(user.id);
+            _updateSubscriptionStatus();
+          } else {
+            debugPrint(
+                "[SubscriptionNotifier] User logged out. Resetting RevenueCat identity.");
+            Purchases.logOut();
+            state = const AsyncValue.data(SubscriptionTier.free);
+          }
         } else {
-          debugPrint(
-              "[SubscriptionNotifier] User logged out. Resetting RevenueCat identity.");
-          Purchases.logOut();
-          state = const AsyncValue.data(SubscriptionTier.free);
+          _updateSubscriptionStatus();
         }
       }, fireImmediately: true);
     } on PlatformException catch (e, s) {

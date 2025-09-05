@@ -25,7 +25,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
     try {
       if (kIsWeb) {
-        // Web flow remains the same, as it relies on redirects
         await ref.read(stripeServiceProvider).subscribeToPlan(
             onDisplayError: (error) {
           if (mounted) {
@@ -34,7 +33,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           }
         });
       } else {
-        // Native iOS/Android Flow
         final offerings = await ref.read(offeringsProvider.future);
         final packageToPurchase = offerings.current?.availablePackages.first;
 
@@ -42,21 +40,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           throw Exception("No products found.");
         }
 
-        // Await the purchase result
         await ref
             .read(subscriptionProvider.notifier)
             .purchasePackage(packageToPurchase);
 
-        // ========== THIS IS THE FIX ==========
-        // If the purchase was successful and didn't throw an error,
-        // we can assume success and navigate.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text("Success! Premium features unlocked."),
               backgroundColor: Colors.green));
-          context.pop();
+          context.pop(true);
         }
-        // =====================================
       }
     } on PlatformException catch (e) {
       if (PurchasesErrorHelper.getErrorCode(e) !=
@@ -81,6 +74,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Future<void> _handleRestore() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Restore Purchases is available on the iOS app."),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      return;
+    }
+
     if (_isPurchasing) return;
     setState(() => _isPurchasing = true);
 
@@ -90,16 +93,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     try {
       await ref.read(subscriptionProvider.notifier).restorePurchases();
 
-      // ========== THIS IS THE FIX ==========
-      // If the restore was successful and didn't throw an error,
-      // show a success message and navigate.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text("Purchases restored successfully!"),
             backgroundColor: Colors.green));
-        context.pop();
+        context.pop(true);
       }
-      // =====================================
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -115,7 +114,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // We no longer need the ref.listen in the build method.
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(

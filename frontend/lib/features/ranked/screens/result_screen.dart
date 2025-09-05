@@ -157,7 +157,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final user = authState!.user!;
     final weightMultiplier = user.weightMultiplier;
 
-    // This is the user's true personal best after this session.
     final scoreForRankCalc = widget.finalScore > widget.previousBest
         ? widget.finalScore
         : widget.previousBest.toDouble();
@@ -178,14 +177,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         final nextThreshold = data.rank['next_rank_threshold'];
         final isMax = currentRank == 'Celestial';
 
-        // --- THIS IS THE FIX ---
-        // Use the correct personal best for progress calculation.
         final progressValue = isMax
             ? 1.0
             : (nextThreshold != null && nextThreshold > 0)
                 ? (scoreForRankCalc / nextThreshold).clamp(0.0, 1.0)
                 : 0.0;
-        // --- END OF FIX ---
 
         return _buildScaffold(
             SingleChildScrollView(
@@ -229,15 +225,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           minHeight: 20)),
                   const SizedBox(height: 8),
                   Text(
-                      // --- THIS IS THE FIX ---
-                      // Also use the personal best for the text label.
                       isMax
                           ? 'MAX RANK'
                           : nextThreshold != null && nextThreshold > 0
                               ? '${(scoreForRankCalc * weightMultiplier).toStringAsFixed(1)} / ${(nextThreshold * weightMultiplier).toStringAsFixed(1)}'
                               : (scoreForRankCalc * weightMultiplier)
                                   .toStringAsFixed(1),
-                      // --- END OF FIX ---
                       style:
                           const TextStyle(color: Colors.white, fontSize: 16)),
                   const SizedBox(height: 32),
@@ -245,19 +238,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   const SizedBox(height: 16),
                   Consumer(builder: (context, ref, _) {
                     final subTier = ref.watch(subscriptionProvider).valueOrNull;
-                    return (subTier == SubscriptionTier.gold ||
-                            subTier == SubscriptionTier.platinum)
-                        ? ScoreHistoryChart(
-                            scenarioId: widget.scenarioId,
-                            weightMultiplier: weightMultiplier)
-                        : PaywallLock(
-                            message: "Upgrade to Gold to track your progress.",
-                            onTap: () => context.push('/subscribe'));
+                    if (subTier == SubscriptionTier.gold ||
+                        subTier == SubscriptionTier.platinum) {
+                      return ScoreHistoryChart(
+                          scenarioId: widget.scenarioId,
+                          weightMultiplier: weightMultiplier);
+                    } else {
+                      return PaywallLock(
+                        message: "Upgrade to Gold to track your progress.",
+                        onTap: () async {
+                          final purchaseSuccess =
+                              await context.push<bool>('/subscribe');
+                          if (purchaseSuccess == true) {
+                            ref.invalidate(subscriptionProvider);
+                            ref.invalidate(authProvider);
+                          }
+                        },
+                      );
+                    }
                   }),
                   const SizedBox(height: 32),
                   ElevatedButton(
-                    onPressed: () =>
-                        context.pop(true), // Return true to signal a refresh
+                    onPressed: () => context.pop(true),
                     style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
