@@ -79,11 +79,30 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     }
   }
 
+  // ========== THIS IS THE FIX ==========
+  // This version provides immediate and clear feedback to the user.
   Future<void> _handleRestore() async {
+    // Prevent multiple clicks
+    if (_isPurchasing) return;
     setState(() => _isPurchasing = true);
+
+    // Show initial feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Restoring purchases...")),
+    );
+
     try {
       await ref.read(subscriptionProvider.notifier).restorePurchases();
+      // On success, show a confirmation snackbar. The ref.listen will handle navigation.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Purchases restored successfully!"),
+              backgroundColor: Colors.green),
+        );
+      }
     } catch (e) {
+      // On failure, show an error snackbar.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -97,6 +116,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       }
     }
   }
+  // =====================================
 
   @override
   Widget build(BuildContext context) {
@@ -105,12 +125,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       final tier = next.valueOrNull;
 
       if (tier == SubscriptionTier.gold || tier == SubscriptionTier.platinum) {
+        // Only navigate if the screen is still visible
         if (ModalRoute.of(context)?.isCurrent ?? false) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text("Success! Premium features unlocked."),
-                backgroundColor: Colors.green),
-          );
           context.pop();
         }
       }
