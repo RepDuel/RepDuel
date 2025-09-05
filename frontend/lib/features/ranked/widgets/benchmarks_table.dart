@@ -3,11 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
-import '../utils/rank_utils.dart'; // <-- IMPORTED UTILITY FILE
-import '../../../core/providers/auth_provider.dart'; // Import the auth provider
+import '../utils/rank_utils.dart';
+import '../../../core/providers/auth_provider.dart';
 
-class BenchmarksTable extends ConsumerWidget { // Changed to ConsumerWidget
+class BenchmarksTable extends ConsumerWidget {
   final Map<String, dynamic> standards;
   final Function() onViewRankings;
   final bool showLifts;
@@ -20,36 +21,40 @@ class BenchmarksTable extends ConsumerWidget { // Changed to ConsumerWidget
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { // Added WidgetRef ref
-    // Safely watch the authProvider to get AsyncValue<AuthState>
+  Widget build(BuildContext context, WidgetRef ref) {
     final authStateAsyncValue = ref.watch(authProvider);
 
-    // Use .when() to handle loading, error, and data states for auth.
     return authStateAsyncValue.when(
-      loading: () => const Center(child: CircularProgressIndicator()), // Show loading while auth state is loading
-      error: (error, stackTrace) => Center(child: Text('Auth Error: $error', style: const TextStyle(color: Colors.red))), // Show error if auth fails
-      data: (authState) { // authState is the actual AuthState object here
-        // Safely access user and its properties from the loaded AuthState.
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => Center(
+          child: Text('Auth Error: $error',
+              style: const TextStyle(color: Colors.red))),
+      data: (authState) {
         final user = authState.user;
-        final weightMultiplier = user?.weightMultiplier ?? 1.0; // Default to 1.0 if user or multiplier is null
+        final weightMultiplier = user?.weightMultiplier ?? 1.0;
 
-        // Rank data processing remains the same, using the fetched standards.
         final sortedRanks = standards.keys.toList()
           ..sort((a, b) => (standards[a]['total'] as num)
               .compareTo(standards[b]['total'] as num));
 
-        // Build the UI with the fetched user data and standards.
         return Column(
           children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                  onPressed: () => context.pop(),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             _BenchmarksTableHeader(showLifts: showLifts),
             const SizedBox(height: 8),
-            // Map through sorted ranks to build rows.
             ...sortedRanks.map((rank) => _BenchmarkRow(
                   rank: rank,
                   lifts: showLifts ? standards[rank]['lifts'] : null,
                   metadata: standards[rank]['metadata'],
-                  weightMultiplier: weightMultiplier, // Pass the correctly determined multiplier
+                  weightMultiplier: weightMultiplier,
                 )),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -57,7 +62,8 @@ class BenchmarksTable extends ConsumerWidget { // Changed to ConsumerWidget
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               ),
               child: const Text('View My Rankings'),
             ),
@@ -103,7 +109,7 @@ class _BenchmarkRow extends StatelessWidget {
   final String rank;
   final Map<String, dynamic>? lifts;
   final Map<String, dynamic>? metadata;
-  final double weightMultiplier; // This is correctly received
+  final double weightMultiplier;
 
   const _BenchmarkRow({
     required this.rank,
@@ -114,10 +120,9 @@ class _BenchmarkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get rank color using the global helper function.
     final color = metadata?['color'] != null
         ? Color(int.parse(metadata!['color'].substring(1, 7), radix: 16))
-        : getRankColor(rank); // Use the global function
+        : getRankColor(rank);
 
     final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
 
@@ -198,7 +203,7 @@ class _LiftValue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      value != null ? _roundToNearest5(value * weightMultiplier) : '-', // Apply multiplier here
+      value != null ? _roundToNearest5(value * weightMultiplier) : '-',
       textAlign: TextAlign.center,
       style: const TextStyle(
         color: Colors.white,
