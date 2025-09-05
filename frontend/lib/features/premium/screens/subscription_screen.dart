@@ -20,57 +20,58 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _isPurchasing = false;
 
   Future<void> _handlePurchase() async {
+    if (_isPurchasing) return;
     setState(() => _isPurchasing = true);
 
     try {
       if (kIsWeb) {
+        // Web flow remains the same, as it relies on redirects
         await ref.read(stripeServiceProvider).subscribeToPlan(
-          onDisplayError: (error) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(error), backgroundColor: Colors.red),
-              );
-            }
-          },
-        );
-      } else {
-        final offerings = await ref.read(offeringsProvider.future);
-        final currentOffering = offerings.current;
-
-        if (currentOffering != null &&
-            currentOffering.availablePackages.isNotEmpty) {
-          final packageToPurchase = currentOffering.availablePackages.first;
-          await ref
-              .read(subscriptionProvider.notifier)
-              .purchasePackage(packageToPurchase);
-        } else {
+            onDisplayError: (error) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text("No products found."),
-                  backgroundColor: Colors.orange),
-            );
+                SnackBar(content: Text(error), backgroundColor: Colors.red));
           }
+        });
+      } else {
+        // Native iOS/Android Flow
+        final offerings = await ref.read(offeringsProvider.future);
+        final packageToPurchase = offerings.current?.availablePackages.first;
+
+        if (packageToPurchase == null) {
+          throw Exception("No products found.");
         }
+
+        // Await the purchase result
+        await ref
+            .read(subscriptionProvider.notifier)
+            .purchasePackage(packageToPurchase);
+
+        // ========== THIS IS THE FIX ==========
+        // If the purchase was successful and didn't throw an error,
+        // we can assume success and navigate.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text("Success! Premium features unlocked."),
+              backgroundColor: Colors.green));
+          context.pop();
+        }
+        // =====================================
       }
     } on PlatformException catch (e) {
-      final errorCode = PurchasesErrorHelper.getErrorCode(e);
-      if (errorCode != PurchasesErrorCode.purchaseCancelledError) {
+      if (PurchasesErrorHelper.getErrorCode(e) !=
+          PurchasesErrorCode.purchaseCancelledError) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text("Purchase failed: ${e.message}"),
-                backgroundColor: Colors.red),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text("Purchase failed: ${e.message}"),
+              backgroundColor: Colors.red));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text("An error occurred: ${e.toString()}"),
-              backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("An error occurred: ${e.toString()}"),
+            backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) {
@@ -79,36 +80,31 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     }
   }
 
-  // ========== THIS IS THE FIX ==========
-  // This version provides immediate and clear feedback to the user.
   Future<void> _handleRestore() async {
-    // Prevent multiple clicks
     if (_isPurchasing) return;
     setState(() => _isPurchasing = true);
 
-    // Show initial feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Restoring purchases...")),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text("Restoring purchases...")));
 
     try {
       await ref.read(subscriptionProvider.notifier).restorePurchases();
-      // On success, show a confirmation snackbar. The ref.listen will handle navigation.
+
+      // ========== THIS IS THE FIX ==========
+      // If the restore was successful and didn't throw an error,
+      // show a success message and navigate.
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Purchases restored successfully!"),
-              backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Purchases restored successfully!"),
+            backgroundColor: Colors.green));
+        context.pop();
       }
+      // =====================================
     } catch (e) {
-      // On failure, show an error snackbar.
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text("Restore failed: ${e.toString()}"),
-              backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Restore failed: ${e.toString()}"),
+            backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) {
@@ -116,22 +112,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       }
     }
   }
-  // =====================================
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<SubscriptionTier>>(subscriptionProvider,
-        (previous, next) {
-      final tier = next.valueOrNull;
-
-      if (tier == SubscriptionTier.gold || tier == SubscriptionTier.platinum) {
-        // Only navigate if the screen is still visible
-        if (ModalRoute.of(context)?.isCurrent ?? false) {
-          context.pop();
-        }
-      }
-    });
-
+    // We no longer need the ref.listen in the build method.
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
