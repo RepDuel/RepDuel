@@ -23,6 +23,7 @@ import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/profile/screens/theme_selector_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
+import '../features/ranked/screens/result_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
@@ -95,8 +96,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
         ],
       ),
-
-      // --- STANDALONE ROUTES (no bottom nav bar) ---
       GoRoute(
           path: '/login',
           name: 'login',
@@ -105,23 +104,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/register',
           name: 'register',
           builder: (context, state) => const RegisterScreen()),
-
       GoRoute(
         path: '/subscribe',
         name: 'subscribe',
         builder: (context, state) => const SubscriptionScreen(),
-        routes: [
-          GoRoute(
-              path: 'payment-success',
-              name: 'paymentSuccess',
-              builder: (context, state) => const PaymentSuccessScreen()),
-          GoRoute(
-              path: 'payment-cancel',
-              name: 'paymentCancel',
-              builder: (context, state) => const PaymentCancelScreen()),
-        ],
       ),
-
+      GoRoute(
+          path: '/payment-success',
+          name: 'paymentSuccess',
+          builder: (context, state) => const PaymentSuccessScreen()),
+      GoRoute(
+          path: '/payment-cancel',
+          name: 'paymentCancel',
+          builder: (context, state) => const PaymentCancelScreen()),
       GoRoute(
         path: '/leaderboard/:scenarioId',
         name: 'liftLeaderboard',
@@ -135,8 +130,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/add-exercise',
           name: 'addExercise',
           builder: (context, state) => const AddExerciseScreen()),
-
-      // The original, correct implementation for this route.
+      GoRoute(
+        path: '/summary',
+        name: 'summary',
+        builder: (context, state) =>
+            SummaryScreen(totalVolume: state.extra as int? ?? 0),
+      ),
+      GoRoute(
+        path: '/leaderboard-energy',
+        name: 'energyLeaderboard',
+        builder: (context, state) => const EnergyLeaderboardScreen(),
+      ),
+      GoRoute(
+        path: '/scenario/:scenarioId',
+        name: 'scenario',
+        builder: (context, state) {
+          final scenarioId = state.pathParameters['scenarioId']!;
+          final liftName = state.extra as String? ?? 'Ranked Lift';
+          return ScenarioScreen(scenarioId: scenarioId, liftName: liftName);
+        },
+      ),
       GoRoute(
         path: '/exercise-play',
         name: 'exercise-play',
@@ -149,26 +162,26 @@ final routerProvider = Provider<GoRouter>((ref) {
               reps: exercise.reps);
         },
       ),
-
       GoRoute(
-        path: '/scenario/:scenarioId',
-        name: 'scenario',
+        path: '/results',
+        name: 'results',
         builder: (context, state) {
-          final scenarioId = state.pathParameters['scenarioId']!;
-          final liftName = state.extra as String? ?? 'Ranked Lift';
-          return ScenarioScreen(scenarioId: scenarioId, liftName: liftName);
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final finalScore = extra['finalScore'] as double? ?? 0.0;
+          final previousBest = extra['previousBest'] as int? ?? 0;
+          final scenarioId = extra['scenarioId'] as String? ?? '';
+
+          if (scenarioId.isEmpty) {
+            return const Scaffold(
+                body: Center(child: Text("Error: Missing Scenario ID")));
+          }
+
+          return ResultScreen(
+            finalScore: finalScore,
+            previousBest: previousBest,
+            scenarioId: scenarioId,
+          );
         },
-      ),
-      GoRoute(
-        path: '/summary',
-        name: 'summary',
-        builder: (context, state) =>
-            SummaryScreen(totalVolume: state.extra as int? ?? 0),
-      ),
-      GoRoute(
-        path: '/leaderboard-energy',
-        name: 'energyLeaderboard',
-        builder: (context, state) => const EnergyLeaderboardScreen(),
       ),
     ],
     redirect: (context, state) {

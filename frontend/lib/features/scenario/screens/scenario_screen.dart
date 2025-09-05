@@ -8,9 +8,9 @@ import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
-import '../../ranked/screens/result_screen.dart';
 
-final scenarioDetailsProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, scenarioId) async {
+final scenarioDetailsProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, String>((ref, scenarioId) async {
   final client = ref.watch(publicHttpClientProvider);
   final response = await client.get('/scenarios/$scenarioId/details');
   return response.data as Map<String, dynamic>;
@@ -19,7 +19,8 @@ final scenarioDetailsProvider = FutureProvider.autoDispose.family<Map<String, dy
 class ScenarioScreen extends ConsumerStatefulWidget {
   final String liftName;
   final String scenarioId;
-  const ScenarioScreen({super.key, required this.liftName, required this.scenarioId});
+  const ScenarioScreen(
+      {super.key, required this.liftName, required this.scenarioId});
   @override
   ConsumerState<ScenarioScreen> createState() => _ScenarioScreenState();
 }
@@ -46,14 +47,16 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     FocusScope.of(context).unfocus();
     final authState = ref.read(authProvider).valueOrNull;
     if (authState?.user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Authentication required.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Authentication required.")));
       return;
     }
     final user = authState!.user!;
-    
+
     final reps = int.tryParse(_repsController.text);
     if (reps == null || reps <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter valid reps.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter valid reps.")));
       return;
     }
 
@@ -77,40 +80,42 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
       final client = ref.read(privateHttpClientProvider);
 
-      // --- THIS IS THE FIX ---
       int previousBest = 0;
       try {
-        // Attempt to fetch the high score.
-        final highscoreResponse = await client.get('/scores/user/${user.id}/scenario/${widget.scenarioId}/highscore');
-        previousBest = (highscoreResponse.data['score_value'] as num?)?.round() ?? 0;
+        final highscoreResponse = await client.get(
+            '/scores/user/${user.id}/scenario/${widget.scenarioId}/highscore');
+        previousBest =
+            (highscoreResponse.data['score_value'] as num?)?.round() ?? 0;
       } catch (e) {
-        // If it fails (e.g., 404 for a new user), we gracefully assume the previous best is 0.
         debugPrint("No previous high score found. Setting to 0. Error: $e");
         previousBest = 0;
       }
-      // --- END OF FIX ---
 
-      // Now we can safely proceed to POST the new score.
       await client.post('/scores/scenario/${widget.scenarioId}/', data: {
         'user_id': user.id,
         'weight_lifted': weightInKg,
         'reps': reps,
         'sets': 1,
       });
-      
+
       if (!mounted) return;
-      
-      final shouldRefresh = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (_) => ResultScreen(finalScore: scoreForRankCalc, previousBest: previousBest, scenarioId: widget.scenarioId),
-        ),
+
+      final shouldRefresh = await context.pushNamed<bool>(
+        'results',
+        extra: {
+          'scenarioId': widget.scenarioId,
+          'finalScore': scoreForRankCalc,
+          'previousBest': previousBest,
+        },
       );
 
       if (shouldRefresh == true && mounted) {
         context.pop(true);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e.toString().replaceFirst("Exception: ", ""))));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -118,15 +123,26 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The build method is correct and remains unchanged.
-    final scenarioDetailsAsync = ref.watch(scenarioDetailsProvider(widget.scenarioId));
-    final unitLabel = (ref.watch(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0) > 1.5 ? 'lbs' : 'kg';
+    final scenarioDetailsAsync =
+        ref.watch(scenarioDetailsProvider(widget.scenarioId));
+    final unitLabel =
+        (ref.watch(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0) >
+                1.5
+            ? 'lbs'
+            : 'kg';
     return Scaffold(
-      appBar: AppBar(title: Text(widget.liftName), backgroundColor: Colors.black, elevation: 0),
+      appBar: AppBar(
+          title: Text(widget.liftName),
+          backgroundColor: Colors.black,
+          elevation: 0),
       backgroundColor: Colors.black,
       body: scenarioDetailsAsync.when(
         loading: () => const Center(child: LoadingSpinner()),
-        error: (err, stack) => Center(child: ErrorDisplay(message: err.toString(), onRetry: () => ref.refresh(scenarioDetailsProvider(widget.scenarioId)))),
+        error: (err, stack) => Center(
+            child: ErrorDisplay(
+                message: err.toString(),
+                onRetry: () =>
+                    ref.refresh(scenarioDetailsProvider(widget.scenarioId)))),
         data: (details) {
           final isBodyweight = details['is_bodyweight'] as bool? ?? false;
           final description = details['description'] as String?;
@@ -138,9 +154,15 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (description != null) Text(description, style: const TextStyle(color: Colors.white70, fontSize: 16), textAlign: TextAlign.center),
+                    if (description != null)
+                      Text(description,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 16),
+                          textAlign: TextAlign.center),
                     const SizedBox(height: 32),
-                    isBodyweight ? _buildRepsOnlyInput() : _buildWeightAndRepsInput(unitLabel),
+                    isBodyweight
+                        ? _buildRepsOnlyInput()
+                        : _buildWeightAndRepsInput(unitLabel),
                   ],
                 ),
               ),
@@ -149,12 +171,21 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         },
       ),
       bottomNavigationBar: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.fromLTRB(
+            16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
         child: ElevatedButton.icon(
-          onPressed: _isSubmitting ? null : () => _handleSubmit(scenarioDetailsAsync.value?['is_bodyweight'] ?? false),
-          icon: _isSubmitting ? const LoadingSpinner(size: 20) : const Icon(Icons.check),
+          onPressed: _isSubmitting
+              ? null
+              : () => _handleSubmit(
+                  scenarioDetailsAsync.value?['is_bodyweight'] ?? false),
+          icon: _isSubmitting
+              ? const LoadingSpinner(size: 20)
+              : const Icon(Icons.check),
           label: Text(_isSubmitting ? 'Submitting...' : 'Confirm'),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+          style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14)),
         ),
       ),
     );
@@ -172,36 +203,49 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white, fontSize: 24),
-            decoration: InputDecoration(filled: true, fillColor: Colors.grey[900], border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
+            decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey[900],
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none)),
           ),
         ),
       ],
     );
   }
-  
+
   Widget _buildWeightAndRepsInput(String unitLabel) {
     return SizedBox(
-      width: 300, 
+      width: 300,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Expanded(child: _buildInputFieldWithLabel(controller: _weightController, label: 'Weight ($unitLabel)')),
+          Expanded(
+              child: _buildInputFieldWithLabel(
+                  controller: _weightController, label: 'Weight ($unitLabel)')),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 8.0),
-            child: const Text('x', style: TextStyle(color: Colors.white, fontSize: 24)),
+            padding: const EdgeInsets.symmetric(horizontal: 12)
+                .copyWith(bottom: 8.0),
+            child: const Text('x',
+                style: TextStyle(color: Colors.white, fontSize: 24)),
           ),
-          Expanded(child: _buildInputFieldWithLabel(controller: _repsController, label: 'Reps')),
+          Expanded(
+              child: _buildInputFieldWithLabel(
+                  controller: _repsController, label: 'Reps')),
         ],
       ),
     );
   }
 
-  Widget _buildInputFieldWithLabel({required TextEditingController controller, required String label}) {
+  Widget _buildInputFieldWithLabel(
+      {required TextEditingController controller, required String label}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 16)),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 16)),
         const SizedBox(height: 4),
         TextField(
           controller: controller,
@@ -211,7 +255,9 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey[900],
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),

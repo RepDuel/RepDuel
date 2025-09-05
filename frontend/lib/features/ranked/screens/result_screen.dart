@@ -249,9 +249,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                         onTap: () async {
                           final purchaseSuccess =
                               await context.push<bool>('/subscribe');
-                          if (purchaseSuccess == true) {
+                          if (purchaseSuccess == true && mounted) {
+                            // ========== THIS IS THE FIX ==========
+                            // Explicitly await the refetching of user data from the server.
+                            // This guarantees we get the updated subscription level.
+                            await ref
+                                .read(authProvider.notifier)
+                                .refreshUserData();
+
+                            // Also invalidate the subscription provider to ensure it syncs.
                             ref.invalidate(subscriptionProvider);
-                            ref.invalidate(authProvider);
+                            // =====================================
                           }
                         },
                       );
