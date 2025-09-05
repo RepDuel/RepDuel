@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.schemas import user as schemas
 from app.services.user_service import get_user_by_id, update_user
 
-router = APIRouter()
+router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 # List of RevenueCat event types that grant entitlements
 ENTITLEMENT_GRANTING_EVENTS = [
