@@ -12,6 +12,7 @@ from app.api.v1.scenario import router as scenario_router
 from app.api.v1.score import router as score_router
 from app.api.v1.standards import router as standards_router
 from app.api.v1.users import router as users_router
+from app.api.v1.webhooks import router as webhooks_router
 
 api_router = APIRouter()
 
@@ -25,3 +26,4 @@ api_router.include_router(routines_router)
 api_router.include_router(energy_router)
 api_router.include_router(routine_submission_router)
 api_router.include_router(ranks_router)
+api_router.include_router(webhooks_router)
