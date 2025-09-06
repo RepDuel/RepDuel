@@ -10,7 +10,7 @@ from app.services.user_service import get_user_by_id, update_user
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
-# Map your Product IDs from App Store Connect to your app's tiers
+# A clear mapping of store Product IDs to your app's internal tier names
 PRODUCT_ID_TO_TIER = {
     "io.repduel.app.gold.monthly": "gold",
     "io.repduel.app.platinum.monthly": "platinum"
@@ -32,8 +32,6 @@ async def revenuecat_webhook(
     """
     expected_token = settings.REVENUECAT_WEBHOOK_AUTH_TOKEN
     if authorization != expected_token:
-        # For debugging, print the mismatch. For production, log this securely.
-        print(f"!!! AUTH FAILED !!!\nReceived: '{authorization}'\nExpected: '{expected_token}'")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
         )
@@ -45,8 +43,8 @@ async def revenuecat_webhook(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload"
         )
-    
-    # For debugging, let's see the whole event
+
+    # For debugging, let's see the whole event payload in the logs
     print(f"--- Received RevenueCat Event --- \n{event}\n--------------------")
 
     user_id = event.get("app_user_id")
@@ -64,15 +62,14 @@ async def revenuecat_webhook(
     if event_type == "EXPIRATION" or event_type == "CANCELLATION":
         new_tier = "free"
     else:
-        # First, try to get the tier from the entitlements list.
+        # First, try to get the tier from the entitlements list (best case).
         active_entitlements = set(event.get("entitlements", []))
         if "platinum" in active_entitlements:
             new_tier = "platinum"
         elif "gold" in active_entitlements:
             new_tier = "gold"
         
-        # IF the entitlements list is empty (which can happen on some events),
-        # fall back to checking the product ID directly.
+        # SECOND, if entitlements are empty, fall back to checking the product_id.
         if new_tier == "free" and "product_id" in event:
             product_id = event.get("product_id")
             if product_id in PRODUCT_ID_TO_TIER:
@@ -80,9 +77,9 @@ async def revenuecat_webhook(
     # ==========================================
 
     if user.subscription_level != new_tier:
-        print(f"Updating user {user.id} subscription from '{user.subscription_level}' to '{new_tier}'")
+        print(f"UPDATING user {user.id} from '{user.subscription_level}' to '{new_tier}'")
         await update_user(db, user, schemas.UserUpdate(subscription_level=new_tier))
     else:
-        print(f"User {user.id} subscription already up-to-date: '{new_tier}'")
+        print(f"User {user.id} subscription is already up-to-date: '{new_tier}'")
 
     return {"status": "success"}
