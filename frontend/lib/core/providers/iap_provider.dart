@@ -59,7 +59,7 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
             debugPrint(
                 "[SubscriptionNotifier] User logged out. Resetting RevenueCat identity.");
             Purchases.logOut();
-            state = const AsyncValue.data(SubscriptionTier.free);
+            state = const AsyncValue.loading();
           }
         } else {
           _updateSubscriptionStatus();
@@ -91,21 +91,34 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
       return;
     }
 
+    final user = _ref.read(authProvider).valueOrNull?.user;
+    if (user == null) {
+      if (mounted) state = const AsyncValue.loading();
+      return;
+    }
+
+    final backendTier = SubscriptionTier.values.byName(user.subscriptionLevel);
+    if (mounted) {
+      state = AsyncValue.data(backendTier);
+    }
+
     try {
       final customerInfo = await Purchases.getCustomerInfo();
-      SubscriptionTier tier = SubscriptionTier.free;
-      if (customerInfo.entitlements.active
-          .containsKey(_platinumEntitlementId)) {
-        tier = SubscriptionTier.platinum;
-      } else if (customerInfo.entitlements.active
-          .containsKey(_goldEntitlementId)) {
-        tier = SubscriptionTier.gold;
+      final activeKeys = customerInfo.entitlements.active.keys
+          .map((k) => k.toLowerCase())
+          .toSet();
+
+      SubscriptionTier rcTier = SubscriptionTier.free;
+      if (activeKeys.contains(_platinumEntitlementId)) {
+        rcTier = SubscriptionTier.platinum;
+      } else if (activeKeys.contains(_goldEntitlementId)) {
+        rcTier = SubscriptionTier.gold;
       }
 
-      if (mounted) {
-        state = AsyncValue.data(tier);
+      if (rcTier != backendTier) {
         debugPrint(
-            "[SubscriptionNotifier] Native subscription status updated to: $tier");
+          "[SubscriptionNotifier] RevenueCat tier ($rcTier) differs from backend tier ($backendTier) for user ${user.id}. Backend is trusted.",
+        );
       }
     } catch (e) {
       debugPrint(
@@ -123,6 +136,7 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
     if (kIsWeb) return;
     try {
       await Purchases.purchasePackage(package);
+      await _updateSubscriptionStatus();
     } on PlatformException catch (e) {
       if (PurchasesErrorHelper.getErrorCode(e) !=
           PurchasesErrorCode.purchaseCancelledError) {
@@ -135,6 +149,7 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
     if (kIsWeb) return;
     try {
       await Purchases.restorePurchases();
+      await _updateSubscriptionStatus();
     } on PlatformException catch (e) {
       throw Exception("Failed to restore purchases: ${e.message}");
     }
