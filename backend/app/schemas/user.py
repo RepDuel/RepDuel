@@ -1,7 +1,7 @@
 # backend/app/schemas/user.py
 
 from datetime import datetime
-from typing import Optional # Import Optional for older Python versions if needed
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
@@ -26,11 +26,13 @@ class UserRead(UserBase):
     weight_multiplier: float = 1.0
     subscription_level: str = "free"
     
-    # --- THIS IS THE FIX ---
     # Allow the energy field to be None (null) to match the database model.
-    energy: float | None = 0.0 
-    # --- END OF FIX ---
+    energy: float | None = 0.0
     rank: str | None = "Unranked"
+
+    # --- NEW FIELD ---
+    original_transaction_id: str | None = None
+    # -----------------
 
     model_config = {"from_attributes": True}
 
@@ -45,6 +47,10 @@ class UserUpdate(BaseModel):
     subscription_level: str | None = None
     energy: float | None = None
     rank: str | None = None
+
+    # --- NEW FIELD ---
+    original_transaction_id: str | None = None
+    # -----------------
 
 class UserLogin(BaseModel):
     email: EmailStr

@@ -42,8 +42,12 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
       if (!kIsWeb && (Platform.isIOS || Platform.isMacOS)) {
         await Purchases.setLogLevel(
             kDebugMode ? LogLevel.debug : LogLevel.info);
-        await Purchases.configure(
-            PurchasesConfiguration(Env.revenueCatAppleKey));
+
+        // Ensure we configure Purchases once at startup
+        final config = PurchasesConfiguration(Env.revenueCatAppleKey);
+        await Purchases.configure(config);
+
+        // Listen for entitlement updates (doorbell)
         Purchases.addCustomerInfoUpdateListener(_onCustomerInfoUpdated);
       }
 
@@ -82,6 +86,7 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
     super.dispose();
   }
 
+  /// Check backend tier + RevenueCat entitlements
   Future<void> _updateSubscriptionStatus() async {
     if (kIsWeb) {
       final user = _ref.read(authProvider).valueOrNull?.user;
@@ -98,9 +103,8 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
     }
 
     final backendTier = SubscriptionTier.values.byName(user.subscriptionLevel);
-    if (mounted) {
-      state = AsyncValue.data(backendTier);
-    }
+
+    SubscriptionTier effectiveTier = backendTier;
 
     try {
       final customerInfo = await Purchases.getCustomerInfo();
@@ -115,20 +119,27 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
         rcTier = SubscriptionTier.gold;
       }
 
+      // Prefer RC if it shows Gold/Platinum immediately
+      if (rcTier != SubscriptionTier.free) {
+        effectiveTier = rcTier;
+      }
+
       if (rcTier != backendTier) {
         debugPrint(
-          "[SubscriptionNotifier] RevenueCat tier ($rcTier) differs from backend tier ($backendTier) for user ${user.id}. Backend is trusted.",
+          "[SubscriptionNotifier] RevenueCat tier ($rcTier) differs from backend tier ($backendTier) for user ${user.id}. Showing $effectiveTier in app.",
         );
       }
     } catch (e) {
       debugPrint(
           "[SubscriptionNotifier] Could not get native customer info: $e.");
     }
+
+    if (mounted) state = AsyncValue.data(effectiveTier);
   }
 
   void _onCustomerInfoUpdated(CustomerInfo customerInfo) {
     debugPrint(
-        "[SubscriptionNotifier] Native purchase info updated via listener. Re-evaluating status.");
+        "[SubscriptionNotifier] Customer info updated via listener. Re-evaluating status.");
     _updateSubscriptionStatus();
   }
 
@@ -136,6 +147,7 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
     if (kIsWeb) return;
     try {
       await Purchases.purchasePackage(package);
+      // Immediately re-check entitlements after purchase
       await _updateSubscriptionStatus();
     } on PlatformException catch (e) {
       if (PurchasesErrorHelper.getErrorCode(e) !=

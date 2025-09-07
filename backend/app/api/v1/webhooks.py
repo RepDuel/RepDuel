@@ -2,12 +2,14 @@
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from time import time
 
 from app.api.v1.deps import get_db
 from app.core.config import settings
 from app.schemas import user as schemas
 from app.services.user_service import get_user_by_id, update_user
+from app.models.user import User  # <-- make sure this import is available
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -55,6 +57,29 @@ async def revenuecat_webhook(
     entitlement_ids = [e.lower() for e in (event.get("entitlement_ids") or [])]
     now_ms = int(time() * 1000)
 
+    # NEW: get unique Apple transaction id
+    original_tx_id = event.get("original_transaction_id")
+
+    # Guard: if another user already owns this original transaction, do not reassign
+    if original_tx_id:
+        result = await db.execute(
+            select(User).where(User.original_transaction_id == original_tx_id)
+        )
+        existing_owner = result.scalar_one_or_none()
+        if existing_owner and existing_owner.id != user.id:
+            print(
+                f"IGNORING RevenueCat event: transaction {original_tx_id} "
+                f"already owned by user {existing_owner.id}, skipping user {user.id}"
+            )
+            return {"status": "ignored", "detail": "Subscription already owned by another user"}
+
+        # If this user has no transaction stored yet, claim it
+        if not user.original_transaction_id:
+            user.original_transaction_id = original_tx_id
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+
     def resolve_active_tier() -> str | None:
         if "platinum" in entitlement_ids:
             return "platinum"
@@ -75,9 +100,13 @@ async def revenuecat_webhook(
         new_tier = resolve_active_tier() or "free"
 
     if user.subscription_level != new_tier:
-        print(f"UPDATING user {user.id} from '{user.subscription_level}' to '{new_tier}'")
+        print(
+            f"UPDATING user {user.id} from '{user.subscription_level}' to '{new_tier}'"
+        )
         await update_user(db, user, schemas.UserUpdate(subscription_level=new_tier))
     else:
-        print(f"User {user.id} subscription is already up-to-date: '{new_tier}'")
+        print(
+            f"User {user.id} subscription is already up-to-date: '{new_tier}'"
+        )
 
     return {"status": "success"}
