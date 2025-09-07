@@ -34,7 +34,7 @@ class RoutineSubmission(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     duration = Column(Float, nullable=False)
     completion_timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
     status = Column(String, nullable=False)
