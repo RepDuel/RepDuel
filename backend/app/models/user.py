@@ -54,7 +54,7 @@ class User(Base):
     )
 
     # --- Payment Columns ---
-    apple_original_transaction_id = Column(
+    original_transaction_id = Column(
         String,
         unique=True,
         index=True,
