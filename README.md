@@ -1,18 +1,18 @@
 # 🥇 RepDuel
 
-**RepDuel** is a gamified fitness platform for tracking workouts, competing on leaderboards, and analyzing performance. Built with a cross-platform Flutter frontend and a high-performance FastAPI backend, RepDuel is designed for lifters, athletes, and fitness enthusiasts who want accountability, progression, and community.
+**RepDuel** is a gamified fitness platform for tracking workouts, competing on leaderboards, and analyzing performance. Built with a **cross-platform Flutter frontend** and a **high-performance FastAPI backend**, RepDuel is designed for lifters, athletes, and fitness enthusiasts who want accountability, progression, and community.
 
 ---
 
 ## 🧩 Tech Stack
 
-| Layer      | Technology                    |
-| ---------- | ----------------------------- |
-| Frontend   | Flutter + Riverpod            |
-| Backend    | FastAPI + PostgreSQL          |
-| Auth       | OAuth2 + JWT                  |
-| Storage    | Cloud image hosting (e.g. S3) |
-| State Mgmt | Riverpod                      |
+| Layer      | Technology                           |
+| ---------- | ------------------------------------ |
+| Frontend   | Flutter + Riverpod + GoRouter        |
+| Backend    | FastAPI + PostgreSQL + Alembic       |
+| Auth       | JWT Access + Refresh Tokens (OAuth2) |
+| Payments   | RevenueCat (iOS/Android) + Stripe    |
+| State Mgmt | Riverpod                             |
 
 ---
 
@@ -23,19 +23,20 @@ repduel/
 ├── frontend/              # Flutter App (iOS, Android, Web)
 │   ├── lib/
 │   │   ├── core/          # Providers, API services, models
-│   │   ├── features/      # Auth, profile, routines, leaderboard
+│   │   ├── features/      # Auth, profile, routines, leaderboard, premium
 │   │   ├── widgets/       # Shared UI widgets
 │   │   ├── router/        # GoRouter navigation
 │   │   └── main.dart
-│   ├── assets/            # Images (e.g. ranks)
+│   ├── assets/            # Images (e.g. ranks, placeholders)
 │   └── pubspec.yaml
 │
 ├── backend/               # FastAPI Backend
 │   ├── app/
-│   │   ├── api/v1/        # Routes (auth, routines, user, etc)
+│   │   ├── api/v1/        # Routes (users, payments, webhooks, etc)
 │   │   ├── services/      # Business logic
 │   │   ├── models/        # SQLAlchemy models
 │   │   ├── schemas/       # Pydantic v2 schemas
+│   │   ├── core/          # Security, config, auth helpers
 │   │   └── main.py        # App entrypoint
 │   ├── alembic/           # Database migrations
 │   └── requirements.txt
@@ -52,23 +53,29 @@ repduel/
 * Total volume, sets/reps tracking
 * Auto-generated workout summaries and titles
 
-### 📈 Energy & Progression System
+### 📈 Energy & Rank System
 
-* Personalized **energy scores** based on user weight and lift strength
-* Interpolated energy formula to encourage improvement
-* Ranks: Iron → Bronze → Silver → ... → Celestial
+* Personalized **Energy Scores** based on body weight + lift strength
+* Ranks: Iron → Bronze → Silver → Gold → … → Celestial
+* Energy graphs, streaks, and historical stats
 
 ### 🧠 Analytics & Leaderboards
 
-* Energy-based global leaderboard
+* Global leaderboard ranked by Energy Score
 * Lift-specific leaderboards
-* Progress bars, energy graphs, performance trendlines
+* Progression tracking with charts
 
-### 👤 User Accounts
+### 👤 User Accounts & Auth
 
-* JWT Auth (OAuth2 PasswordBearer)
-* Profile pics, weight, gender, units (kg/lbs)
-* Data persisted in PostgreSQL
+* OAuth2 + JWT (short-lived **access tokens** + rotating **refresh tokens**)
+* No forced logouts — refresh tokens keep sessions alive
+* Profile pics, weight, gender, and units (kg/lbs)
+
+### 💳 Subscriptions
+
+* **iOS/Android**: RevenueCat for In-App Purchases
+* **Web**: Stripe Checkout + Customer Portal
+* Gold/Platinum tiers managed by backend webhooks
 
 ---
 
@@ -79,7 +86,7 @@ repduel/
 * Git
 * Python 3.10+
 * Flutter 3.x+
-* PostgreSQL locally or via cloud (e.g. Render)
+* PostgreSQL (local or hosted e.g. Render)
 
 ---
 
@@ -90,7 +97,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate      # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env           # Update DB creds, JWT_SECRET_KEY
+cp .env.example .env           # Fill in DB creds, JWT secrets, Stripe keys
 alembic upgrade head           # Run DB migrations
 uvicorn app.main:app --reload
 ```
@@ -112,48 +119,40 @@ flutter run                    # Select browser/device
 
 ---
 
-## 🧪 Testing
-
-### Backend
-
-```bash
-cd backend
-pytest
-```
-
-### Frontend
-
-```bash
-cd frontend
-flutter test
-```
-
----
-
 ## 🔐 Environment Variables
 
 ### Backend `.env`
 
-```
+```env
 DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/repduel
-JWT_SECRET_KEY=your_secret_key
+JWT_SECRET_KEY=superlongrandomaccesssecret
+JWT_REFRESH_SECRET_KEY=superlongrandomrefreshsecret
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=30
+
+REVENUECAT_WEBHOOK_AUTH_TOKEN=your_token
+STRIPE_SECRET_KEY=your_stripe_key
+STRIPE_WEBHOOK_SECRET=your_webhook_secret
 ```
 
 ---
 
 ## 🛣️ API Endpoints
 
-* `POST /auth/register`
-* `POST /auth/login`
-* `GET /user/profile`
-* `POST /routine/submit`
-* `GET /leaderboard/energy`
+* `POST /users/` → Register
+* `POST /users/login` → Login (sets refresh cookie + returns access token)
+* `POST /users/refresh` → Rotate refresh token, mint new access token
+* `POST /users/logout` → Clear refresh cookie, invalidate session
+* `GET /users/me` → Get current user profile
+* `PATCH /users/me` → Update profile
+* `PATCH /users/me/avatar` → Upload avatar
+* `DELETE /users/me` → Delete account
+* `POST /payments/create-checkout-session` → Stripe checkout
+* `POST /webhooks/revenuecat` → RevenueCat subscription events
 
 ---
 
 ## 📈 Rank System
-
-Ranks are based on energy scores:
 
 | Rank        | Energy Threshold |
 | ----------- | ---------------- |
@@ -172,34 +171,44 @@ Ranks are based on energy scores:
 
 ---
 
+## 🧪 Testing Subscriptions
+
+### iOS/Android (RevenueCat Sandbox)
+
+1. Log in with the **App Store Sandbox account** (iOS) or Play Store test account (Android).
+2. In the app, go to **Settings → Upgrade to Gold**.
+3. Complete the sandbox purchase flow (Apple/Google will show \$0.00).
+4. After purchase, your account should be upgraded to **Gold** automatically.
+5. To test **Restore Purchases**:
+
+   * Delete the app, reinstall, and log in with the same RepDuel account.
+   * Tap **Restore Purchases** in Settings — your Gold subscription should sync back.
+
+### Web (Stripe Test Mode)
+
+1. Log in with your RepDuel account.
+2. Upgrade via **Manage Subscription** (Stripe Checkout opens).
+3. Use a [Stripe test card](https://stripe.com/docs/testing) (e.g. `4242 4242 4242 4242`).
+4. After completing checkout, your account will update to **Gold**.
+5. Manage subscription anytime via **Stripe Customer Portal**.
+
+---
+
 ## ✅ Roadmap
 
 * [x] Energy leaderboard + ranked lifts
 * [x] Routine creation and submission
-* [ ] Mobile push notifications
+* [x] Stripe + RevenueCat subscriptions
+* [x] Refresh token–based auth (no forced logout)
 * [ ] Teams (Guilds) and challenges
+* [ ] Push notifications
 * [ ] Performance badges and streaks
-
-### Deployment Commands
-
-```bash
-cd frontend
-flutter clean
-flutter build web --release --dart-define=BACKEND_URL=https://repduel-backend.onrender.com
-cd ..
-mkdir -p deploy/public
-rsync -av --exclude='.*' frontend/build/web/ deploy/public/
-echo 'echo "Using pre-built files"' > deploy/build.sh
-chmod +x deploy/build.sh
-git add deploy/
-git commit -m "Built production web assets"
-git push origin web-deploy
-```
 
 ---
 
 ## 📄 License
 
-This project is proprietary and not open-source. All rights reserved © 2025.
+This project is proprietary and not open-source.
+All rights reserved © 2025.
 
 ---
