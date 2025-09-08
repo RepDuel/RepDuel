@@ -14,9 +14,14 @@ class RoutineScenarioSubmission(Base):
     __tablename__ = "routine_scenario_submission"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+
+    # DB-level cascade so child rows are removed when parent RoutineSubmission is deleted
     routine_id = Column(
-        UUID(as_uuid=True), ForeignKey("routine_submission.id"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("routine_submission.id", ondelete="CASCADE"),
+        nullable=False,
     )
+
     scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=False)
     sets = Column(Integer, nullable=False, default=3)
     reps = Column(Integer, nullable=False, default=10)
@@ -24,7 +29,8 @@ class RoutineScenarioSubmission(Base):
     total_volume = Column(Float, nullable=False)
 
     routine_submission = relationship(
-        "RoutineSubmission", back_populates="scenario_submissions"
+        "RoutineSubmission",
+        back_populates="scenario_submissions",
     )
     scenario = relationship("Scenario")
 
@@ -34,7 +40,14 @@ class RoutineSubmission(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # DB-level cascade so deleting a user deletes their submissions
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
     duration = Column(Float, nullable=False)
     completion_timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
     status = Column(String, nullable=False)
@@ -45,6 +58,7 @@ class RoutineSubmission(Base):
         back_populates="routine_submission",
         cascade="all, delete-orphan",
         single_parent=True,
+        passive_deletes=True,  # honor DB-level ON DELETE CASCADE on routine_id FK
     )
 
     routine = relationship("Routine", back_populates="submissions")
