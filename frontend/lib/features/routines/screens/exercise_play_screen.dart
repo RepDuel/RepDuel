@@ -37,7 +37,8 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
   }
 
   void _initializeControllers() {
-    final previousSets = ref.read(routineSetProvider)
+    final previousSets = ref
+        .read(routineSetProvider)
         .where((set) => set.scenarioId == widget.exerciseId)
         .toList();
 
@@ -47,7 +48,9 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
         final kg = previousSets[index].weight;
         if (kg > 0) {
           final displayWeight = _toDisplayUnit(ref, kg);
-          text = (displayWeight % 1 == 0) ? displayWeight.toInt().toString() : displayWeight.toStringAsFixed(1);
+          text = (displayWeight % 1 == 0)
+              ? displayWeight.toInt().toString()
+              : displayWeight.toStringAsFixed(1);
         }
       }
       return TextEditingController(text: text);
@@ -65,14 +68,19 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
 
   @override
   void dispose() {
-    for (var controller in _weightControllers) { controller.dispose(); }
-    for (var controller in _repControllers) { controller.dispose(); }
+    for (var controller in _weightControllers) {
+      controller.dispose();
+    }
+    for (var controller in _repControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   // --- Unit Conversion Helpers ---
   bool _isLbs(WidgetRef ref) {
-    final wm = ref.read(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0;
+    final wm =
+        ref.read(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0;
     return wm > 1.5;
   }
 
@@ -83,7 +91,7 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
   double _toKg(WidgetRef ref, double valueInUserUnit) {
     return _isLbs(ref) ? valueInUserUnit / 2.20462 : valueInUserUnit;
   }
-  
+
   void _submitAndReturnData() {
     final setDataForProvider = <Map<String, dynamic>>[];
     final setDataToReturn = <Map<String, dynamic>>[];
@@ -99,21 +107,30 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
       final reps = int.tryParse(repsText) ?? 0;
 
       if (reps > 0) {
-        setDataForProvider.add({ 'scenario_id': widget.exerciseId, 'weight': weightInKg, 'reps': reps });
-        setDataToReturn.add({ 'weight': weightInKg, 'reps': reps });
+        setDataForProvider.add({
+          'scenario_id': widget.exerciseId,
+          'weight': weightInKg,
+          'reps': reps
+        });
+        setDataToReturn.add({'weight': weightInKg, 'reps': reps});
       }
     }
 
-    ref.read(routineSetProvider.notifier).addSets(widget.exerciseId, setDataForProvider);
+    ref
+        .read(routineSetProvider.notifier)
+        .addSets(widget.exerciseId, setDataForProvider);
     context.pop(setDataToReturn);
   }
 
   @override
   Widget build(BuildContext context) {
     final unitLabel = _isLbs(ref) ? 'lbs' : 'kg';
-    
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.exerciseName), backgroundColor: Colors.black, elevation: 0),
+      appBar: AppBar(
+          title: Text(widget.exerciseName),
+          backgroundColor: Colors.black,
+          elevation: 0),
       backgroundColor: Colors.black,
       body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
@@ -124,29 +141,51 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(width: 40, child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+                SizedBox(
+                    width: 40,
+                    child: Text('${index + 1}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center)),
                 const SizedBox(width: 8),
-                Expanded(flex: 3, child: _buildInputField(controller: _weightControllers[index], label: 'Weight ($unitLabel)')),
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('x', style: TextStyle(color: Colors.white70, fontSize: 20))),
-                Expanded(flex: 2, child: _buildInputField(controller: _repControllers[index], label: 'Reps')),
+                Expanded(
+                    flex: 3,
+                    child: _buildInputField(
+                        controller: _weightControllers[index],
+                        label: 'Weight ($unitLabel)')),
+                const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('x',
+                        style: TextStyle(color: Colors.white70, fontSize: 20))),
+                Expanded(
+                    flex: 2,
+                    child: _buildInputField(
+                        controller: _repControllers[index], label: 'Reps')),
               ],
             ),
           );
         },
       ),
       bottomNavigationBar: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.fromLTRB(
+            16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
         child: ElevatedButton.icon(
           onPressed: _submitAndReturnData,
           icon: const Icon(Icons.check_circle_outline),
           label: const Text('Confirm Sets'),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 50)),
+          style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 50)),
         ),
       ),
     );
   }
 
-  Widget _buildInputField({required TextEditingController controller, required String label}) {
+  Widget _buildInputField(
+      {required TextEditingController controller, required String label}) {
     return TextField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -157,7 +196,9 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
         labelStyle: const TextStyle(color: Colors.white54),
         filled: true,
         fillColor: Colors.grey[900],
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(vertical: 16),
       ),
     );
