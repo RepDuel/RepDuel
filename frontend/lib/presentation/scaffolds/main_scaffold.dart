@@ -23,6 +23,9 @@ class MainScaffold extends StatelessWidget {
 
     final int currentIndex = navigationShell.currentIndex;
 
+    // Grab current location from GoRouter
+    final String location = GoRouterState.of(context).uri.toString();
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -32,7 +35,7 @@ class MainScaffold extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          if (currentIndex == 3)
+          if (currentIndex == 3 && !location.contains('/profile/settings'))
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () => context.go('/profile/settings'),
