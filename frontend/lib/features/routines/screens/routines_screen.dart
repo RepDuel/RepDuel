@@ -115,15 +115,11 @@ class RoutinesScreen extends ConsumerWidget {
                   onRetry: () => ref.invalidate(routinesProvider))),
           data: (routines) {
             if (routines.isEmpty) {
-              // --- THIS IS THE FIX ---
-              // The Center widget forces its child to fit. By wrapping the Column
-              // in a SingleChildScrollView, we allow the content to scroll if it
-              // is taller than the available space, preventing the overflow.
+              // Keeps the content scrollable to avoid overflow when centered.
               return Center(
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Container(
-                    // Set a minimum height to help with centering on large screens.
                     constraints: BoxConstraints(
                         minHeight: MediaQuery.of(context).size.height * 0.7),
                     padding: const EdgeInsets.all(20.0),
@@ -147,7 +143,6 @@ class RoutinesScreen extends ConsumerWidget {
                   ),
                 ),
               );
-              // --- END OF FIX ---
             }
             return GridView.builder(
               padding: const EdgeInsets.all(12),
@@ -172,8 +167,9 @@ class RoutinesScreen extends ConsumerWidget {
                 return Stack(
                   children: [
                     GestureDetector(
-                      onTap: () => context.pushNamed('exerciseList',
-                          pathParameters: {'routineId': routine.id}),
+                      // ✅ Navigate to RoutinePlay using Option A (pass the object via `extra`)
+                      onTap: () =>
+                          context.pushNamed('routinePlay', extra: routine),
                       child: RoutineCard(
                         name: routine.name,
                         imageUrl: routine.imageUrl,
@@ -200,10 +196,9 @@ class RoutinesScreen extends ConsumerWidget {
                               _deleteRoutine(context, ref, routine.id);
                             }
                           },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                                value: 'edit', child: Text('Edit')),
-                            const PopupMenuItem(
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            PopupMenuItem(
                                 value: 'delete',
                                 child: Text('Delete',
                                     style: TextStyle(color: Colors.red))),

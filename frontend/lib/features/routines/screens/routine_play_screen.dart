@@ -28,21 +28,27 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
   }
 
   Future<void> fetchScenarioNames() async {
-    final response =
-        await http.get(Uri.parse('${Env.baseUrl}/api/v1/scenarios/'));
-    if (response.statusCode == 200) {
-      final List scenarios = jsonDecode(response.body);
-      setState(() {
-        scenarioIdToName = {
-          for (var s in scenarios) s['id'] as String: s['name'] as String
-        };
-      });
-    } else {
-      if (kDebugMode) {
-        debugPrint('Failed to load scenarios');
+    try {
+      final response =
+          await http.get(Uri.parse('${Env.baseUrl}/api/v1/scenarios/'));
+      if (response.statusCode == 200) {
+        final List scenarios = jsonDecode(response.body);
+        if (!mounted) return;
+        setState(() {
+          scenarioIdToName = {
+            for (var s in scenarios) s['id'] as String: s['name'] as String
+          };
+        });
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+              'Failed to load scenarios. Status: ${response.statusCode}');
+        }
       }
-      // In production, you might want to use a proper logging package
-      // or show an error to the user
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error loading scenarios: $e');
+      }
     }
   }
 
@@ -59,7 +65,7 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
         ),
       ),
       body: Padding(
@@ -126,7 +132,11 @@ class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
           onPressed: () {
-            context.push('/routines/exercise-list/${routine.id}');
+            // ✅ Use named route with path parameters (Option A flow)
+            context.pushNamed(
+              'exerciseList',
+              pathParameters: {'routineId': routine.id},
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,

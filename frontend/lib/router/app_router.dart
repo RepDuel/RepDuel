@@ -27,6 +27,7 @@ import '../features/ranked/screens/result_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
+import '../features/routines/screens/routine_play_screen.dart'; // ✅ NEW import
 import '../presentation/scaffolds/main_scaffold.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -62,6 +63,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 name: 'routines',
                 builder: (context, state) => const RoutinesScreen(),
                 routes: [
+                  // ✅ New play route for Option A (pass Routine via `extra`)
+                  GoRoute(
+                    path: 'play',
+                    name: 'routinePlay',
+                    builder: (context, state) =>
+                        RoutinePlayScreen(routine: state.extra as Routine),
+                  ),
                   GoRoute(
                       path: 'custom',
                       name: 'createRoutine',

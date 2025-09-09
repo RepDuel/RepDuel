@@ -29,7 +29,13 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   double _totalVolumeKg = 0;
   late DateTime _startTime;
   bool _isFinishing = false;
+
+  /// Locally added exercises via /add-exercise (maps convertible to Scenario)
   final List<Map<String, dynamic>> _localAddedExercises = [];
+
+  /// Per-exercise overrides for planned sets/reps (keyed by scenarioId)
+  final Map<String, Map<String, int>> _planOverrides =
+      {}; // { id: {sets: x, reps: y} }
 
   @override
   void initState() {
@@ -50,11 +56,16 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     return weightKg * (1 + reps / 30.0);
   }
 
-  void _navigateToAddExercise() async {
+  Future<void> _navigateToAddExercise() async {
     final newExercise =
         await context.push<Map<String, dynamic>>('/add-exercise');
     if (newExercise != null) {
       setState(() => _localAddedExercises.add(newExercise));
+      // Initialize override with defaults so edits reflect immediately if opened
+      _planOverrides[newExercise['scenario_id'] as String] = {
+        'sets': newExercise['sets'] as int? ?? 1,
+        'reps': newExercise['reps'] as int? ?? 5,
+      };
     }
   }
 
@@ -75,33 +86,29 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final client = ref.read(privateHttpClientProvider);
       final allPerformedSets = ref.read(routineSetProvider);
 
-      // --- THIS IS THE FIX ---
-      // Create the flat list of scenarios (sets) that the backend expects.
+      // Create the flat list of scenarios (each item is a single performed set).
       final scenariosPayload = allPerformedSets.map((set) {
         return {
           "scenario_id": set.scenarioId,
-          "sets": 1, // Each object represents one set.
+          "sets": 1,
           "reps": set.reps,
           "weight": set.weight,
-          "total_volume": set.reps *
-              set.weight, // Calculate total volume for this single set.
+          "total_volume": set.reps * set.weight,
         };
       }).toList();
 
-      // Create the main submission body with the correct field name 'scenario_submissions'.
       final submissionBody = {
         'routine_id': widget.routineId,
         'user_id': user.id,
         'duration': DateTime.now().difference(_startTime).inSeconds / 60.0,
         'completion_timestamp': DateTime.now().toIso8601String(),
         'status': 'completed',
-        'scenario_submissions': scenariosPayload, // Use the correct alias
+        'scenario_submissions': scenariosPayload,
       };
 
       await client.post('/routine_submission/', data: submissionBody);
-      // --- END OF FIX ---
 
-      // The logic for submitting best scores is separate and likely correct.
+      // Submit best scores per scenario
       final Map<String, List<PerformedSet>> groupedSetsForBestScores = {};
       for (final s in allPerformedSets) {
         groupedSetsForBestScores.putIfAbsent(s.scenarioId, () => []).add(s);
@@ -143,6 +150,173 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     }
   }
 
+  /// Returns a copy of [scenario] applying any local overrides for sets/reps.
+  /// (Manual copy because Scenario doesn't have copyWith.)
+  Scenario _applyOverrides(Scenario scenario) {
+    final override = _planOverrides[scenario.id];
+    if (override == null) return scenario;
+
+    // If your Scenario has more fields, include them here.
+    return Scenario(
+      id: scenario.id,
+      name: scenario.name,
+      sets: override['sets'] ?? scenario.sets,
+      reps: override['reps'] ?? scenario.reps,
+    );
+  }
+
+  Future<void> _openEditSheet({
+    required Scenario scenario,
+    required bool isLocalAdded,
+  }) async {
+    final current = _applyOverrides(scenario);
+    int tempSets = current.sets;
+    int tempReps = current.reps;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF111111),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: 16 + MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Edit ${scenario.name}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _NumberPickerTile(
+                      label: 'Sets',
+                      value: tempSets,
+                      onChanged: (v) => setState(() => tempSets = v),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _NumberPickerTile(
+                      label: 'Reps',
+                      value: tempReps,
+                      onChanged: (v) => setState(() => tempReps = v),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white24),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Persist override locally
+                        setState(() {
+                          _planOverrides[scenario.id] = {
+                            'sets': tempSets.clamp(1, 99),
+                            'reps': tempReps.clamp(1, 999),
+                          };
+                          if (isLocalAdded) {
+                            // Also rewrite the local map so a future pass-through uses updated values
+                            final idx = _localAddedExercises.indexWhere(
+                                (m) => m['scenario_id'] == scenario.id);
+                            if (idx != -1) {
+                              _localAddedExercises[idx] = {
+                                ..._localAddedExercises[idx],
+                                'sets': tempSets,
+                                'reps': tempReps,
+                              };
+                            }
+                          }
+                        });
+                        Navigator.of(ctx).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Save'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _maybeRemoveLocalExercise(String scenarioId) {
+    final idx =
+        _localAddedExercises.indexWhere((e) => e['scenario_id'] == scenarioId);
+    if (idx == -1) return;
+
+    setState(() {
+      _localAddedExercises.removeAt(idx);
+      _planOverrides.remove(scenarioId);
+
+      // Rebuild provider state WITHOUT the removed scenario,
+      // using only public notifier methods (no direct `.state`).
+      final setsNotifier = ref.read(routineSetProvider.notifier);
+      final currentSets = ref.read(routineSetProvider);
+
+      // Keep sets that don't belong to this scenario
+      final remaining =
+          currentSets.where((s) => s.scenarioId != scenarioId).toList();
+
+      // Reset and re-add remaining sets grouped by scenario
+      setsNotifier.clear();
+
+      // Group remaining sets by scenarioId and re-add via addSets
+      final Map<String, List<Map<String, dynamic>>> byScenario = {};
+      for (final s in remaining) {
+        byScenario.putIfAbsent(s.scenarioId, () => []).add({
+          'weight': s.weight,
+          'reps': s.reps,
+        });
+      }
+      byScenario.forEach((id, sets) {
+        setsNotifier.addSets(id, sets);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final routineDetailsAsync =
@@ -171,10 +345,14 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                 onRetry: () =>
                     ref.refresh(routineDetailsProvider(widget.routineId)))),
         data: (details) {
-          final allExercises = [
-            ...details.scenarios,
-            ..._localAddedExercises.map((e) => Scenario.fromJson(e))
-          ];
+          // Build a single list of Scenario objects (API + local adds)
+          final apiExercises = details.scenarios;
+          final localExercises =
+              _localAddedExercises.map((e) => Scenario.fromJson(e)).toList();
+          final allExercises = [...apiExercises, ...localExercises]
+              .map(_applyOverrides)
+              .toList();
+
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
@@ -192,11 +370,17 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                     itemCount: allExercises.length,
                     itemBuilder: (context, index) {
                       final exercise = allExercises[index];
+                      final isLocal = _localAddedExercises
+                          .any((m) => m['scenario_id'] == exercise.id);
+
                       final completedSetsCount = ref.watch(
-                          routineSetProvider.select((sets) => sets
-                              .where((s) => s.scenarioId == exercise.id)
-                              .length));
+                        routineSetProvider.select((sets) => sets
+                            .where((s) => s.scenarioId == exercise.id)
+                            .length),
+                      );
+
                       final isCompleted = completedSetsCount >= exercise.sets;
+
                       return Card(
                         color: isCompleted
                             ? Colors.green.withAlpha(51)
@@ -209,8 +393,55 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                           subtitle: Text(
                               'Sets: ${exercise.sets} | Reps: ${exercise.reps}',
                               style: const TextStyle(color: Colors.white70)),
-                          trailing: const Icon(Icons.play_arrow,
-                              color: Colors.greenAccent, size: 28),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Play button
+                              IconButton(
+                                tooltip: 'Start',
+                                icon: const Icon(Icons.play_arrow,
+                                    color: Colors.greenAccent, size: 28),
+                                onPressed: () async {
+                                  final setData = await context
+                                      .push<List<Map<String, dynamic>>>(
+                                    '/exercise-play',
+                                    extra: exercise,
+                                  );
+                                  if (setData != null) {
+                                    _updateVolume(setData);
+                                  }
+                                },
+                              ),
+                              // Three-dots menu
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert,
+                                    color: Colors.white70),
+                                onSelected: (value) async {
+                                  if (value == 'edit') {
+                                    await _openEditSheet(
+                                      scenario: exercise,
+                                      isLocalAdded: isLocal,
+                                    );
+                                  } else if (value == 'remove' && isLocal) {
+                                    _maybeRemoveLocalExercise(exercise.id);
+                                  }
+                                },
+                                itemBuilder: (context) =>
+                                    <PopupMenuEntry<String>>[
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Text('Edit sets/reps'),
+                                  ),
+                                  if (isLocal)
+                                    const PopupMenuItem(
+                                      value: 'remove',
+                                      child: Text('Remove'),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          // Tapping row also starts play (kept for speed)
                           onTap: () async {
                             final setData =
                                 await context.push<List<Map<String, dynamic>>>(
@@ -228,35 +459,129 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                        onPressed: _navigateToAddExercise,
-                        child: const Text('Add Exercise'))),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _navigateToAddExercise,
+                    child: const Text('Add Exercise'),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                        onPressed: _isFinishing ? null : _finishRoutine,
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green),
-                        child: _isFinishing
-                            ? const LoadingSpinner(size: 20)
-                            : const Text('Finish Routine'))),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isFinishing ? null : _finishRoutine,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    child: _isFinishing
+                        ? const LoadingSpinner(size: 20)
+                        : const Text('Finish Routine'),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                        onPressed: () {
-                          ref.read(routineSetProvider.notifier).clear();
-                          context.pop();
-                        },
-                        child: const Text('Quit Routine',
-                            style: TextStyle(color: Colors.red)))),
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () {
+                      ref.read(routineSetProvider.notifier).clear();
+                      context.pop();
+                    },
+                    child: const Text('Quit Routine',
+                        style: TextStyle(color: Colors.red)),
+                  ),
+                ),
                 SizedBox(height: MediaQuery.of(context).padding.bottom),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Small, reusable number picker tile used in the bottom sheet.
+/// Simple +/- steppers with clamped range and white-on-dark styling.
+class _NumberPickerTile extends StatefulWidget {
+  final String label;
+  final int value;
+  final ValueChanged<int> onChanged;
+  const _NumberPickerTile({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  State<_NumberPickerTile> createState() => _NumberPickerTileState();
+}
+
+class _NumberPickerTileState extends State<_NumberPickerTile> {
+  late int _val;
+
+  @override
+  void initState() {
+    super.initState();
+    _val = widget.value;
+  }
+
+  void _inc() {
+    setState(() {
+      _val = (_val + 1).clamp(1, 999);
+      widget.onChanged(_val);
+    });
+  }
+
+  void _dec() {
+    setState(() {
+      _val = (_val - 1).clamp(1, 999);
+      widget.onChanged(_val);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _NumberPickerTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _val = widget.value;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      child: Column(
+        children: [
+          Text(widget.label,
+              style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: _dec,
+                icon: const Icon(Icons.remove_circle_outline,
+                    color: Colors.white70),
+              ),
+              Text('$_val',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600)),
+              IconButton(
+                onPressed: _inc,
+                icon:
+                    const Icon(Icons.add_circle_outline, color: Colors.white70),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
