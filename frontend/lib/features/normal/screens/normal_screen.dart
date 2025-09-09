@@ -108,12 +108,23 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
     }).toList();
   }
 
-  void _goToScenario(String id, String name) {
-    context.pushNamed(
+  Future<void> _goToScenario(String id, String name) async {
+    final shouldRefresh = await context.pushNamed<bool>(
       'scenario',
       pathParameters: {'scenarioId': id},
       extra: name,
     );
+
+    if (shouldRefresh == true) {
+      // Drop the cached score for this scenario and refetch just this row
+      _highScoreByScenario.remove(id);
+      final userId =
+          ref.read(authProvider).valueOrNull?.user?.id.toString() ?? '';
+      if (userId.isNotEmpty) {
+        await _ensureHighScore(scenarioId: id, userId: userId);
+      }
+      if (mounted) setState(() {});
+    }
   }
 
   void _goToLeaderboard(String scenarioId, String liftName) {
