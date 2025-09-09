@@ -1,7 +1,6 @@
 // frontend/lib/core/services/share_service.dart
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,9 +9,10 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
 // Import the specific UI widget this service needs.
-import '../../features/ranked/screens/result_screen.dart' show ShareableResultCard; 
+import '../../features/ranked/screens/result_screen.dart'
+    show ShareableResultCard;
 // Import the new, centralized utility file for rank logic.
-import '../../features/ranked/utils/rank_utils.dart'; 
+import '../../features/ranked/utils/rank_utils.dart';
 import '../providers/auth_provider.dart';
 
 // A Riverpod provider that creates an instance of our new service
@@ -53,12 +53,16 @@ class ShareService {
         delay: Duration.zero,
       );
 
-      final shareText = 'I just hit a new score of ${(finalScore * weightMultiplier).round()} in ${scenarioData['name']} on RepDuel! Can you beat it? #RepDuel';
+      final shareText =
+          'I just hit a new score of ${(finalScore * weightMultiplier).round()} in ${scenarioData['name']} on RepDuel! Can you beat it? #RepDuel';
 
       // Platform-aware sharing logic
       if (kIsWeb) {
         await Share.shareXFiles(
-          [XFile.fromData(imageBytes, name: 'repduel_result.png', mimeType: 'image/png')],
+          [
+            XFile.fromData(imageBytes,
+                name: 'repduel_result.png', mimeType: 'image/png')
+          ],
           text: shareText,
         );
       } else {
