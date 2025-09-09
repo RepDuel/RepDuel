@@ -59,9 +59,9 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   Future<void> _navigateToAddExercise() async {
     final newExercise =
         await context.push<Map<String, dynamic>>('/add-exercise');
+    if (!mounted) return;
     if (newExercise != null) {
       setState(() => _localAddedExercises.add(newExercise));
-      // Initialize override with defaults so edits reflect immediately if opened
       _planOverrides[newExercise['scenario_id'] as String] = {
         'sets': newExercise['sets'] as int? ?? 1,
         'reps': newExercise['reps'] as int? ?? 5,
@@ -86,7 +86,6 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final client = ref.read(privateHttpClientProvider);
       final allPerformedSets = ref.read(routineSetProvider);
 
-      // Create the flat list of scenarios (each item is a single performed set).
       final scenariosPayload = allPerformedSets.map((set) {
         return {
           "scenario_id": set.scenarioId,
@@ -108,7 +107,6 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
       await client.post('/routine_submission/', data: submissionBody);
 
-      // Submit best scores per scenario
       final Map<String, List<PerformedSet>> groupedSetsForBestScores = {};
       for (final s in allPerformedSets) {
         groupedSetsForBestScores.putIfAbsent(s.scenarioId, () => []).add(s);
@@ -137,9 +135,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final displayVolume = isLbs ? _totalVolumeKg * 2.20462 : _totalVolumeKg;
 
       ref.read(routineSetProvider.notifier).clear();
-      if (mounted) {
-        context.pushReplacement('/summary', extra: displayVolume.round());
-      }
+      if (!mounted) return;
+      context.pushReplacement('/summary', extra: displayVolume.round());
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -150,13 +147,10 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     }
   }
 
-  /// Returns a copy of [scenario] applying any local overrides for sets/reps.
-  /// (Manual copy because Scenario doesn't have copyWith.)
   Scenario _applyOverrides(Scenario scenario) {
     final override = _planOverrides[scenario.id];
     if (override == null) return scenario;
 
-    // If your Scenario has more fields, include them here.
     return Scenario(
       id: scenario.id,
       name: scenario.name,
@@ -244,14 +238,12 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Persist override locally
                         setState(() {
                           _planOverrides[scenario.id] = {
                             'sets': tempSets.clamp(1, 99),
                             'reps': tempReps.clamp(1, 999),
                           };
                           if (isLocalAdded) {
-                            // Also rewrite the local map so a future pass-through uses updated values
                             final idx = _localAddedExercises.indexWhere(
                                 (m) => m['scenario_id'] == scenario.id);
                             if (idx != -1) {
@@ -291,19 +283,14 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       _localAddedExercises.removeAt(idx);
       _planOverrides.remove(scenarioId);
 
-      // Rebuild provider state WITHOUT the removed scenario,
-      // using only public notifier methods (no direct `.state`).
       final setsNotifier = ref.read(routineSetProvider.notifier);
       final currentSets = ref.read(routineSetProvider);
 
-      // Keep sets that don't belong to this scenario
       final remaining =
           currentSets.where((s) => s.scenarioId != scenarioId).toList();
 
-      // Reset and re-add remaining sets grouped by scenario
       setsNotifier.clear();
 
-      // Group remaining sets by scenarioId and re-add via addSets
       final Map<String, List<Map<String, dynamic>>> byScenario = {};
       for (final s in remaining) {
         byScenario.putIfAbsent(s.scenarioId, () => []).add({
@@ -345,7 +332,6 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                 onRetry: () =>
                     ref.refresh(routineDetailsProvider(widget.routineId)))),
         data: (details) {
-          // Build a single list of Scenario objects (API + local adds)
           final apiExercises = details.scenarios;
           final localExercises =
               _localAddedExercises.map((e) => Scenario.fromJson(e)).toList();
@@ -396,7 +382,6 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Play button
                               IconButton(
                                 tooltip: 'Start',
                                 icon: const Icon(Icons.play_arrow,
@@ -407,12 +392,12 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                                     '/exercise-play',
                                     extra: exercise,
                                   );
+                                  if (!mounted) return;
                                   if (setData != null) {
                                     _updateVolume(setData);
                                   }
                                 },
                               ),
-                              // Three-dots menu
                               PopupMenuButton<String>(
                                 icon: const Icon(Icons.more_vert,
                                     color: Colors.white70),
@@ -441,13 +426,13 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                               ),
                             ],
                           ),
-                          // Tapping row also starts play (kept for speed)
                           onTap: () async {
                             final setData =
                                 await context.push<List<Map<String, dynamic>>>(
                               '/exercise-play',
                               extra: exercise,
                             );
+                            if (!mounted) return;
                             if (setData != null) {
                               _updateVolume(setData);
                             }
@@ -482,9 +467,57 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      // Capture context and router before any async operations
+                      final currentContext = context;
+                      final router = GoRouter.of(currentContext);
+
+                      final confirmed = await showDialog<bool>(
+                        context: currentContext,
+                        builder: (dialogCtx) => AlertDialog(
+                          backgroundColor: Colors.grey[900],
+                          title: const Text(
+                            'Quit Routine?',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          content: const Text(
+                            'Are you sure you want to quit? Your progress will not be saved.',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogCtx, false),
+                              child: const Text('Cancel',
+                                  style: TextStyle(color: Colors.white70)),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogCtx, true),
+                              child: const Text('Quit',
+                                  style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      // ✅ Check mounted right after await
+                      if (!mounted || confirmed != true) return;
+
                       ref.read(routineSetProvider.notifier).clear();
-                      context.pop();
+
+                      if (router.canPop()) {
+                        router.pop(); // first pop
+
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          // Use the captured router instead of getting a new one from context
+                          if (router.canPop()) {
+                            router.pop(); // second pop
+                          } else {
+                            router.go('/routines');
+                          }
+                        });
+                      } else {
+                        router.go('/routines');
+                      }
                     },
                     child: const Text('Quit Routine',
                         style: TextStyle(color: Colors.red)),
@@ -500,8 +533,6 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   }
 }
 
-/// Small, reusable number picker tile used in the bottom sheet.
-/// Simple +/- steppers with clamped range and white-on-dark styling.
 class _NumberPickerTile extends StatefulWidget {
   final String label;
   final int value;

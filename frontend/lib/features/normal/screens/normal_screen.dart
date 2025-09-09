@@ -274,58 +274,54 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                           rawScore > 0 ? formatKg(adjustedScore) : '—';
 
                       return Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 0),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[900],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            // Lift
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  _goToScenario(id, name);
-                                },
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
-                                  child: Text(
-                                    name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 0),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: InkWell(
+                            onTap: () => _goToScenario(id, name),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  // Lift
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            ),
 
-                            // Score (RankingTable style formatting)
-                            Expanded(
-                              child: Center(
-                                child: Text(
-                                  scoreText,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
+                                  // Score
+                                  Expanded(
+                                    child: Center(
+                                      child: Text(
+                                        scoreText,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+
+                                  // Leaderboard
+                                  IconButton(
+                                    icon: const Icon(Icons.leaderboard,
+                                        color: Colors.blue),
+                                    onPressed: () => _goToLeaderboard(id, name),
+                                  ),
+                                ],
                               ),
                             ),
-
-                            // Leaderboard
-                            IconButton(
-                              icon: const Icon(Icons.leaderboard,
-                                  color: Colors.blue),
-                              onPressed: () => _goToLeaderboard(id, name),
-                            ),
-                          ],
-                        ),
-                      );
+                          ));
                     },
                   ),
           ),

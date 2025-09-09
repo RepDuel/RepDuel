@@ -14,8 +14,6 @@ class Settings(BaseSettings):
     REVENUECAT_WEBHOOK_AUTH_TOKEN: str
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str
-    JWT_REFRESH_SECRET_KEY: str
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
