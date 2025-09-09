@@ -3,26 +3,34 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/env.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/search_bar.dart'; // ExerciseSearchField
+import '../../ranked/utils/rank_utils.dart'; // formatKg
 
-class NormalScreen extends StatefulWidget {
+class NormalScreen extends ConsumerStatefulWidget {
   const NormalScreen({super.key});
 
   @override
-  State<NormalScreen> createState() => _NormalScreenState();
+  ConsumerState<NormalScreen> createState() => _NormalScreenState();
 }
 
-class _NormalScreenState extends State<NormalScreen> {
+class _NormalScreenState extends ConsumerState<NormalScreen> {
   List<dynamic> _allScenarios = [];
   List<dynamic> _filteredScenarios = [];
   bool _isLoading = true;
   String? _error;
   String _query = '';
   Timer? _debounce;
+
+  // Per-scenario cache of raw score_value (1RM calc) from backend
+  final Map<String, double> _highScoreByScenario = {};
+  // In-flight request guards
+  final Set<String> _pending = {};
 
   static const _headerStyle = TextStyle(
     color: Colors.white,
@@ -78,7 +86,6 @@ class _NormalScreenState extends State<NormalScreen> {
   }
 
   void _onSearchChanged(String value) {
-    // Debounce for snappy UX without jank
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 200), () {
       if (!mounted) return;
@@ -102,11 +109,10 @@ class _NormalScreenState extends State<NormalScreen> {
   }
 
   void _goToScenario(String id, String name) {
-    // Use named route for consistency with your router
     context.pushNamed(
       'scenario',
       pathParameters: {'scenarioId': id},
-      extra: name, // builder reads liftName from state.extra
+      extra: name,
     );
   }
 
@@ -118,8 +124,51 @@ class _NormalScreenState extends State<NormalScreen> {
     );
   }
 
+  Future<void> _ensureHighScore({
+    required String scenarioId,
+    required String userId,
+  }) async {
+    if (_highScoreByScenario.containsKey(scenarioId)) return;
+    if (_pending.contains(scenarioId)) return;
+
+    _pending.add(scenarioId);
+    try {
+      final uri = Uri.parse(
+        '${Env.baseUrl}/api/v1/ranks/user/$userId/scenario/$scenarioId/highscore_value',
+      );
+      final res = await http.get(uri);
+
+      double value = 0;
+      if (res.statusCode == 200) {
+        final body = json.decode(res.body) as Map<String, dynamic>;
+        final val = (body['high_score'] ?? 0) as num;
+        value = val.toDouble();
+      } else if (res.statusCode == 404) {
+        value = 0; // No score yet
+      } else {
+        value = 0; // Treat other failures as no score
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _highScoreByScenario[scenarioId] = value;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _highScoreByScenario[scenarioId] = 0;
+      });
+    } finally {
+      _pending.remove(scenarioId);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).valueOrNull?.user;
+    final userId = user?.id.toString() ?? '';
+    final weightMultiplier = (user?.weightMultiplier ?? 1.0).toDouble();
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -142,14 +191,14 @@ class _NormalScreenState extends State<NormalScreen> {
 
     return Column(
       children: [
-        // Elon move: fast access search, always visible
+        // Search
         ExerciseSearchField(
           onChanged: _onSearchChanged,
           hintText: 'Search exercises',
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
         ),
 
-        // Sticky header
+        // Header (add simple Score column)
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -160,7 +209,10 @@ class _NormalScreenState extends State<NormalScreen> {
           child: const Row(
             children: [
               Expanded(child: Text('Lift', style: _headerStyle)),
-              Text('Leaderboard', style: _headerStyle),
+              Expanded(
+                child: Center(child: Text('Score', style: _headerStyle)),
+              ),
+              SizedBox(width: 40), // leaderboard icon
             ],
           ),
         ),
@@ -168,7 +220,10 @@ class _NormalScreenState extends State<NormalScreen> {
         // List
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _fetchScenarios,
+            onRefresh: () async {
+              _highScoreByScenario.clear();
+              await _fetchScenarios();
+            },
             child: _filteredScenarios.isEmpty
                 ? ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -190,6 +245,23 @@ class _NormalScreenState extends State<NormalScreen> {
                       final name =
                           (scenario['name'] ?? 'Unnamed Scenario').toString();
                       final id = scenario['id']?.toString();
+                      if (id == null) {
+                        return const SizedBox.shrink();
+                      }
+
+                      // Kick off fetch for this row if we have a logged-in user
+                      if (userId.isNotEmpty) {
+                        _ensureHighScore(scenarioId: id, userId: userId)
+                            .then((_) {
+                          if (mounted) setState(() {});
+                        });
+                      }
+
+                      final rawScore = _highScoreByScenario[id] ?? 0;
+                      final adjustedScore = rawScore * weightMultiplier;
+                      final scoreText =
+                          rawScore > 0 ? formatKg(adjustedScore) : '—';
+
                       return Container(
                         margin: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 4),
@@ -201,10 +273,11 @@ class _NormalScreenState extends State<NormalScreen> {
                         ),
                         child: Row(
                           children: [
+                            // Lift
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
-                                  if (id != null) _goToScenario(id, name);
+                                  _goToScenario(id, name);
                                 },
                                 child: Padding(
                                   padding:
@@ -219,12 +292,25 @@ class _NormalScreenState extends State<NormalScreen> {
                                 ),
                               ),
                             ),
+
+                            // Score (RankingTable style formatting)
+                            Expanded(
+                              child: Center(
+                                child: Text(
+                                  scoreText,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Leaderboard
                             IconButton(
                               icon: const Icon(Icons.leaderboard,
                                   color: Colors.blue),
-                              onPressed: () {
-                                if (id != null) _goToLeaderboard(id, name);
-                              },
+                              onPressed: () => _goToLeaderboard(id, name),
                             ),
                           ],
                         ),
