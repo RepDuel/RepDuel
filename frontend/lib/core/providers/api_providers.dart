@@ -1,24 +1,17 @@
 // frontend/lib/core/providers/api_providers.dart
 
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/browser.dart';
 
 import '../api/auth_api_service.dart';
 import '../api/guild_api_service.dart';
 import '../api/energy_api_service.dart';
 import '../config/env.dart';
-import '../services/secure_storage_service.dart';
 import '../utils/http_client.dart';
 import '../providers/auth_provider.dart';
 import '../models/guild.dart';
-
-/// ---------------------------
-/// Secure Storage
-/// ---------------------------
-final secureStorageProvider = Provider<SecureStorageService>((ref) {
-  return SecureStorageService();
-});
 
 /// ---------------------------
 /// Dio Base Options
@@ -29,12 +22,10 @@ final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 15),
     sendTimeout: const Duration(seconds: 15),
-    // Helpful default headers
-    headers: {
+    headers: const {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     },
-    // Don’t throw for 400–499 by default; we’ll handle in interceptor
     validateStatus: (status) => status != null && status >= 200 && status < 500,
   );
 });
@@ -44,6 +35,14 @@ final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
 /// ---------------------------
 final publicHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
+
+  if (kIsWeb) {
+    final adapter = dio.httpClientAdapter;
+    if (adapter is BrowserHttpClientAdapter) {
+      adapter.withCredentials = true;
+    }
+  }
+
   if (kDebugMode) {
     dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
   }
@@ -68,13 +67,9 @@ class AuthInterceptor extends Interceptor {
   void onRequest(
       RequestOptions options, RequestInterceptorHandler handler) async {
     final token = _ref.read(authTokenProvider);
-
-    // IMPORTANT: Do NOT reject when token is null.
-    // Public endpoints (login/register) and some GETs should still proceed.
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
-
     handler.next(options);
   }
 }
@@ -90,7 +85,6 @@ class GlobalErrorInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final status = err.response?.statusCode;
 
-    // Network / timeout: show friendly error, don’t crash UI
     if (err.type == DioExceptionType.connectionTimeout ||
         err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.receiveTimeout) {
@@ -118,12 +112,9 @@ class GlobalErrorInterceptor extends Interceptor {
       );
     }
 
-    // 401: token expired/invalid -> clean logout (silent) instead of red screen
     if (status == 401) {
       debugPrint('[Dio] 401 Unauthorized → logging out user.');
-      // Best-effort logout; don’t await the state change here
       _ref.read(authProvider.notifier).logout();
-
       return handler.reject(
         DioException(
           requestOptions: err.requestOptions,
@@ -134,7 +125,6 @@ class GlobalErrorInterceptor extends Interceptor {
       );
     }
 
-    // 403: forbidden
     if (status == 403) {
       return handler.reject(
         DioException(
@@ -146,7 +136,6 @@ class GlobalErrorInterceptor extends Interceptor {
       );
     }
 
-    // 5xx: server issues
     if (status != null && status >= 500) {
       debugPrint('[Dio] Server error $status: ${err.response?.data}');
       return handler.reject(
@@ -159,7 +148,6 @@ class GlobalErrorInterceptor extends Interceptor {
       );
     }
 
-    // Default: pass through (but avoid noisy stack traces)
     return handler.reject(err);
   }
 }
@@ -173,6 +161,14 @@ final authInterceptorProvider = Provider<AuthInterceptor>((ref) {
 
 final privateHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
+
+  if (kIsWeb) {
+    final adapter = dio.httpClientAdapter;
+    if (adapter is BrowserHttpClientAdapter) {
+      adapter.withCredentials = true;
+    }
+  }
+
   dio.interceptors.add(ref.read(authInterceptorProvider));
   dio.interceptors.add(GlobalErrorInterceptor(ref));
   if (kDebugMode) {
@@ -201,7 +197,6 @@ final energyApiProvider = Provider<EnergyApiService>((ref) {
   return EnergyApiService(client);
 });
 
-/// Example consumer that benefits from global handling
 final myGuildsProvider = FutureProvider<List<Guild>>((ref) async {
   final guildService = ref.watch(guildApiProvider);
   return guildService.getMyGuilds();

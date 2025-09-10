@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/guild.dart';
-import '../../../core/providers/api_providers.dart';
+import '../providers/guild_providers.dart';
 
 class GuildListView extends ConsumerWidget {
   final Guild? selectedGuild;
@@ -25,7 +25,7 @@ class GuildListView extends ConsumerWidget {
       color: Theme.of(context).colorScheme.surface,
       child: guildsAsyncValue.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => const Center(child: Icon(Icons.error)),
+        error: (err, stack) => const Center(child: Icon(Icons.error_outline)),
         data: (guilds) {
           return ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -69,8 +69,10 @@ class GuildIcon extends StatelessWidget {
             : Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Text(
           guild.name.isNotEmpty ? guild.name[0].toUpperCase() : 'G',
-          style:
-              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

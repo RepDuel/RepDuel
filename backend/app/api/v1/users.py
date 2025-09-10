@@ -6,24 +6,40 @@ import stripe
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import (APIRouter, Depends, File, HTTPException, Request,
-                     UploadFile, status)
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+    Response,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
 from app.api.v1.deps import get_db
 from app.core.config import settings
-from app.core.security import create_access_token
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_refresh_token,
+)
 from app.models import user as models
 from app.schemas import user as schemas
 from app.schemas.token import Token
-from app.services.user_service import (authenticate_user, create_user,
-                                       delete_user, get_user_by_email,
-                                       get_user_by_id, get_user_by_username,
-                                       update_user)
+from app.services.user_service import (
+    authenticate_user,
+    create_user,
+    delete_user,
+    get_user_by_email,
+    get_user_by_id,
+    get_user_by_username,
+    update_user,
+)
 
-# Initialize Stripe with your secret key from settings
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -36,49 +52,37 @@ async def register_user(
     existing_user = await get_user_by_email(db, user_in.email)
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
     existing_username = await get_user_by_username(db, user_in.username)
     if existing_username:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username is already taken",
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken"
         )
-    
-    # Create user in database first
+
     user = await create_user(db, user_in)
-    
-    # Create Stripe customer
+
     try:
         stripe_customer = stripe.Customer.create(
             email=user.email,
-            name=user.username,  # Using username as display name
-            metadata={
-                "user_id": str(user.id),
-                "username": user.username
-            }
+            name=user.username,
+            metadata={"user_id": str(user.id), "username": user.username},
         )
-        
-        # Update user with Stripe customer ID
         user.stripe_customer_id = stripe_customer.id
         db.add(user)
         await db.commit()
         await db.refresh(user)
-        
     except stripe.error.StripeError as e:
-        # Log the error but don't fail registration
         print(f"Failed to create Stripe customer for user {user.id}: {str(e)}")
-        # You might want to use proper logging here instead of print
     except Exception as e:
-        # Handle any other unexpected errors
         print(f"Unexpected error creating Stripe customer for user {user.id}: {str(e)}")
-    
+
     return user
 
 
 @router.post("/login", response_model=Token)
 async def login_user(
+    response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: AsyncSession = Depends(get_db),
 ):
@@ -88,8 +92,54 @@ async def login_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
-    token = create_access_token({"sub": str(user.id)})
-    return {"access_token": token, "token_type": "bearer"}
+
+    access_token = create_access_token({"sub": str(user.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id)})
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=getattr(settings, "COOKIE_SECURE", True),
+        samesite=getattr(settings, "COOKIE_SAMESITE", "None"),
+        path="/api/v1/users/refresh",
+    )
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh_token_endpoint(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    cookie = request.cookies.get("refresh_token")
+    if not cookie:
+        raise HTTPException(status_code=401, detail="Missing refresh cookie")
+
+    payload = decode_refresh_token(cookie)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    new_access = create_access_token({"sub": str(user.id)})
+    new_refresh = create_refresh_token({"sub": str(user.id)})
+
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh,
+        httponly=True,
+        secure=getattr(settings, "COOKIE_SECURE", True),
+        samesite=getattr(settings, "COOKIE_SAMESITE", "None"),
+        path="/api/v1/users/refresh",
+    )
+
+    return {"access_token": new_access, "token_type": "bearer"}
 
 
 @router.get("/me", response_model=schemas.UserRead)
@@ -105,13 +155,11 @@ async def update_current_user(
 ):
     if updates.username and await get_user_by_username(db, updates.username):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username is already taken",
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken"
         )
     if updates.email and await get_user_by_email(db, updates.email):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
     return await update_user(db, current_user, updates)
 
