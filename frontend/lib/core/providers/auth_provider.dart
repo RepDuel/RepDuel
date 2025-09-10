@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
 import '../services/secure_storage_service.dart';
+import '../providers/secure_storage_provider.dart';
 import 'api_providers.dart';
 
 class AuthState {

@@ -35,10 +35,16 @@ class HttpClient {
     );
   }
 
-  // --- THIS IS THE FIX ---
-  // Adding the missing DELETE method, matching your existing style.
-  Future<Response> delete(String path, {Options? options}) {
-    return _dio.delete(path, options: options);
+  // --- FINAL SAFE VERSION ---
+  Future<Response> delete(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) {
+    return _dio.delete(
+      path,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
-  // --- END OF FIX ---
 }
