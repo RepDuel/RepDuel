@@ -8,75 +8,100 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# -----------------------------------------------------------------------------
+# Password hashing
+# -----------------------------------------------------------------------------
+
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
     """Hash a plaintext password using bcrypt."""
-    return pwd_context.hash(password)
+    return _pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plaintext password against a hashed version."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a plaintext password against a bcrypt hash."""
+    return _pwd_context.verify(plain_password, hashed_password)
 
 
-# ---------------------------
-# ACCESS TOKENS
-# ---------------------------
+# -----------------------------------------------------------------------------
+# JWT helpers
+# -----------------------------------------------------------------------------
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def create_access_token(
-    data: dict[str, Any], expires_delta: Union[timedelta, None] = None
+    data: dict[str, Any],
+    expires_delta: Union[timedelta, None] = None,
 ) -> str:
-    """Generate a short-lived JWT access token."""
+    """
+    Create a short-lived access token.
+    Uses settings.JWT_SECRET_KEY and settings.ACCESS_TOKEN_EXPIRE_MINUTES.
+    Adds standard claims: exp, iat, and typ="access".
+    """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = _utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": _utcnow(),
+            "typ": "access",
+        }
     )
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(
+    return jwt.encode(
         to_encode,
         settings.JWT_SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )
-    return encoded_jwt
-
-
-# ---------------------------
-# REFRESH TOKENS
-# ---------------------------
-
-REFRESH_TOKEN_EXPIRE_DAYS = 30  # TikTok/Snapchat-style long sessions
-JWT_REFRESH_SECRET_KEY = (
-    settings.JWT_SECRET_KEY + "_refresh"
-)  # derive a separate signing key
 
 
 def create_refresh_token(
-    data: dict[str, Any], expires_delta: Union[timedelta, None] = None
+    data: dict[str, Any],
+    expires_delta: Union[timedelta, None] = None,
 ) -> str:
-    """Generate a long-lived JWT refresh token."""
+    """
+    Create a long-lived refresh token.
+    Uses settings.JWT_REFRESH_SECRET_KEY and settings.REFRESH_TOKEN_EXPIRE_DAYS.
+    Adds standard claims: exp, iat, and typ="refresh".
+    """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = _utcnow() + (expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": _utcnow(),
+            "typ": "refresh",
+        }
     )
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(
+    return jwt.encode(
         to_encode,
-        JWT_REFRESH_SECRET_KEY,
+        settings.JWT_REFRESH_SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )
-    return encoded_jwt
 
 
 def verify_refresh_token(token: str) -> dict[str, Any]:
-    """Decode and verify a refresh token. Raises JWTError if invalid/expired."""
+    """
+    Decode & verify a refresh token.
+    - Verifies signature with settings.JWT_REFRESH_SECRET_KEY
+    - Verifies exp
+    - Ensures typ == "refresh"
+    Raises JWTError if invalid/expired.
+    """
     try:
         payload = jwt.decode(
             token,
-            JWT_REFRESH_SECRET_KEY,
+            settings.JWT_REFRESH_SECRET_KEY,
             algorithms=[settings.ALGORITHM],
         )
+        token_type = payload.get("typ")
+        if token_type and token_type != "refresh":
+            # Maintain consistency with your /users/refresh check
+            raise JWTError("Invalid token type")
         return payload
     except JWTError as e:
+        # Surface JWTError so callers can translate to HTTP 401/403 as needed
         raise e

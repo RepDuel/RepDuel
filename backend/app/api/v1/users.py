@@ -18,14 +18,13 @@ from fastapi import (
     status,
 )
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
 from app.api.v1.deps import get_db
 from app.core.config import settings
-from app.core.security import create_access_token
-from app.core.security import create_refresh_token
+from app.core.security import create_access_token, create_refresh_token, verify_refresh_token
 
 from app.models import user as models
 from app.schemas import user as schemas
@@ -49,26 +48,26 @@ router = APIRouter(prefix="/users", tags=["users"])
 # Helpers for refresh cookie
 # ---------------------------
 
-REFRESH_COOKIE_NAME = "refresh_token"
-REFRESH_COOKIE_PATH = "/api/v1/users"  # scope to /users routes
-
 def set_refresh_cookie(response: Response, token: str) -> None:
-    """Set HttpOnly Secure refresh token cookie."""
-    max_age = 60 * 60 * 24 * getattr(settings, "REFRESH_TOKEN_EXPIRE_DAYS", 30)
+    """Set HttpOnly Secure refresh token cookie using env-driven settings."""
+    max_age = 60 * 60 * 24 * settings.REFRESH_TOKEN_EXPIRE_DAYS
     response.set_cookie(
-        key=REFRESH_COOKIE_NAME,
+        key=settings.REFRESH_COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,  # "lax" (same-site) or "none" (cross-site)
         max_age=max_age,
-        path=REFRESH_COOKIE_PATH,
+        path=settings.REFRESH_COOKIE_PATH,
+        domain=settings.REFRESH_COOKIE_DOMAIN,      # may be None
     )
+
 
 def clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(
-        key=REFRESH_COOKIE_NAME,
-        path=REFRESH_COOKIE_PATH,
+        key=settings.REFRESH_COOKIE_NAME,
+        path=settings.REFRESH_COOKIE_PATH,
+        domain=settings.REFRESH_COOKIE_DOMAIN,
     )
 
 # ---------------------------
@@ -144,7 +143,7 @@ async def login_user(
 @router.post("/refresh", response_model=Token)
 async def refresh_access_token(
     response: Response,
-    refresh_cookie: str | None = Cookie(default=None, alias=REFRESH_COOKIE_NAME),
+    refresh_cookie: str | None = Cookie(default=None, alias=settings.REFRESH_COOKIE_NAME),
 ):
     """
     Exchange a valid refresh token (HttpOnly cookie) for a new access token.
@@ -157,11 +156,7 @@ async def refresh_access_token(
         )
 
     try:
-        payload = jwt.decode(
-            refresh_cookie,
-            settings.JWT_REFRESH_SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
+        payload = verify_refresh_token(refresh_cookie)
         token_type = payload.get("typ")
         if token_type and token_type != "refresh":
             raise JWTError("Invalid token type")
@@ -196,6 +191,7 @@ async def logout_user(response: Response):
 async def read_current_user(current_user: models.User = Depends(get_current_user)):
     return current_user
 
+
 @router.patch("/me", response_model=schemas.UserRead)
 async def update_current_user(
     updates: schemas.UserUpdate,
@@ -214,6 +210,7 @@ async def update_current_user(
         )
     return await update_user(db, current_user, updates)
 
+
 @router.get("/{user_id}", response_model=schemas.UserRead)
 async def read_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
     user = await get_user_by_id(db, user_id)
@@ -223,6 +220,7 @@ async def read_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
             detail=f"User with ID {user_id} not found",
         )
     return user
+
 
 @router.get("/username/{username}", response_model=schemas.UserRead)
 async def get_user_uuid_by_username(username: str, db: AsyncSession = Depends(get_db)):
@@ -245,11 +243,11 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    ext = os.path.splitext(file.filename)[1]
-    filename = f"{uuid4().hex}{ext}"
+    ext = os.path.splitext(file.filename or "")[1]
+    filename = f"{uuid4().hex}{ext or '.jpg'}"
     avatar_dir = os.path.join("static", "avatars")
     os.makedirs(avatar_dir, exist_ok=True)
 

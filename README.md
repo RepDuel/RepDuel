@@ -111,7 +111,7 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 flutter pub get
-flutter run                    # Select browser/device
+flutter run -d chrome --web-port=3000
 ```
 
 * Web: `http://localhost:5000`
