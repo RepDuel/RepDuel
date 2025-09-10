@@ -12,7 +12,7 @@ app = FastAPI(
     description="Backend for the RepDuel app",
 )
 
-# Explicit frontends + localhost/127.0.0.1 for dev
+# Allow your deployed web app + production site, and any localhost port.
 ALLOWED_ORIGINS = [
     "https://repduel-web-dev.onrender.com",
     "https://repduel.com",
@@ -24,13 +24,21 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=ALLOWED_ORIGIN_REGEX,
-    allow_credentials=True,
+    allow_credentials=True,  # required for cookies
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
+# Static files (e.g., uploaded avatars)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# API routes
 app.include_router(api_router, prefix="/api/v1")
+
+# Root route for platform health checks (Render hits "/")
+@app.get("/", tags=["health"])
+def root():
+    return {"status": "ok", "service": "repduel-backend"}
 
 @app.get("/health", tags=["health"])
 def health():
