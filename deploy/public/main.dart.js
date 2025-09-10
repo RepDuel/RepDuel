@@ -33716,7 +33716,7 @@ break $label0$0}return s},
 brO(a,b){return a},
 brP(a,b){return b},
 brN(a,b){return a.b<=b.b?b:a},
-zd(){return"https://repduel-backend.onrender.com"},
+zd(){return"https://repduel-backend-dev.onrender.com"},
 bet(){return"price_1RulBS4K6tml8Kp2vGesk1cv"},
 brI(a){var s,r,q
 try{a.$0()}catch(q){s=A.a5(q)
