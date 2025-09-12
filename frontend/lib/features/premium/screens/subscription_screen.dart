@@ -236,13 +236,13 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               children: [
                 TextButton(
                   onPressed: () => _openLink(
-                      'https://repduel2.github.io/repduel-website/privacy.html'),
+                      'https://repduel.github.io/repduel-website/privacy.html'),
                   child: const Text('Privacy Policy'),
                 ),
                 const SizedBox(width: 16),
                 TextButton(
                   onPressed: () => _openLink(
-                      'https://repduel2.github.io/repduel-website/terms.html'),
+                      'https://repduel.github.io/repduel-website/terms.html'),
                   child: const Text('Terms'),
                 ),
               ],
