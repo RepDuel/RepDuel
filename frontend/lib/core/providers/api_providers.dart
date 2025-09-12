@@ -1,9 +1,10 @@
 // frontend/lib/core/providers/api_providers.dart
 
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import 'package:dio/browser.dart';
+
+import '../http/adapter.dart'; // configureDioForPlatform()
 
 import '../api/auth_api_service.dart';
 import '../api/guild_api_service.dart';
@@ -26,6 +27,7 @@ final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     },
+    // Consider 4xx as app-level errors you handle in interceptors.
     validateStatus: (status) => status != null && status >= 200 && status < 500,
   );
 });
@@ -36,16 +38,15 @@ final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
 final publicHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
 
-  if (kIsWeb) {
-    final adapter = dio.httpClientAdapter;
-    if (adapter is BrowserHttpClientAdapter) {
-      adapter.withCredentials = true;
-    }
-  }
+  // Platform-specific adapter:
+  // - Web: BrowserHttpClientAdapter with withCredentials enabled (set in adapter_web.dart)
+  // - Mobile/Desktop: default adapter (no-op in adapter_io.dart)
+  configureDioForPlatform(dio);
 
   if (kDebugMode) {
     dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
   }
+
   dio.interceptors.add(GlobalErrorInterceptor(ref));
   return HttpClient(dio);
 });
@@ -162,18 +163,16 @@ final authInterceptorProvider = Provider<AuthInterceptor>((ref) {
 final privateHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
 
-  if (kIsWeb) {
-    final adapter = dio.httpClientAdapter;
-    if (adapter is BrowserHttpClientAdapter) {
-      adapter.withCredentials = true;
-    }
-  }
+  // Platform-specific adapter (see note above)
+  configureDioForPlatform(dio);
 
   dio.interceptors.add(ref.read(authInterceptorProvider));
   dio.interceptors.add(GlobalErrorInterceptor(ref));
+
   if (kDebugMode) {
     dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
   }
+
   return HttpClient(dio);
 });
 
