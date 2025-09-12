@@ -55,26 +55,38 @@ class RankingTable extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            const Text('Overall Energy: ',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            Text('$officialEnergy',
-                style: TextStyle(
-                    color: overallColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
+            const Text(
+              'Overall Energy: ',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+            ),
+            Text(
+              '$officialEnergy',
+              style: TextStyle(
+                color: overallColor,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+            ),
             const SizedBox(width: 8),
-            // The SVG is now rendered with its original colors.
             SvgPicture.asset(
               'assets/images/ranks/${officialRank.toLowerCase()}.svg',
               height: 24,
               width: 24,
             ),
             IconButton(
-                icon: const Icon(Icons.leaderboard, color: Colors.blueAccent),
-                onPressed: onEnergyLeaderboardTapped),
+              icon: const Icon(Icons.leaderboard, color: Colors.blueAccent),
+              onPressed: onEnergyLeaderboardTapped,
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -95,10 +107,10 @@ class RankingTable extends ConsumerWidget {
         ElevatedButton(
           onPressed: onViewBenchmarks,
           style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 32, vertical: 12)),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          ),
           child: const Text('View Benchmarks'),
         ),
       ],
@@ -113,22 +125,26 @@ class _RankingTableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     const headerStyle =
         TextStyle(color: Colors.white, fontWeight: FontWeight.bold);
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8.0),
+
+    Text oneLine(String s) => Text(
+          s,
+          style: headerStyle,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+        );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text('Lift', style: headerStyle)),
-          Expanded(
-              flex: 2, child: Center(child: Text('Score', style: headerStyle))),
-          Expanded(
-              flex: 2,
-              child: Center(child: Text('Progress', style: headerStyle))),
-          Expanded(
-              flex: 2, child: Center(child: Text('Rank', style: headerStyle))),
-          Expanded(
-              flex: 1,
-              child: Center(child: Text('Energy', style: headerStyle))),
-          Expanded(flex: 1, child: SizedBox.shrink()),
+          Expanded(flex: 2, child: oneLine('Lift')),
+          const SizedBox(width: 0), // keep layout stable
+          Expanded(flex: 2, child: Center(child: oneLine('Score'))),
+          Expanded(flex: 2, child: Center(child: oneLine('Progress'))),
+          Expanded(flex: 2, child: Center(child: oneLine('Rank'))),
+          Expanded(flex: 1, child: Center(child: oneLine('Energy'))),
+          const Expanded(flex: 1, child: SizedBox.shrink()),
         ],
       ),
     );
@@ -152,9 +168,7 @@ class _RankingRow extends StatelessWidget {
     required this.userMultiplier,
   });
 
-  double _roundToNearest5(double value) {
-    return (value / 5).round() * 5.0;
-  }
+  double _roundToNearest5(double value) => (value / 5).round() * 5.0;
 
   @override
   Widget build(BuildContext context) {
@@ -188,13 +202,16 @@ class _RankingRow extends StatelessWidget {
       final currentIndex = sortedRanks.indexWhere((e) => e.key == matchedRank);
       if (currentIndex > 0) {
         nextThreshold = _roundToNearest5(
-            (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0) *
-                userMultiplier);
+          (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0) *
+              userMultiplier,
+        );
       }
     } else {
       nextThreshold = sortedRanks.isNotEmpty
-          ? _roundToNearest5((sortedRanks.last.value['lifts'][lowerLift] ?? 0) *
-              userMultiplier)
+          ? _roundToNearest5(
+              (sortedRanks.last.value['lifts'][lowerLift] ?? 0) *
+                  userMultiplier,
+            )
           : 0;
     }
 
@@ -210,13 +227,22 @@ class _RankingRow extends StatelessWidget {
     }
 
     final energy = getInterpolatedEnergy(
-        score: score,
-        thresholds: standards,
-        liftKey: lowerLift,
-        userMultiplier: userMultiplier);
+      score: score,
+      thresholds: standards,
+      liftKey: lowerLift,
+      userMultiplier: userMultiplier,
+    );
     final rankColor = getRankColor(matchedRank ?? 'Unranked');
     final iconPath =
         'assets/images/ranks/${matchedRank?.toLowerCase() ?? 'unranked'}.svg';
+
+    Text oneLine(String s, {TextStyle? style}) => Text(
+          s,
+          style: style,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+        );
 
     return GestureDetector(
       onTap: onTap,
@@ -224,17 +250,28 @@ class _RankingRow extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-            color: Colors.grey[900], borderRadius: BorderRadius.circular(8)),
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
-                flex: 2,
-                child: Text(lift, style: const TextStyle(color: Colors.white))),
+              flex: 2,
+              child: oneLine(
+                lift,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
             Expanded(
-                flex: 2,
-                child: Center(
-                    child: Text(formatKg(score),
-                        style: const TextStyle(color: Colors.white)))),
+              flex: 2,
+              child: Center(
+                child: oneLine(
+                  formatKg(score),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
             Expanded(
               flex: 2,
               child: Column(
@@ -249,8 +286,7 @@ class _RankingRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // ✅ Always show "<score> / <nextThreshold>", no more "MAX RANK"
-                  Text(
+                  oneLine(
                     '${formatKg(score)} / ${formatKg(nextThreshold)}',
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
@@ -258,20 +294,27 @@ class _RankingRow extends StatelessWidget {
               ),
             ),
             Expanded(
-                flex: 2,
-                child: Center(
-                    child: SvgPicture.asset(iconPath, height: 24, width: 24))),
+              flex: 2,
+              child: Center(
+                child: SvgPicture.asset(iconPath, height: 24, width: 24),
+              ),
+            ),
             Expanded(
-                flex: 1,
-                child: Center(
-                    child: Text(NumberFormat("###0").format(energy),
-                        style: const TextStyle(color: Colors.white)))),
+              flex: 1,
+              child: Center(
+                child: oneLine(
+                  NumberFormat("###0").format(energy),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ),
             Expanded(
-                flex: 1,
-                child: IconButton(
-                    icon:
-                        const Icon(Icons.leaderboard, color: Colors.blueAccent),
-                    onPressed: onLeaderboardTap)),
+              flex: 1,
+              child: IconButton(
+                icon: const Icon(Icons.leaderboard, color: Colors.blueAccent),
+                onPressed: onLeaderboardTap,
+              ),
+            ),
           ],
         ),
       ),
