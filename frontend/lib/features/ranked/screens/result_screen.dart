@@ -20,65 +20,87 @@ import '../widgets/score_history_chart.dart';
 class ShareableResultCard extends StatelessWidget {
   final String username;
   final String scenarioName;
-  final String finalScore;
+  final String finalScore; // include unit in this string
   final String rankName;
   final Color rankColor;
-  const ShareableResultCard(
-      {super.key,
-      required this.username,
-      required this.scenarioName,
-      required this.finalScore,
-      required this.rankName,
-      required this.rankColor});
+  const ShareableResultCard({
+    super.key,
+    required this.username,
+    required this.scenarioName,
+    required this.finalScore,
+    required this.rankName,
+    required this.rankColor,
+  });
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 350,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white24)),
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(username,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            username,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('achieved a new score in',
-              style: TextStyle(color: Colors.grey[400], fontSize: 16)),
+          Text(
+            'achieved a new score in',
+            style: TextStyle(color: Colors.grey[400], fontSize: 16),
+          ),
           const SizedBox(height: 4),
-          Text(scenarioName.toUpperCase(),
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.1)),
+          Text(
+            scenarioName.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
           const SizedBox(height: 20),
-          SvgPicture.asset('assets/images/ranks/${rankName.toLowerCase()}.svg',
-              height: 80),
+          SvgPicture.asset(
+            'assets/images/ranks/${rankName.toLowerCase()}.svg',
+            height: 80,
+          ),
           const SizedBox(height: 12),
-          Text(rankName,
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: rankColor,
-                  letterSpacing: 1.2)),
+          Text(
+            rankName,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: rankColor,
+              letterSpacing: 1.2,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('Score: $finalScore',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold)),
+          // Shows e.g. "Score: 315.0 lbs"
+          Text(
+            'Score: $finalScore',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 24),
-          Text('RepDuel',
-              style: TextStyle(
-                  color: Colors.blue.shade300,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            'RepDuel',
+            style: TextStyle(
+              color: Colors.blue.shade300,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -110,11 +132,12 @@ class ResultScreen extends ConsumerStatefulWidget {
   final double finalScore;
   final int previousBest;
   final String scenarioId;
-  const ResultScreen(
-      {super.key,
-      required this.finalScore,
-      required this.previousBest,
-      required this.scenarioId});
+  const ResultScreen({
+    super.key,
+    required this.finalScore,
+    required this.previousBest,
+    required this.scenarioId,
+  });
   @override
   ConsumerState<ResultScreen> createState() => _ResultScreenState();
 }
@@ -123,25 +146,36 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   final _screenshotController = ScreenshotController();
   bool _isSharing = false;
 
+  String _unitFromMultiplier(double m) {
+    // Treat ~2.20462 as lbs; otherwise kg.
+    return (m - 2.20462).abs() < 0.01 ? 'lbs' : 'kg';
+  }
+
   Future<void> _handleShare(
-      ResultScreenData data, String username, double weightMultiplier) async {
+    ResultScreenData data,
+    String username,
+    double weightMultiplier,
+  ) async {
     setState(() => _isSharing = true);
     try {
+      final unit = _unitFromMultiplier(weightMultiplier);
       await ref.read(shareServiceProvider).shareResult(
             context: context,
             screenshotController: _screenshotController,
             username: username,
             scenarioName: data.scenario['name'] as String? ?? 'Unnamed',
+            // Include unit for the share text as well
             finalScore:
-                (widget.finalScore * weightMultiplier).toStringAsFixed(1),
+                '${(widget.finalScore * weightMultiplier).toStringAsFixed(1)} $unit',
             rankName: data.rank['current_rank'] as String? ?? 'Unranked',
             rankColor: getRankColor(
                 data.rank['current_rank'] as String? ?? 'Unranked'),
           );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceFirst("Exception: ", ""))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+      );
     } finally {
       if (mounted) setState(() => _isSharing = false);
     }
@@ -152,97 +186,132 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final authState = ref.watch(authProvider).valueOrNull;
     if (authState?.user == null) {
       return _buildScaffold(
-          const Center(child: Text("User not authenticated.")));
+        const Center(child: Text("User not authenticated.")),
+      );
     }
     final user = authState!.user!;
     final weightMultiplier = user.weightMultiplier;
+    final unit = _unitFromMultiplier(weightMultiplier);
 
     final scoreForRankCalc = widget.finalScore > widget.previousBest
         ? widget.finalScore
         : widget.previousBest.toDouble();
 
     final resultProvider = resultScreenDataProvider(
-        (scenarioId: widget.scenarioId, finalScore: scoreForRankCalc));
+      (scenarioId: widget.scenarioId, finalScore: scoreForRankCalc),
+    );
     final screenDataAsync = ref.watch(resultProvider);
 
     return screenDataAsync.when(
       loading: () => _buildScaffold(const Center(child: LoadingSpinner())),
-      error: (err, _) => _buildScaffold(Center(
+      error: (err, _) => _buildScaffold(
+        Center(
           child: ErrorDisplay(
-              message: err.toString(),
-              onRetry: () => ref.refresh(resultProvider)))),
+            message: err.toString(),
+            onRetry: () => ref.refresh(resultProvider),
+          ),
+        ),
+      ),
       data: (data) {
         final scenarioName = data.scenario['name'] ?? 'Scenario';
         final currentRank = data.rank['current_rank'] ?? 'Unranked';
         final nextThreshold = data.rank['next_rank_threshold'];
-        final isMax = currentRank == 'Celestial';
 
-        final progressValue = isMax
-            ? 1.0
-            : (nextThreshold != null && nextThreshold > 0)
-                ? (scoreForRankCalc / nextThreshold).clamp(0.0, 1.0)
-                : 0.0;
+        // Always compute a "final threshold" for display.
+        // If API doesn't provide a positive nextThreshold (e.g., top rank),
+        // use current score as the "final" threshold so it shows X / X.
+        final double displayThreshold =
+            (nextThreshold is num && nextThreshold > 0)
+                ? nextThreshold.toDouble()
+                : scoreForRankCalc;
+
+        // Progress is current over threshold, clamped to [0,1]
+        final double progressValue = displayThreshold > 0
+            ? (scoreForRankCalc / displayThreshold).clamp(0.0, 1.0)
+            : 0.0;
 
         return _buildScaffold(
-            SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                children: [
-                  const SizedBox(height: 24),
-                  const Text('FINAL SCORE',
-                      style: TextStyle(color: Colors.white70, fontSize: 20)),
-                  Text(
-                      (widget.finalScore * weightMultiplier).toStringAsFixed(1),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 72,
-                          fontWeight: FontWeight.bold)),
-                  Text(
-                      'Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)}',
-                      style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 32),
-                  Text('CURRENT RANK',
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 18)),
-                  const SizedBox(height: 16),
-                  SvgPicture.asset(
-                      'assets/images/ranks/${currentRank.toLowerCase()}.svg',
-                      height: 72),
-                  const SizedBox(height: 12),
-                  Text(currentRank,
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: getRankColor(currentRank))),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                      width: 200,
-                      child: LinearProgressIndicator(
-                          value: progressValue,
-                          backgroundColor: Colors.grey[800],
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              getRankColor(currentRank)),
-                          minHeight: 20)),
-                  const SizedBox(height: 8),
-                  Text(
-                      isMax
-                          ? 'MAX RANK'
-                          : nextThreshold != null && nextThreshold > 0
-                              ? '${(scoreForRankCalc * weightMultiplier).toStringAsFixed(1)} / ${(nextThreshold * weightMultiplier).toStringAsFixed(1)}'
-                              : (scoreForRankCalc * weightMultiplier)
-                                  .toStringAsFixed(1),
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 16)),
-                  const SizedBox(height: 32),
-                  const Divider(color: Colors.white24),
-                  const SizedBox(height: 16),
-                  Consumer(builder: (context, ref, _) {
+          SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              children: [
+                const SizedBox(height: 24),
+                const Text(
+                  'FINAL SCORE',
+                  style: TextStyle(color: Colors.white70, fontSize: 20),
+                ),
+                Text(
+                  (widget.finalScore * weightMultiplier).toStringAsFixed(1),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 56, // smaller than original 72
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  scenarioName,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Previous Best includes unit (as requested)
+                Text(
+                  'Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)} $unit',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'CURRENT RANK',
+                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                ),
+                const SizedBox(height: 16),
+                SvgPicture.asset(
+                  'assets/images/ranks/${currentRank.toLowerCase()}.svg',
+                  height: 72,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  currentRank,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: getRankColor(currentRank),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: 200,
+                  child: LinearProgressIndicator(
+                    value: progressValue,
+                    backgroundColor: Colors.grey[800],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      getRankColor(currentRank),
+                    ),
+                    minHeight: 20,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // ✅ No "MAX RANK" logic; always show "<current>/<threshold>"
+                Text(
+                  '${(scoreForRankCalc * weightMultiplier).toStringAsFixed(1)} / ${(displayThreshold * weightMultiplier).toStringAsFixed(1)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                const SizedBox(height: 32),
+                const Divider(color: Colors.white24),
+                const SizedBox(height: 16),
+                Consumer(
+                  builder: (context, ref, _) {
                     final subTier = ref.watch(subscriptionProvider).valueOrNull;
                     if (subTier == SubscriptionTier.gold ||
                         subTier == SubscriptionTier.platinum) {
                       return ScoreHistoryChart(
-                          scenarioId: widget.scenarioId,
-                          weightMultiplier: weightMultiplier);
+                        scenarioId: widget.scenarioId,
+                        weightMultiplier: weightMultiplier,
+                      );
                     } else {
                       return PaywallLock(
                         message: "Upgrade to Gold to track your progress.",
@@ -250,56 +319,60 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           final purchaseSuccess =
                               await context.push<bool>('/subscribe');
                           if (purchaseSuccess == true && mounted) {
-                            // ========== THIS IS THE FIX ==========
-                            // Explicitly await the refetching of user data from the server.
-                            // This guarantees we get the updated subscription level.
                             await ref
                                 .read(authProvider.notifier)
                                 .refreshUserData();
-
-                            // Also invalidate the subscription provider to ensure it syncs.
                             ref.invalidate(subscriptionProvider);
-                            // =====================================
                           }
                         },
                       );
                     }
-                  }),
-                  const SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: () => context.pop(true),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 32, vertical: 14)),
-                    child: const Text('Back to Menu'),
+                  },
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () => context.pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 14,
+                    ),
                   ),
-                ],
+                  child: const Text('Back to Menu'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            // Offstage screenshot card used for sharing — include unit here too
+            Builder(
+              builder: (context) => Offstage(
+                offstage: true,
+                child: Screenshot(
+                  controller: _screenshotController,
+                  child: ShareableResultCard(
+                    username: user.username,
+                    scenarioName: scenarioName,
+                    finalScore:
+                        '${(widget.finalScore * weightMultiplier).toStringAsFixed(1)} $unit',
+                    rankName: currentRank,
+                    rankColor: getRankColor(currentRank),
+                  ),
+                ),
               ),
             ),
-            actions: [
-              Builder(
-                  builder: (context) => Offstage(
-                      offstage: true,
-                      child: Screenshot(
-                          controller: _screenshotController,
-                          child: ShareableResultCard(
-                              username: user.username,
-                              scenarioName: scenarioName,
-                              finalScore: (widget.finalScore * weightMultiplier)
-                                  .toStringAsFixed(1),
-                              rankName: currentRank,
-                              rankColor: getRankColor(currentRank))))),
-              IconButton(
-                  icon: _isSharing
-                      ? const LoadingSpinner(size: 24)
-                      : const Icon(Icons.share),
-                  onPressed: _isSharing
-                      ? null
-                      : () =>
-                          _handleShare(data, user.username, weightMultiplier))
-            ]);
+            IconButton(
+              icon: _isSharing
+                  ? const LoadingSpinner(size: 24)
+                  : const Icon(Icons.share),
+              onPressed: _isSharing
+                  ? null
+                  : () => _handleShare(data, user.username, weightMultiplier),
+            ),
+          ],
+        );
       },
     );
   }
@@ -308,10 +381,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-          title: const Text('Results'),
-          backgroundColor: Colors.black,
-          elevation: 0,
-          actions: actions),
+        title: const Text('Results'),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        actions: actions,
+      ),
       body: child,
     );
   }

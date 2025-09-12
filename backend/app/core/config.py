@@ -10,26 +10,37 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import json  # you already import inside the validator; either place is fine
 
 
 class Settings(BaseSettings):
     # App & infrastructure
     APP_URL: str
     BASE_URL: str
-    DATABASE_URL: PostgresDsn
+    DATABASE_URL: PostgresDsn  # keep if your DSN is standard Postgres; see note below
 
     # JWT / Auth
     JWT_SECRET_KEY: str
     REFRESH_JWT_SECRET_KEY: Optional[str] = Field(
         default=None,
-        validation_alias=AliasChoices("REFRESH_JWT_SECRET_KEY", "JWT_REFRESH_SECRET_KEY", "jwt_refresh_secret_key"),
+        validation_alias=AliasChoices(
+            "REFRESH_JWT_SECRET_KEY", "JWT_REFRESH_SECRET_KEY", "jwt_refresh_secret_key"
+        ),
     )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
+    # 👇 add alias so lowercase env is accepted too
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=30,
+        validation_alias=AliasChoices("REFRESH_TOKEN_EXPIRE_DAYS", "refresh_token_expire_days"),
+    )
 
     # Third-party
-    REVENUECAT_WEBHOOK_AUTH_TOKEN: str
+    # 👇 add alias so lowercase env is accepted too
+    REVENUECAT_WEBHOOK_AUTH_TOKEN: str = Field(
+        validation_alias=AliasChoices("REVENUECAT_WEBHOOK_AUTH_TOKEN", "revenuecat_webhook_auth_token"),
+    )
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str
 
@@ -41,7 +52,7 @@ class Settings(BaseSettings):
 
     # Cookie settings
     COOKIE_SAMESITE: str = Field(
-        default="None",
+        default="none",  # prefer lower-case default
         validation_alias=AliasChoices("COOKIE_SAMESITE", "REFRESH_COOKIE_SAMESITE", "refresh_cookie_samesite"),
     )
     COOKIE_SECURE: bool = Field(
@@ -52,7 +63,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore",
+        extra="ignore",  # once your aliases/envs are stable, consider 'forbid' again
     )
 
     @field_validator("FRONTEND_ORIGINS", mode="before")
@@ -66,10 +77,9 @@ class Settings(BaseSettings):
             s = v.strip()
             if s.startswith("[") and s.endswith("]"):
                 try:
-                    import json
                     arr = json.loads(s)
                     if isinstance(arr, list):
-                        return [item.strip() for item in arr]
+                        return [str(item).strip() for item in arr]
                 except Exception:
                     pass
             return [item.strip() for item in s.split(",") if item.strip()]
@@ -80,8 +90,9 @@ class Settings(BaseSettings):
         self.BASE_URL = self.BASE_URL.rstrip("/")
         if not self.REFRESH_JWT_SECRET_KEY:
             self.REFRESH_JWT_SECRET_KEY = self.JWT_SECRET_KEY
+        # force lower-case for Starlette/FastAPI
         if self.COOKIE_SAMESITE:
-            self.COOKIE_SAMESITE = self.COOKIE_SAMESITE.capitalize()
+            self.COOKIE_SAMESITE = self.COOKIE_SAMESITE.strip().lower()
         return self
 
 
