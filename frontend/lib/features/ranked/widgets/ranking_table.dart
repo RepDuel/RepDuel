@@ -288,7 +288,7 @@ class _RankingRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   oneLine(
                     '${formatKg(score)} / ${formatKg(nextThreshold)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
                   ),
                 ],
               ),
@@ -304,15 +304,23 @@ class _RankingRow extends StatelessWidget {
               child: Center(
                 child: oneLine(
                   NumberFormat("###0").format(energy),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ),
             ),
             Expanded(
               flex: 1,
-              child: IconButton(
-                icon: const Icon(Icons.leaderboard, color: Colors.blueAccent),
-                onPressed: onLeaderboardTap,
+              child: Align(
+                alignment:
+                    Alignment.centerRight, // 👈 push it to the right side
+                child: IconButton(
+                  icon: const Icon(Icons.leaderboard,
+                      color: Colors.blueAccent, size: 20),
+                  onPressed: onLeaderboardTap,
+                  padding: EdgeInsets.zero, // optional: removes extra space
+                  constraints:
+                      const BoxConstraints(), // optional: shrinks tap target
+                ),
               ),
             ),
           ],
