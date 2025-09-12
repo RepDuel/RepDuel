@@ -43,7 +43,16 @@ class BenchmarksTable extends ConsumerWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                  onPressed: () => context.pop(),
+                  onPressed: () {
+                    final router = GoRouter.of(context);
+                    if (router.canPop()) {
+                      // If this screen was actually pushed as its own route
+                      router.pop();
+                    } else {
+                      // We're being shown inline inside the Ranked tab -> use the callback
+                      onViewRankings();
+                    }
+                  },
                 ),
               ],
             ),
