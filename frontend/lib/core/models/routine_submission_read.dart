@@ -1,3 +1,5 @@
+// frontend/lib/core/models/routine_submission_read.dart
+
 class RoutineScenarioSubmission {
   final String scenarioId;
   final int sets;

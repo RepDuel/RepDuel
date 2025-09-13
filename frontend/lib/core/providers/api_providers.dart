@@ -1,22 +1,18 @@
 // frontend/lib/core/providers/api_providers.dart
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
-
-import '../http/adapter.dart'; // configureDioForPlatform()
 
 import '../api/auth_api_service.dart';
-import '../api/guild_api_service.dart';
 import '../api/energy_api_service.dart';
+import '../api/guild_api_service.dart';
 import '../config/env.dart';
-import '../utils/http_client.dart';
-import '../providers/auth_provider.dart';
+import '../http/adapter.dart';
 import '../models/guild.dart';
+import '../providers/auth_provider.dart';
+import '../utils/http_client.dart';
 
-/// ---------------------------
-/// Dio Base Options
-/// ---------------------------
 final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
   return BaseOptions(
     baseUrl: '${Env.baseUrl}/api/v1',
@@ -27,20 +23,12 @@ final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     },
-    // Consider 4xx as app-level errors you handle in interceptors.
     validateStatus: (status) => status != null && status >= 200 && status < 500,
   );
 });
 
-/// ---------------------------
-/// Public (no auth) client
-/// ---------------------------
 final publicHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
-
-  // Platform-specific adapter:
-  // - Web: BrowserHttpClientAdapter with withCredentials enabled (set in adapter_web.dart)
-  // - Mobile/Desktop: default adapter (no-op in adapter_io.dart)
   configureDioForPlatform(dio);
 
   if (kDebugMode) {
@@ -51,22 +39,20 @@ final publicHttpClientProvider = Provider<HttpClient>((ref) {
   return HttpClient(dio);
 });
 
-/// Token reader (safe across AsyncValue states)
 final authTokenProvider = Provider<String?>((ref) {
   final authState = ref.watch(authProvider);
   return authState.valueOrNull?.token;
 });
 
-/// ---------------------------
-/// Auth header injector
-/// ---------------------------
 class AuthInterceptor extends Interceptor {
   final Ref _ref;
   AuthInterceptor(this._ref);
 
   @override
   void onRequest(
-      RequestOptions options, RequestInterceptorHandler handler) async {
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     final token = _ref.read(authTokenProvider);
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
@@ -75,9 +61,6 @@ class AuthInterceptor extends Interceptor {
   }
 }
 
-/// ---------------------------
-/// Global error handling
-/// ---------------------------
 class GlobalErrorInterceptor extends Interceptor {
   final Ref _ref;
   GlobalErrorInterceptor(this._ref);
@@ -90,7 +73,8 @@ class GlobalErrorInterceptor extends Interceptor {
         err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.receiveTimeout) {
       debugPrint(
-          '[Dio] Timeout: ${err.requestOptions.method} ${err.requestOptions.uri}');
+        '[Dio] Timeout: ${err.requestOptions.method} ${err.requestOptions.uri}',
+      );
       return handler.reject(
         DioException(
           requestOptions: err.requestOptions,
@@ -153,17 +137,12 @@ class GlobalErrorInterceptor extends Interceptor {
   }
 }
 
-/// ---------------------------
-/// Private (auth) client
-/// ---------------------------
 final authInterceptorProvider = Provider<AuthInterceptor>((ref) {
   return AuthInterceptor(ref);
 });
 
 final privateHttpClientProvider = Provider<HttpClient>((ref) {
   final dio = Dio(ref.read(dioBaseOptionsProvider));
-
-  // Platform-specific adapter (see note above)
   configureDioForPlatform(dio);
 
   dio.interceptors.add(ref.read(authInterceptorProvider));
@@ -176,9 +155,6 @@ final privateHttpClientProvider = Provider<HttpClient>((ref) {
   return HttpClient(dio);
 });
 
-/// ---------------------------
-/// API Service Providers
-/// ---------------------------
 final authApiProvider = Provider<AuthApiService>((ref) {
   return AuthApiService(
     publicClient: ref.read(publicHttpClientProvider),

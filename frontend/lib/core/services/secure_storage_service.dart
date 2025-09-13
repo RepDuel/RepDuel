@@ -1,3 +1,5 @@
+// frontend/lib/core/services/secure_storage_service.dart
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SecureStorageService {

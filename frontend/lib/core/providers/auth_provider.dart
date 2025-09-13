@@ -2,13 +2,14 @@
 
 import 'dart:async';
 import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
-import '../services/secure_storage_service.dart';
 import '../providers/secure_storage_provider.dart';
+import '../services/secure_storage_service.dart';
 import 'api_providers.dart';
 
 class AuthState {
@@ -225,8 +226,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     return false;
   }
 
-  void updateLocalUserEnergy(
-      {required double newEnergy, required String newRank}) {
+  void updateLocalUserEnergy({
+    required double newEnergy,
+    required String newRank,
+  }) {
     final currentState = state.valueOrNull;
     final currentUser = currentState?.user;
 

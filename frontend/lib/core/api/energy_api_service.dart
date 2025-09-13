@@ -1,3 +1,5 @@
+// frontend/lib/core/api/energy_api_service.dart
+
 import '../utils/http_client.dart';
 
 class EnergyApiService {

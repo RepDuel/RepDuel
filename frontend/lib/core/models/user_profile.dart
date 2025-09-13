@@ -1,3 +1,5 @@
+// frontend/lib/core/models/user_profile.dart
+
 import 'package:flutter/material.dart';
 import 'role.dart';
 

@@ -1,3 +1,5 @@
+// frontend/lib/core/http/adapter_web.dart
+
 import 'package:dio/dio.dart';
 import 'package:dio_web_adapter/dio_web_adapter.dart';
 

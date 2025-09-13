@@ -2,9 +2,9 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../themes/app_themes.dart';
 
-// The Notifier
 class ThemeNotifier extends StateNotifier<AppTheme> {
   ThemeNotifier() : super(appThemes.first) {
     _loadTheme();
@@ -15,14 +15,18 @@ class ThemeNotifier extends StateNotifier<AppTheme> {
   void _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final themeId = prefs.getString(_themeIdKey) ?? appThemes.first.id;
-    final theme = appThemes.firstWhere((t) => t.id == themeId,
-        orElse: () => appThemes.first);
+    final theme = appThemes.firstWhere(
+      (t) => t.id == themeId,
+      orElse: () => appThemes.first,
+    );
     state = theme;
   }
 
   Future<void> setTheme(String themeId) async {
-    final theme = appThemes.firstWhere((t) => t.id == themeId,
-        orElse: () => appThemes.first);
+    final theme = appThemes.firstWhere(
+      (t) => t.id == themeId,
+      orElse: () => appThemes.first,
+    );
     state = theme;
 
     final prefs = await SharedPreferences.getInstance();
@@ -30,7 +34,6 @@ class ThemeNotifier extends StateNotifier<AppTheme> {
   }
 }
 
-// The Provider
 final themeProvider = StateNotifierProvider<ThemeNotifier, AppTheme>((ref) {
   return ThemeNotifier();
 });
