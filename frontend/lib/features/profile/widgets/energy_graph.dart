@@ -2,14 +2,15 @@
 
 import 'dart:convert';
 
-import '../../../core/config/env.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:fl_chart/fl_chart.dart';
+
+import '../../../core/config/env.dart';
 
 class DailyEnergyEntry {
-  final String date; // Format: "2025-07-11"
+  final String date;
   final double totalEnergy;
 
   DailyEnergyEntry({required this.date, required this.totalEnergy});
@@ -26,9 +27,7 @@ final energyGraphProvider =
     FutureProvider.family<List<DailyEnergyEntry>, String>((ref, userId) async {
   final res = await http.get(
     Uri.parse('${Env.baseUrl}/api/v1/energy/daily/$userId'),
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: {'Content-Type': 'application/json'},
   );
 
   if (res.statusCode != 200) {
@@ -85,7 +84,7 @@ class EnergyGraph extends ConsumerWidget {
                       }
                       final date = entries[index].date;
                       return Text(
-                        date.substring(5), // MM-DD
+                        date.substring(5),
                         style:
                             const TextStyle(color: Colors.white, fontSize: 10),
                       );
@@ -95,9 +94,6 @@ class EnergyGraph extends ConsumerWidget {
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    // --- THE FIX IS HERE ---
-                    // Added reservedSize to ensure labels like "1080" have enough
-                    // space and don't wrap to the next line.
                     reservedSize: 44,
                     interval: yInterval > 0 ? yInterval : 1,
                     getTitlesWidget: (value, meta) => Text(
@@ -106,12 +102,10 @@ class EnergyGraph extends ConsumerWidget {
                     ),
                   ),
                 ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
+                topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
               borderData: FlBorderData(show: true),
               minY: 0,

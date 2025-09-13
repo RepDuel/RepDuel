@@ -36,7 +36,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         });
       } else {
         final offerings = await ref.read(offeringsProvider.future);
-        final packageToPurchase = offerings.current?.availablePackages.first;
+        final packageToPurchase =
+            offerings.current?.availablePackages.firstOrNull;
         if (packageToPurchase == null) {
           throw PlatformException(
               code: 'no_products', message: 'No products found.');

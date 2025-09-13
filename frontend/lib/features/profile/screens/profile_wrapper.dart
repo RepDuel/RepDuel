@@ -17,11 +17,7 @@ class ProfileWrapper extends ConsumerWidget {
     return authAsync.when(
       data: (authState) {
         final isAuthenticated = authState.token != null;
-        if (isAuthenticated) {
-          return const ProfileScreen();
-        } else {
-          return const RegisterScreen();
-        }
+        return isAuthenticated ? const ProfileScreen() : const RegisterScreen();
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text('Error: $error')),

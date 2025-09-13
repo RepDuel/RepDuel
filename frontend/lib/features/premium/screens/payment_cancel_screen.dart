@@ -39,7 +39,6 @@ class PaymentCancelScreen extends StatelessWidget {
               _buildActionButtons(context),
             ],
           ),
-          // =====================================
         ),
       ),
     );

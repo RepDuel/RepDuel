@@ -1,10 +1,12 @@
+// frontend/lib/features/routines/widgets/routine_card.dart
+
 import 'package:flutter/material.dart';
 
 class RoutineCard extends StatelessWidget {
   final String name;
-  final String? imageUrl; // nullable now
+  final String? imageUrl;
   final String duration;
-  final int difficultyLevel; // 1..4
+  final int difficultyLevel;
 
   const RoutineCard({
     super.key,
@@ -35,7 +37,6 @@ class RoutineCard extends StatelessWidget {
   Widget _buildThumb() {
     const placeholder = 'assets/images/placeholder.png';
 
-    // If it's a network URL, try it and fall back to asset on error.
     if (imageUrl != null &&
         (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://'))) {
       return Image.network(
@@ -50,7 +51,6 @@ class RoutineCard extends StatelessWidget {
       );
     }
 
-    // Default to local asset
     return Image.asset(
       placeholder,
       fit: BoxFit.cover,

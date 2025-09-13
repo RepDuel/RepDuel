@@ -9,11 +9,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/models/user.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/iap_provider.dart';
 import '../../../widgets/loading_spinner.dart';
-import '../../../core/models/user.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -48,19 +48,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(title,
-            style: TextStyle(color: isDestructive ? Colors.red : Colors.white)),
+        title: Text(
+          title,
+          style: TextStyle(color: isDestructive ? Colors.red : Colors.white),
+        ),
         content: Text(content),
         backgroundColor: Colors.grey[900],
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text("Cancel",
-                  style: TextStyle(color: Colors.white70))),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: TextButton.styleFrom(
-                foregroundColor: isDestructive ? Colors.red : Colors.amber),
+              foregroundColor: isDestructive ? Colors.red : Colors.amber,
+            ),
             child: Text(confirmText),
           ),
         ],
@@ -68,14 +74,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // ========== THIS IS THE CORRECT IMPLEMENTATION ==========
   Future<void> _manageSubscription() async {
     if (_isManagingSubscription) return;
     setState(() => _isManagingSubscription = true);
 
     try {
       if (kIsWeb) {
-        // --- Web Flow (Stripe Portal) ---
         final client = ref.read(privateHttpClientProvider);
         final response =
             await client.dio.post('/payments/create-portal-session');
@@ -86,7 +90,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         final portalUrl = Uri.parse(portalUrlString);
         await launchUrl(portalUrl, webOnlyWindowName: '_self');
       } else {
-        // --- Native iOS/Android Flow (RevenueCat Management URL) ---
         final customerInfo = await Purchases.getCustomerInfo();
         final managementURL = customerInfo.managementURL;
 
@@ -114,26 +117,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
     }
   }
-  // ========================================================
 
   Future<void> _changeProfilePicture() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85);
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
     if (pickedFile == null) return;
     final bytes = await pickedFile.readAsBytes();
-    final success = await ref
-        .read(authProvider.notifier)
-        .updateProfilePictureFromBytes(
-            bytes, pickedFile.name, pickedFile.mimeType ?? 'image/jpeg');
+    final success =
+        await ref.read(authProvider.notifier).updateProfilePictureFromBytes(
+              bytes,
+              pickedFile.name,
+              pickedFile.mimeType ?? 'image/jpeg',
+            );
     _showFeedbackSnackbar(
-        success
-            ? 'Profile picture updated!'
-            : 'Failed to update profile picture.',
-        isSuccess: success);
+      success
+          ? 'Profile picture updated!'
+          : 'Failed to update profile picture.',
+      isSuccess: success,
+    );
   }
 
   Future<void> _editWeight() async {
@@ -150,17 +156,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: Text("Edit Weight ($unitLabel)"),
         backgroundColor: Colors.grey[900],
         content: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(color: Colors.white),
-            autofocus: true),
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: const TextStyle(color: Colors.white),
+          autofocus: true,
+        ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text("Cancel")),
           TextButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text),
-              child: const Text("Save", style: TextStyle(color: Colors.amber))),
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            child: const Text("Save", style: TextStyle(color: Colors.amber)),
+          ),
         ],
       ),
     );
@@ -193,9 +201,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children:
               ['Male', 'Female', 'Other', 'Prefer not to say'].map((option) {
             return ListTile(
-                title:
-                    Text(option, style: const TextStyle(color: Colors.white)),
-                onTap: () => Navigator.pop(dialogContext, option));
+              title: Text(option, style: const TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(dialogContext, option),
+            );
           }).toList(),
         ),
       ),
@@ -222,13 +230,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-                title: const Text('Kilograms (kg)'),
-                onTap: () => Navigator.pop(dialogContext, 'kg'),
-                selected: isKg),
+              title: const Text('Kilograms (kg)'),
+              onTap: () => Navigator.pop(dialogContext, 'kg'),
+              selected: isKg,
+            ),
             ListTile(
-                title: const Text('Pounds (lbs)'),
-                onTap: () => Navigator.pop(dialogContext, 'lbs'),
-                selected: !isKg),
+              title: const Text('Pounds (lbs)'),
+              onTap: () => Navigator.pop(dialogContext, 'lbs'),
+              selected: !isKg,
+            ),
           ],
         ),
       ),
@@ -239,8 +249,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           .read(authProvider.notifier)
           .updateUser(weightMultiplier: newMultiplier);
       _showFeedbackSnackbar(
-          success ? 'Weight unit updated!' : 'Failed to update weight unit.',
-          isSuccess: success);
+        success ? 'Weight unit updated!' : 'Failed to update weight unit.',
+        isSuccess: success,
+      );
     }
   }
 
@@ -260,9 +271,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _logout() async {
     final confirmed = await _showConfirmationDialog(
-        title: 'Log out',
-        content: 'Are you sure you want to log out?',
-        confirmText: 'Log out');
+      title: 'Log out',
+      content: 'Are you sure you want to log out?',
+      confirmText: 'Log out',
+    );
     if (confirmed == true) {
       await ref.read(authProvider.notifier).logout();
     }
@@ -280,29 +292,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return authStateAsyncValue.when(
       loading: () => const Scaffold(
-          backgroundColor: Colors.black, body: Center(child: LoadingSpinner())),
+        backgroundColor: Colors.black,
+        body: Center(child: LoadingSpinner()),
+      ),
       error: (error, _) => Scaffold(
-          backgroundColor: Colors.black,
-          body: Center(
-              child: Text('Error: $error',
-                  style: const TextStyle(color: Colors.red)))),
+        backgroundColor: Colors.black,
+        body: Center(
+          child:
+              Text('Error: $error', style: const TextStyle(color: Colors.red)),
+        ),
+      ),
       data: (authState) {
         final user = authState.user;
         final subscriptionTier = ref.watch(subscriptionProvider).valueOrNull;
 
         if (user == null) {
           return const Scaffold(
-              backgroundColor: Colors.black,
-              body: Center(child: LoadingSpinner()));
+            backgroundColor: Colors.black,
+            body: Center(child: LoadingSpinner()),
+          );
         }
 
         return Scaffold(
           backgroundColor: Colors.black,
           appBar: AppBar(
-              title: const Text('Settings'),
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-              elevation: 0),
+            title: const Text('Settings'),
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -320,8 +338,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               as ImageProvider,
                     ),
                     const SizedBox(height: 8),
-                    const Text('Tap to change picture',
-                        style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    const Text(
+                      'Tap to change picture',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -370,9 +390,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const Divider(color: Colors.grey),
               ListTile(
                 title: const Text('Weight'),
-                subtitle: Text(user.weight != null
-                    ? "${_toDisplayUnit(user, user.weight!).toStringAsFixed(1)} ${_unitLabel(user)}"
-                    : "Not specified"),
+                subtitle: Text(
+                  user.weight != null
+                      ? "${_toDisplayUnit(user, user.weight!).toStringAsFixed(1)} ${_unitLabel(user)}"
+                      : "Not specified",
+                ),
                 trailing: const Icon(Icons.edit, size: 18),
                 onTap: _editWeight,
               ),

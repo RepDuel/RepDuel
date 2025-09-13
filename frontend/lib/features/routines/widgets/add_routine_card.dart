@@ -1,4 +1,5 @@
 // frontend/lib/features/routines/widgets/add_routine_card.dart
+
 import 'package:flutter/material.dart';
 
 class AddRoutineCard extends StatelessWidget {
@@ -22,7 +23,6 @@ class AddRoutineCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // keep square thumbnail proportion like RoutineCard
               AspectRatio(
                 aspectRatio: 1,
                 child: Container(

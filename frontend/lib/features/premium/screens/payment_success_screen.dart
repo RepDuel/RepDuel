@@ -23,20 +23,16 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
   @override
   void initState() {
     super.initState();
-    // Start polling for the subscription update after the first frame is rendered.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pollForSubscriptionUpdate();
     });
   }
 
-  /// Periodically polls the backend to check if the subscription status has been
-  /// updated via the Stripe webhook.
   Future<void> _pollForSubscriptionUpdate() async {
-    const maxRetries = 10; // Poll for up to 20 seconds
+    const maxRetries = 10;
     const retryDelay = Duration(seconds: 2);
 
     for (int i = 0; i < maxRetries; i++) {
-      // Fetch the latest user data from the server.
       await ref.read(authProvider.notifier).refreshUserData();
 
       final user = ref.read(authProvider).valueOrNull?.user;
@@ -44,7 +40,6 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
         debugPrint("Subscription status confirmed on attempt ${i + 1}.");
 
         if (mounted) {
-          // Update the UI to show the success state.
           setState(() {
             _statusMessage = 'Upgrade complete!';
             _isSuccess = true;
@@ -58,22 +53,17 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
             ),
           );
 
-          // Wait briefly so the user sees the success message.
           await Future.delayed(const Duration(seconds: 2));
 
-          // Guard against navigation if the widget was disposed during the delay.
           if (!mounted) return;
-          // Use context.go() to cleanly exit the payment flow and reset the stack.
           context.go('/profile');
         }
-        return; // Exit the loop on success.
+        return;
       }
 
-      // Wait before the next retry.
       await Future.delayed(retryDelay);
     }
 
-    // Handle timeout case.
     if (mounted) {
       debugPrint("Timed out waiting for subscription update.");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -83,7 +73,6 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
           duration: Duration(seconds: 5),
         ),
       );
-      // Still exit the flow cleanly. The update will appear on next app launch.
       context.go('/profile');
     }
   }
@@ -99,8 +88,12 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
               child: _isSuccess
-                  ? const Icon(Icons.check_circle,
-                      color: Colors.green, size: 64, key: ValueKey('success'))
+                  ? const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 64,
+                      key: ValueKey('success'),
+                    )
                   : const LoadingSpinner(key: ValueKey('loading')),
             ),
             const SizedBox(height: 24),
