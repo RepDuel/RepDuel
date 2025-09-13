@@ -1,3 +1,5 @@
+# backend/app/schemas/guild.py
+
 from datetime import datetime
 from uuid import UUID
 

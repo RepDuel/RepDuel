@@ -1,3 +1,5 @@
+# backend/app/services/dots_service.py
+
 from typing import Dict
 
 import httpx
@@ -20,7 +22,6 @@ class DotsCalculator:
     @staticmethod
     def get_coefficient(bodyweight_kg: float, gender: str = "male") -> float:
         """Get DOTs coefficient for given bodyweight and gender using polynomial function"""
-
         if gender == "male":
             return 500 / (
                 -0.000001093 * bodyweight_kg**4
@@ -29,7 +30,6 @@ class DotsCalculator:
                 + 24.0900756 * bodyweight_kg
                 - 307.75076
             )
-
         elif gender == "female":
             return 500 / (
                 -0.0000010706 * bodyweight_kg**4
@@ -38,7 +38,6 @@ class DotsCalculator:
                 + 13.6175032 * bodyweight_kg
                 - 57.96288
             )
-
         else:
             raise ValueError("Gender must be either 'male' or 'female'")
 
@@ -88,7 +87,6 @@ class DotsCalculator:
         next_rank_threshold = -1
         max_rank = "Celestial"
 
-        # Sort standards from highest to lowest rank
         sorted_standards = sorted(standards.items(), key=lambda x: x[1], reverse=True)
 
         for i, (rank, lift_value) in enumerate(sorted_standards):

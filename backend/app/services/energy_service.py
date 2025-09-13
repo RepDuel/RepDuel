@@ -1,6 +1,5 @@
 # backend/app/services/energy_service.py
 
-import math
 from uuid import UUID
 
 from sqlalchemy import select
@@ -8,9 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.energy_history import EnergyHistory
 from app.services.dots_service import DotsCalculator
-from app.services.user_service import get_user_by_id  # Add this import
+from app.services.user_service import get_user_by_id
 
-# Hardcoded mapping for each scenario to the corresponding lift name
 SCENARIO_LIFT_MAP = {
     "back_squat": "squat",
     "barbell_bench_press": "bench",
@@ -18,7 +16,6 @@ SCENARIO_LIFT_MAP = {
 }
 
 
-# Get the latest energy entry for a user
 async def get_latest_energy(db: AsyncSession, user_id: UUID) -> float:
     stmt = (
         select(EnergyHistory)
@@ -31,7 +28,6 @@ async def get_latest_energy(db: AsyncSession, user_id: UUID) -> float:
     return latest.energy if latest else 0.0
 
 
-# Interpolate energy between two ranks
 def interpolate_energy(
     score: float, lower: float, upper: float, lower_energy: int, upper_energy: int
 ) -> float:
@@ -41,7 +37,6 @@ def interpolate_energy(
     return lower_energy + ratio * (upper_energy - lower_energy)
 
 
-# Main logic to compute energy for a lift
 def compute_energy_for_lift(score: float, lift: str, standards: dict) -> int:
     rank_order = [
         "Iron",
@@ -89,14 +84,12 @@ def compute_energy_for_lift(score: float, lift: str, standards: dict) -> int:
                 )
             )
 
-    # Above Celestial
     celestial = standards["Celestial"]["lifts"].get(lift, 0)
     astra = standards["Astra"]["lifts"].get(lift, 0)
     if score >= celestial and celestial > astra:
         extra = (score - celestial) / (celestial - astra)
         return round(1200 + extra * 100)
 
-    # Below Iron
     iron_val = standards["Iron"]["lifts"].get(lift, 1)
     if score < iron_val and iron_val > 0:
         return round((score / iron_val) * 100)
@@ -104,7 +97,6 @@ def compute_energy_for_lift(score: float, lift: str, standards: dict) -> int:
     return 0
 
 
-# Public method to compute and store energy
 async def update_energy_if_personal_best(
     db: AsyncSession,
     user_id: UUID,
@@ -117,19 +109,16 @@ async def update_energy_if_personal_best(
     if not lift:
         return
 
-    # Fetch user data to get bodyweight and gender
     user = await get_user_by_id(db, user_id)
     if not user:
         return
-    
-    # Validate gender with fallback
-    gender = user.gender.lower() if user.gender else 'male'
-    if gender not in ['male', 'female']:
-        gender = 'male'  # Fallback to male if invalid
-    
-    bodyweight_kg = user.weight or 70.0  # Default weight if None
 
-    # Fetch user's current personal best for that scenario
+    gender = user.gender.lower() if user.gender else "male"
+    if gender not in ["male", "female"]:
+        gender = "male"
+
+    bodyweight_kg = user.weight or 70.0
+
     from app.models.score import Score
 
     stmt = (
@@ -142,9 +131,8 @@ async def update_energy_if_personal_best(
     best = result.scalar_one_or_none()
 
     if best and new_score <= best.weight_lifted:
-        return  # Not a new PR
+        return
 
-    # Fetch standards and compute energy
     standards = DotsCalculator.get_lift_standards(bodyweight_kg, gender)
     energy = compute_energy_for_lift(new_score, lift, standards)
 

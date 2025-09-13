@@ -24,9 +24,6 @@ async def get_user_submissions(
 
 
 def generate_strava_title(scenarios: List[dict], timestamp: datetime) -> str:
-    """
-    Generates a Strava-style workout title using time of day and the first trained muscle group.
-    """
     hour = timestamp.hour
     if 5 <= hour < 12:
         time_label = "Morning"

@@ -13,13 +13,11 @@ from app.schemas.routine import (RoutineCreate, RoutineRead, RoutineUpdate,
                                  ScenarioSet)
 
 
-# Fetch routine by ID
 async def get_routine(db: AsyncSession, routine_id: UUID) -> Optional[Routine]:
     result = await db.execute(select(Routine).where(Routine.id == routine_id))
     return result.scalar_one_or_none()
 
 
-# Fetch detailed routine with scenarios for reading
 async def get_routine_read(db: AsyncSession, routine_id: UUID) -> Optional[RoutineRead]:
     routine = await get_routine(db, routine_id)
     if not routine:
@@ -52,7 +50,6 @@ async def get_routine_read(db: AsyncSession, routine_id: UUID) -> Optional[Routi
     )
 
 
-# Fetch a list of routines for a specific user
 async def get_user_routines(
     db: AsyncSession, user_id: Optional[UUID]
 ) -> List[RoutineRead]:
@@ -96,7 +93,6 @@ async def get_user_routines(
     return routine_reads
 
 
-# Create a new routine
 async def create_routine(
     db: AsyncSession, routine_in: RoutineCreate, user_id: Optional[UUID] = None
 ) -> RoutineRead:
@@ -121,7 +117,6 @@ async def create_routine(
     return await get_routine_read(db, routine.id)
 
 
-# Update an existing routine
 async def update_routine(
     db: AsyncSession, routine: Routine, routine_in: RoutineUpdate
 ) -> RoutineRead:
@@ -147,7 +142,6 @@ async def update_routine(
     return await get_routine_read(db, routine.id)
 
 
-# Delete a routine
 async def delete_routine(db: AsyncSession, routine: Routine) -> None:
     await db.execute(
         RoutineScenario.__table__.delete().where(

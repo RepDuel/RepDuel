@@ -1,3 +1,5 @@
+# backend/app/services/rank_service.py
+
 import os
 
 from fastapi import HTTPException
@@ -44,7 +46,7 @@ def get_rank_color(rank: str) -> str:
         "Astra": "#ff4040",
         "Celestial": "#00ffff",
     }
-    return rank_colors.get(rank, "#FFFFFF")  # fallback to white
+    return rank_colors.get(rank, "#FFFFFF")
 
 
 def get_rank_icon_path(rank: str) -> str:
