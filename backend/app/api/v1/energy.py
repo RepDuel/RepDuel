@@ -9,8 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.deps import get_db
 from app.models.energy_history import EnergyHistory
 from app.models.user import User
-from app.schemas.energy import (DailyEnergyEntry, EnergyEntry,
-                                EnergyLeaderboardEntry, EnergySubmit)
+from app.schemas.energy import DailyEnergyEntry, EnergyEntry, EnergyLeaderboardEntry, EnergySubmit
 
 router = APIRouter(
     prefix="/energy",
@@ -20,10 +19,6 @@ router = APIRouter(
 
 @router.post("/submit")
 async def submit_energy(data: EnergySubmit, db: AsyncSession = Depends(get_db)):
-    """
-    Submits a new energy score for a user. This endpoint creates a historical
-    record and also updates the user's main record with the latest energy and rank.
-    """
     stmt = select(User).where(User.id == data.user_id)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
@@ -31,16 +26,13 @@ async def submit_energy(data: EnergySubmit, db: AsyncSession = Depends(get_db)):
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Update the user's main record with the new energy and rank
     user.energy = data.energy
     user.rank = data.rank
-    db.add(user) # Add the updated user object to the session
+    db.add(user)
 
-    # Create a new entry in the energy history table for tracking progress
     entry = EnergyHistory(user_id=data.user_id, energy=data.energy)
     db.add(entry)
-    
-    # Commit both changes (user update and history creation) in one transaction
+
     await db.commit()
 
     return {"message": "Energy and rank updated successfully"}
@@ -48,9 +40,6 @@ async def submit_energy(data: EnergySubmit, db: AsyncSession = Depends(get_db)):
 
 @router.get("/history/{user_id}", response_model=list[EnergyEntry])
 async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
-    """
-    Retrieves the full energy history for a given user, ordered from newest to oldest.
-    """
     stmt = (
         select(EnergyHistory)
         .where(EnergyHistory.user_id == user_id)
@@ -62,12 +51,6 @@ async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
 @router.get("/leaderboard", response_model=list[EnergyLeaderboardEntry])
 async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
-    """
-    Retrieves the global energy leaderboard.
-    It shows each user's latest and highest official energy score.
-    """
-    # This query directly uses the `energy` and `rank` from the `User` table,
-    # which is efficient and accurate.
     stmt = (
         select(
             User.id.label("user_id"),
@@ -97,10 +80,6 @@ async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
 
 @router.get("/daily/{user_id}", response_model=list[DailyEnergyEntry])
 async def get_energy_by_day(user_id: UUID, db: AsyncSession = Depends(get_db)):
-    """
-    Retrieves the peak (max) energy score for each day for a given user.
-    Used for building the progress graph.
-    """
     stmt = (
         select(
             func.date(EnergyHistory.created_at).label("date"),
@@ -118,10 +97,6 @@ async def get_energy_by_day(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
 @router.get("/latest/{user_id}", response_model=int)
 async def get_latest_energy(user_id: UUID, db: AsyncSession = Depends(get_db)):
-    """
-    Retrieves the user's latest official energy score.
-    Reads directly from the user's record for maximum efficiency.
-    """
     stmt = select(User.energy).where(User.id == user_id)
     result = await db.execute(stmt)
     energy = result.scalar_one_or_none()

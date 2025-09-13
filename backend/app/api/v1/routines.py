@@ -28,16 +28,9 @@ async def create_routine(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Creates a routine owned by the authenticated user.
-    Ownership is encoded via `Routine.user_id`.
-    Users with 'free' subscription are limited to 3 custom routines.
-    """
     if current_user.subscription_level == "free":
         result = await db.execute(
-            select(func.count())
-            .select_from(Routine)
-            .where(Routine.user_id == current_user.id)
+            select(func.count()).select_from(Routine).where(Routine.user_id == current_user.id)
         )
         routine_count = result.scalar()
         if routine_count >= 3:
@@ -59,9 +52,6 @@ async def list_user_routines(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Returns the routines owned by the authenticated user (via `user_id`).
-    """
     routines = await routine_service.get_user_routines(db, current_user.id)
     return routines
 
@@ -76,15 +66,9 @@ async def get_routine_by_id(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Fetch a single routine.
-    If you later want to restrict reads to owners only, add a user_id check here.
-    """
     routine = await routine_service.get_routine_read(db, routine_id)
     if not routine:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Routine not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routine not found")
     return routine
 
 
@@ -99,19 +83,13 @@ async def update_routine_by_id(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Updates a routine only if the authenticated user is the owner (routine.user_id).
-    """
     routine_orm = await routine_service.get_routine(db, routine_id)
     if not routine_orm:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Routine not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routine not found")
 
     if getattr(routine_orm, "user_id", None) != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not allowed to modify this routine",
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this routine"
         )
 
     updated = await routine_service.update_routine(db, routine_orm, updated_data)
@@ -128,19 +106,13 @@ async def delete_routine_by_id(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Deletes a routine only if the authenticated user is the owner (routine.user_id).
-    """
     routine_orm = await routine_service.get_routine(db, routine_id)
     if not routine_orm:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Routine not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routine not found")
 
     if getattr(routine_orm, "user_id", None) != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not allowed to delete this routine",
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this routine"
         )
 
     await routine_service.delete_routine(db, routine_orm)

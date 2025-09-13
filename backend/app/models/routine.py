@@ -1,4 +1,5 @@
 # backend/app/models/routine.py
+
 from sqlalchemy import Column, DateTime, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -21,10 +22,8 @@ class Routine(Base):
         nullable=True,
     )
     
-    # --- Timestamps ---
     created_at = Column(DateTime, server_default=text("now()"))
     
-    # --- Relationships ---
     scenarios = relationship(
         "RoutineScenario", back_populates="routine", cascade="all, delete-orphan"
     )

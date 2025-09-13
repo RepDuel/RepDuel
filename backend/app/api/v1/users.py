@@ -2,31 +2,18 @@
 
 import os
 import shutil
-import stripe
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    File,
-    HTTPException,
-    Request,
-    UploadFile,
-    status,
-    Response,
-)
+import stripe
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
 from app.api.v1.deps import get_db
 from app.core.config import settings
-from app.core.security import (
-    create_access_token,
-    create_refresh_token,
-    decode_refresh_token,
-)
+from app.core.security import create_access_token, create_refresh_token, decode_refresh_token
 from app.models import user as models
 from app.schemas import user as schemas
 from app.schemas.token import Token
@@ -46,19 +33,13 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/", response_model=schemas.UserRead, status_code=status.HTTP_201_CREATED)
-async def register_user(
-    user_in: schemas.UserCreate, db: AsyncSession = Depends(get_db)
-):
+async def register_user(user_in: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
     existing_user = await get_user_by_email(db, user_in.email)
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     existing_username = await get_user_by_username(db, user_in.username)
     if existing_username:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken")
 
     user = await create_user(db, user_in)
 
@@ -88,10 +69,7 @@ async def login_user(
 ):
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     access_token = create_access_token({"sub": str(user.id)})
     refresh_token = create_refresh_token({"sub": str(user.id)})
@@ -154,13 +132,9 @@ async def update_current_user(
     current_user: models.User = Depends(get_current_user),
 ):
     if updates.username and await get_user_by_username(db, updates.username):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken")
     if updates.email and await get_user_by_email(db, updates.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     return await update_user(db, current_user, updates)
 
 
@@ -168,10 +142,7 @@ async def update_current_user(
 async def read_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
     user = await get_user_by_id(db, user_id)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with ID {user_id} not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with ID {user_id} not found")
     return user
 
 

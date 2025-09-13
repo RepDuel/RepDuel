@@ -1,3 +1,5 @@
+# backend/app/models/energy_history.py
+
 import uuid
 from datetime import datetime
 

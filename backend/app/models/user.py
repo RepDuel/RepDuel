@@ -22,7 +22,6 @@ class User(Base):
     hashed_password = Column(String(128), nullable=False)
     is_active = Column(Boolean, default=True)
 
-    # --- Rank ---
     rank = Column(
         String(50),
         nullable=True,
@@ -30,7 +29,6 @@ class User(Base):
         server_default="Unranked",
     )
 
-    # --- Subscription ---
     subscription_level = Column(
         String(32),
         nullable=False,
@@ -42,7 +40,6 @@ class User(Base):
     weight = Column(Float, nullable=True)
     weight_multiplier = Column(Float, default=1.0)
 
-    # --- Timestamps ---
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -63,7 +60,6 @@ class User(Base):
     stripe_customer_id = Column(String, unique=True, index=True, nullable=True)
     stripe_subscription_id = Column(String, unique=True, nullable=True)
 
-    # --- Relationships ---
     energy_history = relationship(
         "EnergyHistory",
         back_populates="user",

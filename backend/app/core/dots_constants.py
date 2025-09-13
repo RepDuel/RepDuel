@@ -1,8 +1,7 @@
 # backend/app/core/dots_constants.py
 
-from typing import Dict, List, Tuple
+from typing import Dict
 
-# DOTs Ranking System
 DOTS_RANKS: Dict[str, int] = {
     "Iron": 120,
     "Bronze": 150,
@@ -18,8 +17,10 @@ DOTS_RANKS: Dict[str, int] = {
     "Celestial": 500,
 }
 
-# Lift percentage of total for balanced lifters
-LIFT_RATIOS: Dict[str, float] = {"squat": 0.33, "bench": 0.25, "deadlift": 0.42}
+LIFT_RATIOS: Dict[str, float] = {
+    "squat": 0.33,
+    "bench": 0.25,
+    "deadlift": 0.42,
+}
 
-# Rank metadata (colors, icons, etc.)
 RANK_METADATA: Dict[str, Dict] = {}

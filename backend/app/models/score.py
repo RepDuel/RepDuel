@@ -1,4 +1,5 @@
 # backend/app/models/score.py
+
 from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -18,6 +19,5 @@ class Score(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_bodyweight = Column(Boolean, default=False)
     
-    # --- Relationships ---
     scenario = relationship("Scenario", back_populates="scores")
     user = relationship("User", back_populates="scores")

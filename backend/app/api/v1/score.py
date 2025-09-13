@@ -16,12 +16,10 @@ from app.services.energy_service import update_energy_if_personal_best
 
 router = APIRouter(prefix="/scores", tags=["Scores"])
 
-# Helper function to calculate score_value
+
 def calculate_score_value(weight_lifted: float, reps: int | None, is_bodyweight: bool = False) -> float:
     if is_bodyweight:
-        # For bodyweight exercises: score = number of reps
         return reps if reps is not None else 0
-    # For weighted exercises: use 1RM formula
     if reps is None or reps == 1:
         return weight_lifted
     return weight_lifted * (1 + reps / 30)
@@ -32,9 +30,8 @@ async def create_score(
     score: ScoreCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    # Calculate score_value before creating the record
     score_value = calculate_score_value(score.weight_lifted, score.reps)
-    db_score = Score(**score.dict(), score_value=score_value)  # Add calculated score_value
+    db_score = Score(**score.dict(), score_value=score_value)
     db.add(db_score)
     await db.commit()
     await db.refresh(db_score)
@@ -47,21 +44,18 @@ async def create_score_for_scenario(
     score: ScoreCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    # Get scenario to determine exercise type (FIRST PRINCIPLES APPROACH)
     scenario = await db.get(Scenario, scenario_id)
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
-    
+
     is_bodyweight = scenario.is_bodyweight
-    
-    # Calculate score_value appropriately
+
     score_value = calculate_score_value(
-        score.weight_lifted, 
-        score.reps, 
-        is_bodyweight=is_bodyweight
+        score.weight_lifted,
+        score.reps,
+        is_bodyweight=is_bodyweight,
     )
-    
-    # Create the database score object
+
     db_score = Score(
         user_id=score.user_id,
         scenario_id=scenario_id,
@@ -69,9 +63,9 @@ async def create_score_for_scenario(
         reps=score.reps,
         sets=score.sets,
         score_value=score_value,
-        is_bodyweight=is_bodyweight  # Store the definitive exercise type
+        is_bodyweight=is_bodyweight,
     )
-    
+
     db.add(db_score)
     await db.commit()
     await db.refresh(db_score)
@@ -94,7 +88,7 @@ async def get_leaderboard(
     db: AsyncSession = Depends(get_db),
 ):
     subquery = (
-        select(Score.user_id, func.max(Score.score_value).label("max_score"))  # Use score_value
+        select(Score.user_id, func.max(Score.score_value).label("max_score"))
         .where(Score.scenario_id == scenario_id)
         .group_by(Score.user_id)
         .subquery()
@@ -106,10 +100,10 @@ async def get_leaderboard(
         .join(
             subquery,
             (Score.user_id == subquery.c.user_id)
-            & (Score.score_value == subquery.c.max_score),  # Use score_value
+            & (Score.score_value == subquery.c.max_score),
         )
         .where(Score.scenario_id == scenario_id)
-        .order_by(Score.score_value.desc())  # Use score_value
+        .order_by(Score.score_value.desc())
     )
 
     result = await db.execute(stmt)
@@ -140,7 +134,7 @@ async def get_user_high_score(
     stmt = (
         select(Score)
         .where(Score.user_id == user_id, Score.scenario_id == scenario_id)
-        .order_by(Score.score_value.desc())  # Use score_value instead of weight_lifted
+        .order_by(Score.score_value.desc())
         .limit(1)
     )
     result = await db.execute(stmt)

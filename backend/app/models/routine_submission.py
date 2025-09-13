@@ -15,7 +15,6 @@ class RoutineScenarioSubmission(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
 
-    # DB-level cascade so child rows are removed when parent RoutineSubmission is deleted
     routine_id = Column(
         UUID(as_uuid=True),
         ForeignKey("routine_submission.id", ondelete="CASCADE"),
@@ -41,7 +40,6 @@ class RoutineSubmission(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), nullable=False)
 
-    # DB-level cascade so deleting a user deletes their submissions
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -58,7 +56,7 @@ class RoutineSubmission(Base):
         back_populates="routine_submission",
         cascade="all, delete-orphan",
         single_parent=True,
-        passive_deletes=True,  # honor DB-level ON DELETE CASCADE on routine_id FK
+        passive_deletes=True,
     )
 
     routine = relationship("Routine", back_populates="submissions")

@@ -25,7 +25,6 @@ class Scenario(Base):
     # Multiplier for volume calculation (e.g. 0.7x for pushups or 1.0x for bench press)
     volume_multiplier = Column(Float, nullable=False, default=1.0, server_default="1.0")
     
-    # --- Relationships ---
     equipment = relationship(
         "Equipment",
         secondary=ScenarioEquipmentAssociation.__table__,

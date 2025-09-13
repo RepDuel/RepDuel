@@ -30,14 +30,12 @@ async def create_scenario(scenario: ScenarioCreate, db: AsyncSession = Depends(g
 
 @router.get("/{scenario_id}/multiplier", response_model=float)
 async def get_scenario_multiplier(scenario_id: str, db: AsyncSession = Depends(get_db)):
-    # Query the database for the scenario by id
     result = await db.execute(select(Scenario).filter(Scenario.id == scenario_id))
     scenario = result.scalars().first()
 
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
 
-    # Return the multiplier of the found scenario
     return scenario.multiplier
 
 

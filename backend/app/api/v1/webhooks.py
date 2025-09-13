@@ -1,15 +1,16 @@
 # backend/app/api/v1/endpoints/webhooks.py
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from time import time
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_db
 from app.core.config import settings
+from app.models.user import User
 from app.schemas import user as schemas
 from app.services.user_service import get_user_by_id, update_user
-from app.models.user import User  # <-- make sure this import is available
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -17,6 +18,7 @@ PRODUCT_ID_TO_TIER = {
     "io.repduel.app.gold.monthly": "gold",
     "io.repduel.app.platinum.monthly": "platinum",
 }
+
 
 @router.post(
     "/revenuecat",
@@ -29,17 +31,13 @@ async def revenuecat_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     if authorization != settings.REVENUECAT_WEBHOOK_AUTH_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     try:
         data = await request.json()
         event = data.get("event", {})
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload")
 
     print(f"--- Received RevenueCat Event --- \n{event}\n--------------------")
 
@@ -56,15 +54,10 @@ async def revenuecat_webhook(
     product_id = event.get("product_id")
     entitlement_ids = [e.lower() for e in (event.get("entitlement_ids") or [])]
     now_ms = int(time() * 1000)
-
-    # NEW: get unique Apple transaction id
     original_tx_id = event.get("original_transaction_id")
 
-    # Guard: if another user already owns this original transaction, do not reassign
     if original_tx_id:
-        result = await db.execute(
-            select(User).where(User.original_transaction_id == original_tx_id)
-        )
+        result = await db.execute(select(User).where(User.original_transaction_id == original_tx_id))
         existing_owner = result.scalar_one_or_none()
         if existing_owner and existing_owner.id != user.id:
             print(
@@ -73,7 +66,6 @@ async def revenuecat_webhook(
             )
             return {"status": "ignored", "detail": "Subscription already owned by another user"}
 
-        # If this user has no transaction stored yet, claim it
         if not user.original_transaction_id:
             user.original_transaction_id = original_tx_id
             db.add(user)
@@ -100,13 +92,9 @@ async def revenuecat_webhook(
         new_tier = resolve_active_tier() or "free"
 
     if user.subscription_level != new_tier:
-        print(
-            f"UPDATING user {user.id} from '{user.subscription_level}' to '{new_tier}'"
-        )
+        print(f"UPDATING user {user.id} from '{user.subscription_level}' to '{new_tier}'")
         await update_user(db, user, schemas.UserUpdate(subscription_level=new_tier))
     else:
-        print(
-            f"User {user.id} subscription is already up-to-date: '{new_tier}'"
-        )
+        print(f"User {user.id} subscription is already up-to-date: '{new_tier}'")
 
     return {"status": "success"}
