@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,7 @@ import '../api/auth_api_service.dart';
 import '../models/user.dart';
 import '../providers/secure_storage_provider.dart';
 import '../services/secure_storage_service.dart';
+import '../utils/http_client.dart';
 import 'api_providers.dart';
 
 class AuthState {
@@ -32,17 +34,18 @@ final authProvider =
   final authApi =
       AuthApiService(publicClient: publicClient, privateClient: privateClient);
   final secureStorage = ref.read(secureStorageProvider);
-  return AuthNotifier(authApi, secureStorage);
+  return AuthNotifier(authApi, secureStorage, privateClient);
 });
 
 class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   final AuthApiService _authApi;
   final SecureStorageService _secureStorage;
+  final HttpClient _privateClient;
   final StreamController<AuthState> _authStateChangeController =
       StreamController<AuthState>.broadcast();
   Stream<AuthState> get authStateStream => _authStateChangeController.stream;
 
-  AuthNotifier(this._authApi, this._secureStorage)
+  AuthNotifier(this._authApi, this._secureStorage, this._privateClient)
       : super(const AsyncValue.loading()) {
     _initAuth();
   }
@@ -195,6 +198,29 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       return false;
     } catch (e) {
       debugPrint("[AuthNotifier] Error updating user: $e");
+      return false;
+    }
+  }
+
+  Future<bool> setPreferredUnit(String unit) async {
+    final currentStateData = state.valueOrNull;
+    final token = currentStateData?.token;
+    if (token == null) return false;
+
+    try {
+      final res = await _privateClient.patch(
+        '/users/me/unit',
+        data: {'preferred_unit': unit},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      final updatedUser = User.fromJson(res.data as Map<String, dynamic>);
+      final adjustedUser = updatedUser.copyWith(
+        weightMultiplier: unit == 'lbs' ? 2.2046226218 : 1.0,
+      );
+      state = AsyncValue.data(currentStateData!.copyWith(user: adjustedUser));
+      return true;
+    } catch (e) {
+      debugPrint("[AuthNotifier] Error setting preferred unit: $e");
       return false;
     }
   }

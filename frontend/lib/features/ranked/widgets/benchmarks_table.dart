@@ -30,9 +30,6 @@ class BenchmarksTable extends ConsumerWidget {
           child: Text('Auth Error: $error',
               style: const TextStyle(color: Colors.red))),
       data: (authState) {
-        final user = authState.user;
-        final weightMultiplier = user?.weightMultiplier ?? 1.0;
-
         final sortedRanks = standards.keys.toList()
           ..sort((a, b) => (standards[a]['total'] as num)
               .compareTo(standards[b]['total'] as num));
@@ -46,10 +43,8 @@ class BenchmarksTable extends ConsumerWidget {
                   onPressed: () {
                     final router = GoRouter.of(context);
                     if (router.canPop()) {
-                      // If this screen was actually pushed as its own route
                       router.pop();
                     } else {
-                      // We're being shown inline inside the Ranked tab -> use the callback
                       onViewRankings();
                     }
                   },
@@ -63,7 +58,6 @@ class BenchmarksTable extends ConsumerWidget {
                   rank: rank,
                   lifts: showLifts ? standards[rank]['lifts'] : null,
                   metadata: standards[rank]['metadata'],
-                  weightMultiplier: weightMultiplier,
                 )),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -96,15 +90,15 @@ class _BenchmarksTableHeader extends StatelessWidget {
           child: _HeaderText('Rank'),
         ),
         if (showLifts) ...[
-          Expanded(
+          const Expanded(
             flex: 2,
             child: _HeaderText('Bench', center: true),
           ),
-          Expanded(
+          const Expanded(
             flex: 2,
             child: _HeaderText('Squat', center: true),
           ),
-          Expanded(
+          const Expanded(
             flex: 2,
             child: _HeaderText('Deadlift', center: true),
           ),
@@ -118,13 +112,11 @@ class _BenchmarkRow extends StatelessWidget {
   final String rank;
   final Map<String, dynamic>? lifts;
   final Map<String, dynamic>? metadata;
-  final double weightMultiplier;
 
   const _BenchmarkRow({
     required this.rank,
     this.lifts,
     this.metadata,
-    required this.weightMultiplier,
   });
 
   @override
@@ -168,15 +160,15 @@ class _BenchmarkRow extends StatelessWidget {
           if (lifts != null) ...[
             Expanded(
               flex: 2,
-              child: _LiftValue(lifts!['bench'], weightMultiplier),
+              child: _LiftValue(lifts!['bench']),
             ),
             Expanded(
               flex: 2,
-              child: _LiftValue(lifts!['squat'], weightMultiplier),
+              child: _LiftValue(lifts!['squat']),
             ),
             Expanded(
               flex: 2,
-              child: _LiftValue(lifts!['deadlift'], weightMultiplier),
+              child: _LiftValue(lifts!['deadlift']),
             ),
           ],
         ],
@@ -205,14 +197,13 @@ class _HeaderText extends StatelessWidget {
 
 class _LiftValue extends StatelessWidget {
   final dynamic value;
-  final double weightMultiplier;
 
-  const _LiftValue(this.value, this.weightMultiplier);
+  const _LiftValue(this.value);
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      value != null ? _roundToNearest5(value * weightMultiplier) : '-',
+      value != null ? _fmt(value) : '-',
       textAlign: TextAlign.center,
       style: const TextStyle(
         color: Colors.white,
@@ -221,8 +212,10 @@ class _LiftValue extends StatelessWidget {
     );
   }
 
-  String _roundToNearest5(double value) {
-    final roundedValue = (value / 5).round() * 5;
-    return roundedValue.toString();
+  String _fmt(dynamic v) {
+    final n = (v as num).toDouble();
+    // Values from backend are already rounded to nearest 5 in the chosen unit.
+    // Display without decimals.
+    return n.toStringAsFixed(0);
   }
 }

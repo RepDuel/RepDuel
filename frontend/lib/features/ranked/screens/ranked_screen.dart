@@ -18,14 +18,23 @@ class RankedScreenData {
   RankedScreenData({required this.liftStandards, required this.userHighScores});
 }
 
+double _lbPerKg(double kg) => kg * 2.2046226218;
+
 final liftStandardsProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) throw Exception("User not authenticated.");
-  final bodyweightKg = user.weight ?? 90.7;
+
+  final unit = user.preferredUnit;
+  final bodyweight = user.weight ?? 90.7; // stored in kg
+  final bodyweightForRequest =
+      unit == 'lbs' ? _lbPerKg(bodyweight) : bodyweight;
   final gender = user.gender?.toLowerCase() ?? 'male';
+
   final client = ref.watch(publicHttpClientProvider);
-  final response = await client.get('/standards/$bodyweightKg?gender=$gender');
+  final response = await client.get(
+    '/standards/$bodyweightForRequest?gender=$gender&unit=$unit',
+  );
   return response.data as Map<String, dynamic>;
 });
 
@@ -77,14 +86,16 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
       final user = ref.read(authProvider).valueOrNull?.user;
       if (data == null || user == null) return;
 
-      final weightMultiplier = user.weightMultiplier;
+      final unit = user.preferredUnit;
+      final weightMultiplier = unit == 'lbs' ? 2.2046226218 : 1.0;
+
       final energies = data.userHighScores.entries.map((entry) {
         final scoreWithMultiplier = entry.value * weightMultiplier;
         return getInterpolatedEnergy(
           score: scoreWithMultiplier,
           thresholds: data.liftStandards,
           liftKey: entry.key,
-          userMultiplier: weightMultiplier,
+          userMultiplier: 1.0,
         );
       }).toList();
 

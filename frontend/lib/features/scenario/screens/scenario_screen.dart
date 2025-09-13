@@ -132,7 +132,7 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
             : 'kg';
     return Scaffold(
       appBar: AppBar(
-          title: Text(widget.liftName),
+          title: Text(_capitalize(widget.liftName)),
           backgroundColor: Colors.black,
           elevation: 0),
       backgroundColor: Colors.black,
@@ -189,6 +189,11 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         ),
       ),
     );
+  }
+
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
   }
 
   Widget _buildRepsOnlyInput() {

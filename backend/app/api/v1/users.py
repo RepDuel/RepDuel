@@ -131,11 +131,54 @@ async def update_current_user(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    if updates.username and await get_user_by_username(db, updates.username):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken")
-    if updates.email and await get_user_by_email(db, updates.email):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    # Uniqueness checks (skip if unchanged)
+    if updates.username and updates.username != current_user.username:
+        if await get_user_by_username(db, updates.username):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken")
+    if updates.email and updates.email != current_user.email:
+        if await get_user_by_email(db, updates.email):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
     return await update_user(db, current_user, updates)
+
+
+@router.patch("/me/unit", response_model=schemas.UserRead)
+async def update_unit_preference(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Atomically update preferred_unit (kg|lbs), adjust weight_multiplier,
+    and recompute energy/rank against the corresponding rounded threshold pack.
+    """
+    new_unit = payload.get("preferred_unit")
+    if new_unit not in ("kg", "lbs"):
+        raise HTTPException(
+            status_code=422,
+            detail="preferred_unit must be 'kg' or 'lbs'",
+        )
+
+    if new_unit == current_user.preferred_unit:
+        # No change; just return current profile
+        return current_user
+
+    # Apply update
+    current_user.preferred_unit = new_unit
+    current_user.weight_multiplier = 1.0 if new_unit == "kg" else 2.20462
+
+    # Recompute energy/rank using the dual-rounded thresholds policy
+    from app.services.energy_service import recompute_for_user  # type: ignore
+
+    energy, rank = await recompute_for_user(current_user, new_unit, db)
+    current_user.energy = energy
+    current_user.rank = rank
+
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
 
 
 @router.get("/{user_id}", response_model=schemas.UserRead)
@@ -164,10 +207,10 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    ext = os.path.splitext(file.filename)[1]
+    ext = os.path.splitext(file.filename)[1] if file.filename else ""
     filename = f"{uuid4().hex}{ext}"
     avatar_dir = os.path.join("static", "avatars")
     os.makedirs(avatar_dir, exist_ok=True)

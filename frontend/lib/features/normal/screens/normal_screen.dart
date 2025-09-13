@@ -5,9 +5,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 
-import '../../../core/config/env.dart';
+import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/search_bar.dart'; // ExerciseSearchField
 import '../../ranked/utils/rank_utils.dart'; // formatKg
@@ -27,7 +26,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
   String _query = '';
   Timer? _debounce;
 
-  // Per-scenario cache of raw score_value (1RM calc) from backend
+  // Per-scenario cache of raw score_value (1RM calc) from backend (always kg)
   final Map<String, double> _highScoreByScenario = {};
   // In-flight request guards
   final Set<String> _pending = {};
@@ -56,28 +55,24 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
     });
 
     try {
-      final response =
-          await http.get(Uri.parse('${Env.baseUrl}/api/v1/scenarios/'));
+      final client = ref.read(publicHttpClientProvider);
+      final response = await client.get('/scenarios/');
+      // Response is a JSON array
+      final data = (response.data is List)
+          ? (response.data as List)
+          : json.decode(json.encode(response.data)) as List;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body) as List;
-        data.sort((a, b) => (a['name'] ?? '')
-            .toString()
-            .toLowerCase()
-            .compareTo((b['name'] ?? '').toString().toLowerCase()));
+      data.sort((a, b) => (a['name'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['name'] ?? '').toString().toLowerCase()));
 
-        setState(() {
-          _allScenarios = data;
-          _applyFilter(); // apply current query (if any)
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _error = 'Error: ${response.statusCode}';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
+      setState(() {
+        _allScenarios = data;
+        _applyFilter(); // apply current query (if any)
+        _isLoading = false;
+      });
+    } catch (_) {
       setState(() {
         _error = 'Failed to load scenarios';
         _isLoading = false;
@@ -116,13 +111,18 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
     );
 
     if (shouldRefresh == true) {
-      // Drop the cached score for this scenario and refetch just this row
-      _highScoreByScenario.remove(id);
+      // Drop the cached score first so UI won't show stale value
+      setState(() {
+        _highScoreByScenario.remove(id);
+      });
+
+      // Refetch the updated highscore from the SAME endpoint Ranked uses
       final userId =
           ref.read(authProvider).valueOrNull?.user?.id.toString() ?? '';
       if (userId.isNotEmpty) {
-        await _ensureHighScore(scenarioId: id, userId: userId);
+        await _ensureHighScore(scenarioId: id, userId: userId, force: true);
       }
+
       if (mounted) setState(() {});
     }
   }
@@ -138,26 +138,27 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
   Future<void> _ensureHighScore({
     required String scenarioId,
     required String userId,
+    bool force = false,
   }) async {
-    if (_highScoreByScenario.containsKey(scenarioId)) return;
+    if (!force && _highScoreByScenario.containsKey(scenarioId)) return;
     if (_pending.contains(scenarioId)) return;
 
     _pending.add(scenarioId);
     try {
-      final uri = Uri.parse(
-        '${Env.baseUrl}/api/v1/ranks/user/$userId/scenario/$scenarioId/highscore_value',
-      );
-      final res = await http.get(uri);
+      // Use private (authorized) Dio client and SAME endpoint as Ranked
+      final client = ref.read(privateHttpClientProvider);
+      final res = await client
+          .get('/scores/user/$userId/scenario/$scenarioId/highscore');
 
-      double value = 0;
+      double value = 0.0;
       if (res.statusCode == 200) {
-        final body = json.decode(res.body) as Map<String, dynamic>;
-        final val = (body['high_score'] ?? 0) as num;
-        value = val.toDouble();
+        final body = res.data as Map<String, dynamic>;
+        final val = (body['score_value'] ?? 0) as num;
+        value = val.toDouble(); // raw kg (1RM calc)
       } else if (res.statusCode == 404) {
-        value = 0; // No score yet
+        value = 0.0;
       } else {
-        value = 0; // Treat other failures as no score
+        value = 0.0;
       }
 
       if (!mounted) return;
@@ -167,7 +168,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _highScoreByScenario[scenarioId] = 0;
+        _highScoreByScenario[scenarioId] = 0.0;
       });
     } finally {
       _pending.remove(scenarioId);
@@ -209,7 +210,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
         ),
 
-        // Header (add simple Score column)
+        // Header
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -234,6 +235,15 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
             onRefresh: () async {
               _highScoreByScenario.clear();
               await _fetchScenarios();
+              // Optionally warm up highscores for visible items after refresh
+              if (userId.isNotEmpty) {
+                final futures = _filteredScenarios.map((s) {
+                  final id = s['id']?.toString();
+                  if (id == null) return Future.value();
+                  return _ensureHighScore(scenarioId: id, userId: userId);
+                }).toList();
+                await Future.wait(futures);
+              }
             },
             child: _filteredScenarios.isEmpty
                 ? ListView(
@@ -268,60 +278,61 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                         });
                       }
 
-                      final rawScore = _highScoreByScenario[id] ?? 0;
+                      final rawScore = _highScoreByScenario[id] ?? 0.0;
                       final adjustedScore = rawScore * weightMultiplier;
                       final scoreText =
                           rawScore > 0 ? formatKg(adjustedScore) : '—';
 
                       return Container(
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 0),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[900],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: InkWell(
-                            onTap: () => _goToScenario(id, name),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                children: [
-                                  // Lift
-                                  Expanded(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 0),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[900],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: InkWell(
+                          onTap: () => _goToScenario(id, name),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                // Lift
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+
+                                // Score
+                                Expanded(
+                                  child: Center(
                                     child: Text(
-                                      name,
+                                      scoreText,
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 16,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ),
+                                ),
 
-                                  // Score
-                                  Expanded(
-                                    child: Center(
-                                      child: Text(
-                                        scoreText,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Leaderboard
-                                  IconButton(
-                                    icon: const Icon(Icons.leaderboard,
-                                        color: Colors.blue),
-                                    onPressed: () => _goToLeaderboard(id, name),
-                                  ),
-                                ],
-                              ),
+                                // Leaderboard
+                                IconButton(
+                                  icon: const Icon(Icons.leaderboard,
+                                      color: Colors.blue),
+                                  onPressed: () => _goToLeaderboard(id, name),
+                                ),
+                              ],
                             ),
-                          ));
+                          ),
+                        ),
+                      );
                     },
                   ),
           ),

@@ -90,8 +90,6 @@ class RankingTable extends ConsumerWidget {
     return input.substring(0, 10);
   }
 
-  double _round5(double v) => (v / 5).round() * 5.0;
-
   double _scoreForKey(String key) {
     if (userHighScores.containsKey(key)) return userHighScores[key] ?? 0.0;
     final builtIn = {
@@ -115,6 +113,8 @@ class RankingTable extends ConsumerWidget {
     final officialEnergy = user.energy.round();
     final officialRank = user.rank ?? 'Unranked';
     final overallColor = getRankColor(officialRank);
+
+    // Multiplier converts stored kg scores to display/pack unit
     final weightMultiplier = user.weightMultiplier;
 
     return Column(
@@ -157,14 +157,15 @@ class RankingTable extends ConsumerWidget {
         const SizedBox(height: 12),
         ...lifts.map((spec) {
           final key = spec.key;
-          final lowerKey = key;
           final scoreKg = _scoreForKey(key);
+          // Convert score to pack/display unit using multiplier
           final score = scoreKg * weightMultiplier;
 
+          // Backend already provides thresholds rounded in the chosen unit.
           final entries = liftStandards.entries.toList()
             ..sort((a, b) {
-              final av = (a.value['lifts'][lowerKey] ?? 0) as num;
-              final bv = (b.value['lifts'][lowerKey] ?? 0) as num;
+              final av = (a.value['lifts'][key] ?? 0) as num;
+              final bv = (b.value['lifts'][key] ?? 0) as num;
               return (av.compareTo(bv)) * -1;
             });
 
@@ -173,11 +174,11 @@ class RankingTable extends ConsumerWidget {
           double nextThreshold = 0.0;
 
           for (final e in entries) {
-            final threshold = (e.value['lifts'][lowerKey] ?? 0) as num;
-            final adjusted = _round5(threshold * weightMultiplier);
-            if (score >= adjusted) {
+            final threshold = (e.value['lifts'][key] ?? 0) as num;
+            final th = threshold.toDouble(); // already in unit & rounded
+            if (score >= th) {
               matchedRank = e.key;
-              currentThreshold = adjusted;
+              currentThreshold = th;
               break;
             }
           }
@@ -191,16 +192,14 @@ class RankingTable extends ConsumerWidget {
           } else if (matchedRank != null) {
             final idx = entries.indexWhere((e) => e.key == matchedRank);
             if (idx > 0) {
-              nextThreshold = _round5(
-                  ((entries[idx - 1].value['lifts'][lowerKey] ?? 0) as num) *
-                      weightMultiplier);
+              nextThreshold =
+                  ((entries[idx - 1].value['lifts'][key] ?? 0) as num)
+                      .toDouble();
             }
           } else {
             nextThreshold = entries.isNotEmpty
-                ? _round5(
-                    ((entries.last.value['lifts'][lowerKey] ?? 0) as num) *
-                        weightMultiplier)
-                : 0;
+                ? ((entries.last.value['lifts'][key] ?? 0) as num).toDouble()
+                : 0.0;
           }
 
           double progress = 0.0;
@@ -217,8 +216,8 @@ class RankingTable extends ConsumerWidget {
           final energy = getInterpolatedEnergy(
             score: score,
             thresholds: liftStandards,
-            liftKey: lowerKey,
-            userMultiplier: weightMultiplier,
+            liftKey: key,
+            userMultiplier: 1.0,
           );
           final rankColor = getRankColor(matchedRank ?? 'Unranked');
           final iconPath =

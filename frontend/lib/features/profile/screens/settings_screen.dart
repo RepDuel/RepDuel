@@ -27,7 +27,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   double _toDisplayUnit(User user, double value) =>
       value * user.weightMultiplier;
-  String _unitLabel(User user) => user.weightMultiplier == 1.0 ? 'kg' : 'lbs';
+  String _unitLabel(User user) => user.preferredUnit; // 'kg' or 'lbs'
 
   void _showFeedbackSnackbar(String message, {required bool isSuccess}) {
     if (!mounted) return;
@@ -175,6 +175,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (newWeightString != null) {
       final newWeightInUserUnits = double.tryParse(newWeightString);
       if (newWeightInUserUnits != null && newWeightInUserUnits > 0) {
+        // Store in kg; backend stores kg
         final storedWeight = newWeightInUserUnits / user.weightMultiplier;
         final success = await ref
             .read(authProvider.notifier)
@@ -220,7 +221,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _editWeightUnit() async {
     final user = ref.read(authProvider).valueOrNull?.user;
     if (user == null) return;
-    final isKg = user.weightMultiplier == 1.0;
+
+    final isKg = user.preferredUnit == 'kg';
     final String? newUnit = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -243,15 +245,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
-    if (newUnit != null && (newUnit == 'kg') != isKg) {
-      final newMultiplier = (newUnit == 'kg' ? 1.0 : 2.20462);
-      final success = await ref
-          .read(authProvider.notifier)
-          .updateUser(weightMultiplier: newMultiplier);
+
+    if (newUnit != null && newUnit != user.preferredUnit) {
+      final success =
+          await ref.read(authProvider.notifier).setPreferredUnit(newUnit);
       _showFeedbackSnackbar(
         success ? 'Weight unit updated!' : 'Failed to update weight unit.',
         isSuccess: success,
       );
+      if (success && mounted) {
+        // Optionally refresh user to pull any server-side recalcs
+        await ref.read(authProvider.notifier).refreshUserData();
+      }
     }
   }
 
@@ -401,7 +406,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const Divider(color: Colors.grey),
               ListTile(
                 title: const Text('Weight Unit'),
-                subtitle: Text(_unitLabel(user) == 'kg'
+                subtitle: Text(user.preferredUnit == 'kg'
                     ? "Kilograms (kg)"
                     : "Pounds (lbs)"),
                 trailing: const Icon(Icons.edit, size: 18),

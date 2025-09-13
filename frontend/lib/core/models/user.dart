@@ -13,7 +13,8 @@ class User {
   final double weightMultiplier;
   final String subscriptionLevel;
   final double energy;
-  final String? rank; // New field for user's overall rank
+  final String? rank;
+  final String preferredUnit; // "kg" or "lbs"
 
   User({
     required this.id,
@@ -28,10 +29,10 @@ class User {
     this.weightMultiplier = 1.0,
     this.subscriptionLevel = 'free',
     this.energy = 0.0,
-    this.rank, // Added to constructor
+    this.rank,
+    this.preferredUnit = 'kg',
   });
 
-  // copyWith allows us to create a new User instance with updated fields
   User copyWith({
     String? id,
     String? username,
@@ -46,6 +47,7 @@ class User {
     String? subscriptionLevel,
     double? energy,
     String? rank,
+    String? preferredUnit,
   }) {
     return User(
       id: id ?? this.id,
@@ -61,6 +63,7 @@ class User {
       subscriptionLevel: subscriptionLevel ?? this.subscriptionLevel,
       energy: energy ?? this.energy,
       rank: rank ?? this.rank,
+      preferredUnit: preferredUnit ?? this.preferredUnit,
     );
   }
 
@@ -79,7 +82,12 @@ class User {
       weightMultiplier: (json['weight_multiplier'] as num?)?.toDouble() ?? 1.0,
       subscriptionLevel: json['subscription_level'] as String? ?? 'free',
       energy: (json['energy'] as num?)?.toDouble() ?? 0.0,
-      rank: json['rank'] as String?, // Parse from JSON
+      rank: json['rank'] as String?,
+      preferredUnit: json['preferred_unit'] as String? ??
+          ((json['weight_multiplier'] != null &&
+                  (json['weight_multiplier'] as num).toDouble() > 1.5)
+              ? 'lbs'
+              : 'kg'),
     );
   }
 
@@ -97,7 +105,8 @@ class User {
       'weight_multiplier': weightMultiplier,
       'subscription_level': subscriptionLevel,
       'energy': energy,
-      'rank': rank, // Add to JSON
+      'rank': rank,
+      'preferred_unit': preferredUnit,
     };
   }
 }

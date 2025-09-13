@@ -13,7 +13,6 @@ import '../../../core/services/share_service.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../../../widgets/paywall_lock.dart';
-import '../models/result_screen_data.dart';
 import '../utils/rank_utils.dart';
 import '../widgets/score_history_chart.dart';
 
@@ -106,25 +105,40 @@ class ShareableResultCard extends StatelessWidget {
   }
 }
 
-final resultScreenDataProvider = FutureProvider.autoDispose
-    .family<ResultScreenData, ({String scenarioId, double finalScore})>(
-        (ref, params) async {
-  final user = ref.watch(authProvider).valueOrNull?.user;
-  if (user == null) throw Exception("User not authenticated.");
+/// Map scenarioId -> lift key used by standards pack
+String _liftKeyForScenario(String scenarioId) {
+  switch (scenarioId) {
+    case 'back_squat':
+      return 'squat';
+    case 'barbell_bench_press':
+      return 'bench';
+    case 'deadlift':
+      return 'deadlift';
+    default:
+      return 'squat';
+  }
+}
+
+/// Fetch scenario details (name, etc.)
+final scenarioDetailsProvider =
+    FutureProvider.family<Map<String, dynamic>, String>(
+        (ref, scenarioId) async {
   final client = ref.watch(privateHttpClientProvider);
-  final rankProgressUri =
-      Uri.parse('${client.dio.options.baseUrl}/ranks/get_rank_progress')
-          .replace(queryParameters: {
-    'scenario_id': params.scenarioId,
-    'final_score': params.finalScore.toString(),
-    'user_weight': (user.weight ?? 70.0).toString(),
-    'user_gender': (user.gender ?? 'male').toLowerCase(),
-  });
-  final responses = await Future.wait([
-    client.get('/scenarios/${params.scenarioId}/details'),
-    client.get(rankProgressUri.toString()),
-  ]);
-  return ResultScreenData(scenario: responses[0].data, rank: responses[1].data);
+  final res = await client.get('/scenarios/$scenarioId/details');
+  return (res.data as Map).cast<String, dynamic>();
+});
+
+/// Fetch the same standards pack used by the Rankings screen (kg-based, then we
+/// multiply by the user's weightMultiplier to display in their unit).
+final standardsPackProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
+  if (user == null) throw Exception("User not authenticated.");
+  final bodyweightKg = user.weight ?? 90.7; // stored in kg
+  final gender = (user.gender ?? 'male').toLowerCase();
+  final client = ref.watch(publicHttpClientProvider);
+  final response = await client.get('/standards/$bodyweightKg?gender=$gender');
+  return (response.data as Map).cast<String, dynamic>();
 });
 
 class ResultScreen extends ConsumerStatefulWidget {
@@ -149,24 +163,24 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return (m - 2.20462).abs() < 0.01 ? 'lbs' : 'kg';
   }
 
+  double _round5(double v) => (v / 5).round() * 5.0;
+
   Future<void> _handleShare(
-    ResultScreenData data,
-    String username,
-    double weightMultiplier,
+    String scenarioName,
+    String currentRank,
+    double finalScoreDisplay,
+    String unit,
   ) async {
     setState(() => _isSharing = true);
     try {
-      final unit = _unitFromMultiplier(weightMultiplier);
       await ref.read(shareServiceProvider).shareResult(
             context: context,
             screenshotController: _screenshotController,
-            username: username,
-            scenarioName: data.scenario['name'] as String? ?? 'Unnamed',
-            finalScore:
-                '${(widget.finalScore * weightMultiplier).toStringAsFixed(1)} $unit',
-            rankName: data.rank['current_rank'] as String? ?? 'Unranked',
-            rankColor: getRankColor(
-                data.rank['current_rank'] as String? ?? 'Unranked'),
+            username: ref.read(authProvider).valueOrNull!.user!.username,
+            scenarioName: scenarioName,
+            finalScore: '${finalScoreDisplay.toStringAsFixed(1)} $unit',
+            rankName: currentRank,
+            rankColor: getRankColor(currentRank),
           );
     } catch (e) {
       if (!mounted) return;
@@ -180,188 +194,254 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider).valueOrNull;
-    if (authState?.user == null) {
+    final auth = ref.watch(authProvider).valueOrNull;
+    final user = auth?.user;
+    if (user == null) {
       return _buildScaffold(
         const Center(child: Text("User not authenticated.")),
       );
     }
-    final user = authState!.user!;
+
     final weightMultiplier = user.weightMultiplier;
     final unit = _unitFromMultiplier(weightMultiplier);
 
+    // Use the larger of (finalScore, previousBest) for progress, like before.
     final scoreForRankCalc = widget.finalScore > widget.previousBest
         ? widget.finalScore
         : widget.previousBest.toDouble();
 
-    final resultProvider = resultScreenDataProvider(
-      (scenarioId: widget.scenarioId, finalScore: scoreForRankCalc),
-    );
-    final screenDataAsync = ref.watch(resultProvider);
+    final scenarioAsync = ref.watch(scenarioDetailsProvider(widget.scenarioId));
+    final standardsAsync = ref.watch(standardsPackProvider);
 
-    return screenDataAsync.when(
+    return standardsAsync.when(
       loading: () => _buildScaffold(const Center(child: LoadingSpinner())),
       error: (err, _) => _buildScaffold(
         Center(
-          child: ErrorDisplay(
-            message: err.toString(),
-            onRetry: () => ref.refresh(resultProvider),
-          ),
-        ),
+            child: ErrorDisplay(
+                message: err.toString(),
+                onRetry: () => ref.refresh(standardsPackProvider))),
       ),
-      data: (data) {
-        final scenarioName = data.scenario['name'] ?? 'Scenario';
-        final currentRank = data.rank['current_rank'] ?? 'Unranked';
-        final nextThreshold = data.rank['next_rank_threshold'];
-
-        final double displayThreshold =
-            (nextThreshold is num && nextThreshold > 0)
-                ? nextThreshold.toDouble()
-                : scoreForRankCalc;
-
-        final double progressValue = displayThreshold > 0
-            ? (scoreForRankCalc / displayThreshold).clamp(0.0, 1.0)
-            : 0.0;
-
-        return _buildScaffold(
-          SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                const Text(
-                  'FINAL SCORE',
-                  style: TextStyle(color: Colors.white70, fontSize: 20),
-                ),
-                Text(
-                  (widget.finalScore * weightMultiplier).toStringAsFixed(1),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 56,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  scenarioName,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)} $unit',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'CURRENT RANK',
-                  style: TextStyle(color: Colors.white70, fontSize: 18),
-                ),
-                const SizedBox(height: 16),
-                SvgPicture.asset(
-                  'assets/images/ranks/${currentRank.toLowerCase()}.svg',
-                  height: 72,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  currentRank,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: getRankColor(currentRank),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: 200,
-                  child: LinearProgressIndicator(
-                    value: progressValue,
-                    backgroundColor: Colors.grey[800],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      getRankColor(currentRank),
-                    ),
-                    minHeight: 20,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${(scoreForRankCalc * weightMultiplier).toStringAsFixed(1)} / ${(displayThreshold * weightMultiplier).toStringAsFixed(1)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                const SizedBox(height: 32),
-                const Divider(color: Colors.white24),
-                const SizedBox(height: 16),
-                Consumer(
-                  builder: (context, ref, _) {
-                    final subTier = ref.watch(subscriptionProvider).valueOrNull;
-                    if (subTier == SubscriptionTier.gold ||
-                        subTier == SubscriptionTier.platinum) {
-                      return ScoreHistoryChart(
-                        scenarioId: widget.scenarioId,
-                        weightMultiplier: weightMultiplier,
-                      );
-                    } else {
-                      return PaywallLock(
-                        message: "Upgrade to Gold to track your progress.",
-                        onTap: () async {
-                          final purchaseSuccess =
-                              await context.push<bool>('/subscribe');
-                          if (purchaseSuccess == true && mounted) {
-                            await ref
-                                .read(authProvider.notifier)
-                                .refreshUserData();
-                            ref.invalidate(subscriptionProvider);
-                          }
-                        },
-                      );
-                    }
-                  },
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () => context.pop(true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 14,
-                    ),
-                  ),
-                  child: const Text('Back to Menu'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            Builder(
-              builder: (context) => Offstage(
-                offstage: true,
-                child: Screenshot(
-                  controller: _screenshotController,
-                  child: ShareableResultCard(
-                    username: user.username,
-                    scenarioName: scenarioName,
-                    finalScore:
-                        '${(widget.finalScore * weightMultiplier).toStringAsFixed(1)} $unit',
-                    rankName: currentRank,
-                    rankColor: getRankColor(currentRank),
-                  ),
-                ),
+      data: (standards) {
+        return scenarioAsync.when(
+          loading: () => _buildScaffold(const Center(child: LoadingSpinner())),
+          error: (err, _) => _buildScaffold(
+            Center(
+              child: ErrorDisplay(
+                message: err.toString(),
+                onRetry: () =>
+                    ref.refresh(scenarioDetailsProvider(widget.scenarioId)),
               ),
             ),
-            IconButton(
-              icon: _isSharing
-                  ? const LoadingSpinner(size: 24)
-                  : const Icon(Icons.share),
-              onPressed: _isSharing
-                  ? null
-                  : () => _handleShare(data, user.username, weightMultiplier),
-            ),
-          ],
+          ),
+          data: (scenario) {
+            final scenarioName = (scenario['name'] as String?) ?? 'Scenario';
+            final liftKey = _liftKeyForScenario(widget.scenarioId);
+            final entries = standards.entries.toList()
+              ..sort((a, b) {
+                final av = (a.value['lifts'][liftKey] ?? 0) as num;
+                final bv = (b.value['lifts'][liftKey] ?? 0) as num;
+                return (av.compareTo(bv)) * -1; // descending
+              });
+
+            // Compute score and thresholds in the user's unit pack (by multiplying).
+            final scoreDisplay = widget.finalScore * weightMultiplier;
+            final comparisonScore = scoreForRankCalc * weightMultiplier;
+
+            String matchedRank = 'Unranked';
+            double currentThreshold = 0.0;
+            double nextThreshold = 0.0;
+
+            for (final e in entries) {
+              final raw = (e.value['lifts'][liftKey] ?? 0) as num;
+              final adjusted = _round5(raw.toDouble() * weightMultiplier);
+              if (comparisonScore >= adjusted) {
+                matchedRank = e.key;
+                currentThreshold = adjusted;
+                break;
+              }
+            }
+
+            final isMax =
+                entries.isNotEmpty && matchedRank == entries.first.key;
+
+            if (isMax) {
+              // At max rank: next threshold is the same as current (parity with RankingTable)
+              nextThreshold = currentThreshold;
+            } else if (matchedRank != 'Unranked') {
+              final idx = entries.indexWhere((e) => e.key == matchedRank);
+              if (idx > 0) {
+                final rawNext =
+                    (entries[idx - 1].value['lifts'][liftKey] ?? 0) as num;
+                nextThreshold = _round5(rawNext.toDouble() * weightMultiplier);
+              }
+            } else {
+              // Unranked -> show Iron as the first target
+              if (entries.isNotEmpty) {
+                final rawIron =
+                    (entries.last.value['lifts'][liftKey] ?? 0) as num;
+                nextThreshold = _round5(rawIron.toDouble() * weightMultiplier);
+              }
+            }
+
+            // Progress calculation identical to RankingTable
+            double progressValue = 0.0;
+            if (isMax) {
+              progressValue = 1.0;
+            } else if (nextThreshold > currentThreshold) {
+              progressValue = ((comparisonScore - currentThreshold) /
+                      (nextThreshold - currentThreshold))
+                  .clamp(0.0, 1.0);
+            } else if (nextThreshold > 0) {
+              progressValue = (comparisonScore / nextThreshold).clamp(0.0, 1.0);
+            }
+
+            final rankColor = getRankColor(matchedRank);
+
+            return _buildScaffold(
+              SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    const Text(
+                      'FINAL SCORE',
+                      style: TextStyle(color: Colors.white70, fontSize: 20),
+                    ),
+                    Text(
+                      scoreDisplay.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 56,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      scenarioName,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)} $unit',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 32),
+                    const Text(
+                      'CURRENT RANK',
+                      style: TextStyle(color: Colors.white70, fontSize: 18),
+                    ),
+                    const SizedBox(height: 16),
+                    SvgPicture.asset(
+                      'assets/images/ranks/${matchedRank.toLowerCase()}.svg',
+                      height: 72,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      matchedRank,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: rankColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: 200,
+                      child: LinearProgressIndicator(
+                        value: progressValue,
+                        backgroundColor: Colors.grey[800],
+                        valueColor: AlwaysStoppedAnimation<Color>(rankColor),
+                        minHeight: 20,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Display "<user>/<threshold>" using the same pack logic as RankingTable
+                    Text(
+                      '${comparisonScore.toStringAsFixed(1)} / ${nextThreshold.toStringAsFixed(1)}',
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    const SizedBox(height: 32),
+                    const Divider(color: Colors.white24),
+                    const SizedBox(height: 16),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final subTier =
+                            ref.watch(subscriptionProvider).valueOrNull;
+                        if (subTier == SubscriptionTier.gold ||
+                            subTier == SubscriptionTier.platinum) {
+                          return ScoreHistoryChart(
+                            scenarioId: widget.scenarioId,
+                            weightMultiplier: weightMultiplier,
+                          );
+                        } else {
+                          return PaywallLock(
+                            message: "Upgrade to Gold to track your progress.",
+                            onTap: () async {
+                              final purchaseSuccess =
+                                  await context.push<bool>('/subscribe');
+                              if (purchaseSuccess == true && mounted) {
+                                await ref
+                                    .read(authProvider.notifier)
+                                    .refreshUserData();
+                                ref.invalidate(subscriptionProvider);
+                              }
+                            },
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton(
+                      onPressed: () => context.pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 14,
+                        ),
+                      ),
+                      child: const Text('Back to Menu'),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Builder(
+                  builder: (context) => Offstage(
+                    offstage: true,
+                    child: Screenshot(
+                      controller: _screenshotController,
+                      child: ShareableResultCard(
+                        username: user.username,
+                        scenarioName: scenarioName,
+                        finalScore: '${scoreDisplay.toStringAsFixed(1)} $unit',
+                        rankName: matchedRank,
+                        rankColor: rankColor,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: _isSharing
+                      ? const LoadingSpinner(size: 24)
+                      : const Icon(Icons.share),
+                  onPressed: _isSharing
+                      ? null
+                      : () => _handleShare(
+                            scenarioName,
+                            matchedRank,
+                            scoreDisplay,
+                            unit,
+                          ),
+                ),
+              ],
+            );
+          },
         );
       },
     );

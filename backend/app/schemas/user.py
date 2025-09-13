@@ -1,7 +1,7 @@
 # backend/app/schemas/user.py
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     email: EmailStr
     avatar_url: str | None = None
     subscription_level: str = "free"
+    preferred_unit: Literal["kg", "lbs"] = "kg"
 
 
 class UserCreate(UserBase):
@@ -31,6 +32,7 @@ class UserRead(UserBase):
     energy: float | None = 0.0
     rank: str | None = "Unranked"
     original_transaction_id: str | None = None
+    preferred_unit: Literal["kg", "lbs"] = "kg"
 
     model_config = {"from_attributes": True}
 
@@ -47,6 +49,7 @@ class UserUpdate(BaseModel):
     energy: float | None = None
     rank: str | None = None
     original_transaction_id: str | None = None
+    preferred_unit: Literal["kg", "lbs"] | None = None
 
 
 class UserLogin(BaseModel):
