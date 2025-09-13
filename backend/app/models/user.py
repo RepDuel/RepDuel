@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, String
+from sqlalchemy import Boolean, Column, DateTime, Float, String, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -39,6 +39,11 @@ class User(Base):
     username = Column(String(32), unique=True, nullable=False)
     weight = Column(Float, nullable=True)
     weight_multiplier = Column(Float, default=1.0)
+
+    # --- Unit Preference (kg | lbs) ---
+    # Minimal approach: short string + DB CHECK to ensure only valid values.
+    # Defaults to "kg"; update via PATCH /users/unit and recompute energy/rank.
+    preferred_unit = Column(String(3), nullable=False, server_default="kg", index=True)
 
     created_at = Column(
         DateTime(timezone=True),
@@ -79,4 +84,11 @@ class User(Base):
         "Score",
         back_populates="user",
         cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "preferred_unit IN ('kg','lbs')",
+            name="ck_users_preferred_unit",
+        ),
     )
