@@ -16,6 +16,9 @@ import '../../../widgets/paywall_lock.dart';
 import '../utils/rank_utils.dart';
 import '../widgets/score_history_chart.dart';
 
+// ✅ Single source of truth for thresholds/progress (your helper)
+import '../utils/lift_progress.dart';
+
 class ShareableResultCard extends StatelessWidget {
   final String username;
   final String scenarioName;
@@ -128,8 +131,7 @@ final scenarioDetailsProvider =
   return (res.data as Map).cast<String, dynamic>();
 });
 
-/// Fetch the same standards pack used by the Rankings screen (kg-based, then we
-/// multiply by the user's weightMultiplier to display in their unit).
+/// Fetch the same standards pack used by the Rankings screen (always **kg**).
 final standardsPackProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
@@ -142,9 +144,10 @@ final standardsPackProvider =
 });
 
 class ResultScreen extends ConsumerStatefulWidget {
+  /// Raw scores from flow (in kg or reps for BW). We always compute ranks in kg.
   final double finalScore;
   final double previousBest;
-  final String scenarioId;
+  final String scenarioId; // e.g. "barbell_bench_press"
   const ResultScreen({
     super.key,
     required this.finalScore,
@@ -159,28 +162,60 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   final _screenshotController = ScreenshotController();
   bool _isSharing = false;
 
-  String _unitFromMultiplier(double m) {
-    return (m - 2.20462).abs() < 0.01 ? 'lbs' : 'kg';
-  }
+  String _unitFromMultiplier(double m) =>
+      (m - 2.20462).abs() < 0.01 ? 'lbs' : 'kg';
 
   double _round5(double v) => (v / 5).round() * 5.0;
 
-  Future<void> _handleShare(
-    String scenarioName,
-    String currentRank,
-    double finalScoreDisplay,
-    String unit,
-  ) async {
+  /// Convert the kg standards pack to the user's display unit (kg*mult or lbs),
+  /// rounding lift thresholds to nearest 5 just like the table.
+  Map<String, dynamic> _packToDisplay(
+    Map<String, dynamic> standardsKg,
+    double mult,
+  ) {
+    final out = <String, dynamic>{};
+    standardsKg.forEach((rank, node) {
+      final lifts = (node is Map<String, dynamic>)
+          ? (node['lifts'] as Map<String, dynamic>?)
+          : null;
+      final total = (node is Map<String, dynamic>) ? node['total'] : null;
+
+      final mappedLifts = <String, double>{};
+      if (lifts != null) {
+        lifts.forEach((k, v) {
+          if (v is num) {
+            mappedLifts[k] = _round5(v.toDouble() * mult);
+          }
+        });
+      }
+
+      out[rank] = {
+        'total': total, // not used here, keep passthrough
+        'lifts': mappedLifts,
+        'metadata': (node is Map<String, dynamic>) ? node['metadata'] : null,
+      };
+    });
+    return out;
+  }
+
+  Future<void> _handleShare({
+    required String scenarioName,
+    required String matchedRank,
+    required double finalScoreDisplay,
+    required String unit,
+    required String username,
+    required Color rankColor,
+  }) async {
     setState(() => _isSharing = true);
     try {
       await ref.read(shareServiceProvider).shareResult(
             context: context,
             screenshotController: _screenshotController,
-            username: ref.read(authProvider).valueOrNull!.user!.username,
+            username: username,
             scenarioName: scenarioName,
             finalScore: '${finalScoreDisplay.toStringAsFixed(1)} $unit',
-            rankName: currentRank,
-            rankColor: getRankColor(currentRank),
+            rankName: matchedRank,
+            rankColor: rankColor,
           );
     } catch (e) {
       if (!mounted) return;
@@ -202,11 +237,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       );
     }
 
-    final weightMultiplier = user.weightMultiplier;
+    final weightMultiplier = user.weightMultiplier; // kg → display unit
     final unit = _unitFromMultiplier(weightMultiplier);
 
-    // Use the larger of (finalScore, previousBest) for progress, like before.
-    final scoreForRankCalc = widget.finalScore > widget.previousBest
+    // Progress/rank should use the **higher** of final vs previous, like RankingTable.
+    final scoreForRankCalcKg = widget.finalScore > widget.previousBest
         ? widget.finalScore
         : widget.previousBest.toDouble();
 
@@ -217,11 +252,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       loading: () => _buildScaffold(const Center(child: LoadingSpinner())),
       error: (err, _) => _buildScaffold(
         Center(
-            child: ErrorDisplay(
-                message: err.toString(),
-                onRetry: () => ref.refresh(standardsPackProvider))),
+          child: ErrorDisplay(
+            message: err.toString(),
+            onRetry: () => ref.refresh(standardsPackProvider),
+          ),
+        ),
       ),
-      data: (standards) {
+      data: (standardsKg) {
         return scenarioAsync.when(
           loading: () => _buildScaffold(const Center(child: LoadingSpinner())),
           error: (err, _) => _buildScaffold(
@@ -236,66 +273,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           data: (scenario) {
             final scenarioName = (scenario['name'] as String?) ?? 'Scenario';
             final liftKey = _liftKeyForScenario(widget.scenarioId);
-            final entries = standards.entries.toList()
-              ..sort((a, b) {
-                final av = (a.value['lifts'][liftKey] ?? 0) as num;
-                final bv = (b.value['lifts'][liftKey] ?? 0) as num;
-                return (av.compareTo(bv)) * -1; // descending
-              });
 
-            // Compute score and thresholds in the user's unit pack (by multiplying).
-            final scoreDisplay = widget.finalScore * weightMultiplier;
-            final comparisonScore = scoreForRankCalc * weightMultiplier;
+            // Convert pack & scores to display units for UI and compute using helper.
+            final standardsDisplay =
+                _packToDisplay(standardsKg, weightMultiplier);
+            final finalScoreDisplay = widget.finalScore * weightMultiplier;
+            final comparisonScoreDisplay =
+                scoreForRankCalcKg * weightMultiplier;
 
-            String matchedRank = 'Unranked';
-            double currentThreshold = 0.0;
-            double nextThreshold = 0.0;
+            // ✅ Use shared logic (expects display-unit standards & score)
+            final lp = computeLiftProgress(
+              liftStandards: standardsDisplay,
+              liftKey: liftKey,
+              score: comparisonScoreDisplay,
+            );
 
-            for (final e in entries) {
-              final raw = (e.value['lifts'][liftKey] ?? 0) as num;
-              final adjusted = _round5(raw.toDouble() * weightMultiplier);
-              if (comparisonScore >= adjusted) {
-                matchedRank = e.key;
-                currentThreshold = adjusted;
-                break;
-              }
-            }
-
-            final isMax =
-                entries.isNotEmpty && matchedRank == entries.first.key;
-
-            if (isMax) {
-              // At max rank: next threshold is the same as current (parity with RankingTable)
-              nextThreshold = currentThreshold;
-            } else if (matchedRank != 'Unranked') {
-              final idx = entries.indexWhere((e) => e.key == matchedRank);
-              if (idx > 0) {
-                final rawNext =
-                    (entries[idx - 1].value['lifts'][liftKey] ?? 0) as num;
-                nextThreshold = _round5(rawNext.toDouble() * weightMultiplier);
-              }
-            } else {
-              // Unranked -> show Iron as the first target
-              if (entries.isNotEmpty) {
-                final rawIron =
-                    (entries.last.value['lifts'][liftKey] ?? 0) as num;
-                nextThreshold = _round5(rawIron.toDouble() * weightMultiplier);
-              }
-            }
-
-            // Progress calculation identical to RankingTable
-            double progressValue = 0.0;
-            if (isMax) {
-              progressValue = 1.0;
-            } else if (nextThreshold > currentThreshold) {
-              progressValue = ((comparisonScore - currentThreshold) /
-                      (nextThreshold - currentThreshold))
-                  .clamp(0.0, 1.0);
-            } else if (nextThreshold > 0) {
-              progressValue = (comparisonScore / nextThreshold).clamp(0.0, 1.0);
-            }
-
-            final rankColor = getRankColor(matchedRank);
+            final rankColor = getRankColor(lp.matchedRank);
 
             return _buildScaffold(
               SingleChildScrollView(
@@ -308,7 +301,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       style: TextStyle(color: Colors.white70, fontSize: 20),
                     ),
                     Text(
-                      scoreDisplay.toStringAsFixed(1),
+                      finalScoreDisplay.toStringAsFixed(1),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 56,
@@ -336,12 +329,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     ),
                     const SizedBox(height: 16),
                     SvgPicture.asset(
-                      'assets/images/ranks/${matchedRank.toLowerCase()}.svg',
+                      'assets/images/ranks/${lp.matchedRank.toLowerCase()}.svg',
                       height: 72,
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      matchedRank,
+                      lp.matchedRank,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -352,16 +345,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     SizedBox(
                       width: 200,
                       child: LinearProgressIndicator(
-                        value: progressValue,
+                        value: lp.progress, // same % as RankingTable
                         backgroundColor: Colors.grey[800],
                         valueColor: AlwaysStoppedAnimation<Color>(rankColor),
                         minHeight: 20,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // Display "<user>/<threshold>" using the same pack logic as RankingTable
+                    // EXACT same "<a>/<b>" logic as the table:
+                    // - non-top: denominator is NEXT rank threshold
+                    // - top (Celestial): denominator == Celestial threshold
                     Text(
-                      '${comparisonScore.toStringAsFixed(1)} / ${nextThreshold.toStringAsFixed(1)}',
+                      '${comparisonScoreDisplay.toStringAsFixed(1)} / ${lp.nextThreshold.toStringAsFixed(1)}',
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                     const SizedBox(height: 32),
@@ -419,8 +414,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       child: ShareableResultCard(
                         username: user.username,
                         scenarioName: scenarioName,
-                        finalScore: '${scoreDisplay.toStringAsFixed(1)} $unit',
-                        rankName: matchedRank,
+                        finalScore:
+                            '${finalScoreDisplay.toStringAsFixed(1)} $unit',
+                        rankName: lp.matchedRank,
                         rankColor: rankColor,
                       ),
                     ),
@@ -433,10 +429,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   onPressed: _isSharing
                       ? null
                       : () => _handleShare(
-                            scenarioName,
-                            matchedRank,
-                            scoreDisplay,
-                            unit,
+                            scenarioName: scenarioName,
+                            matchedRank: lp.matchedRank,
+                            finalScoreDisplay: finalScoreDisplay,
+                            unit: unit,
+                            username: user.username,
+                            rankColor: rankColor,
                           ),
                 ),
               ],
