@@ -12,8 +12,6 @@ import '../utils/rank_utils.dart';
 import '../widgets/benchmarks_table.dart';
 import '../widgets/ranking_table.dart';
 
-// --- Data Models & Providers ---
-
 class RankedScreenData {
   final Map<String, dynamic> liftStandards;
   final Map<String, double> userHighScores;
@@ -37,13 +35,15 @@ final highScoresProvider =
   if (user == null) return {};
   final client = ref.watch(privateHttpClientProvider);
   final liftIds = ['back_squat', 'barbell_bench_press', 'deadlift'];
-  final liftNames = ['Squat', 'Bench', 'Deadlift'];
-  final scoreFutures = liftIds.map((id) => client
-      .get('/scores/user/${user.id}/scenario/$id/highscore')
-      .then((res) => (res.data['score_value'] as num?)?.toDouble() ?? 0.0)
-      .catchError((_) => 0.0));
+  final liftKeys = ['squat', 'bench', 'deadlift'];
+  final scoreFutures = liftIds
+      .map((id) => client
+          .get('/scores/user/${user.id}/scenario/$id/highscore')
+          .then((res) => (res.data['score_value'] as num?)?.toDouble() ?? 0.0)
+          .catchError((_) => 0.0))
+      .toList();
   final scores = await Future.wait(scoreFutures);
-  return Map.fromIterables(liftNames, scores);
+  return Map.fromIterables(liftKeys, scores);
 });
 
 final rankedScreenDataProvider =
@@ -62,11 +62,11 @@ class RankedScreen extends ConsumerStatefulWidget {
 class _RankedScreenState extends ConsumerState<RankedScreen> {
   bool _showBenchmarks = false;
 
-  static const scenarioIds = {
-    'Squat': 'back_squat',
-    'Bench': 'barbell_bench_press',
-    'Deadlift': 'deadlift',
-  };
+  static const defaultLifts = <LiftSpec>[
+    LiftSpec(key: 'squat', scenarioId: 'back_squat', name: 'Squat'),
+    LiftSpec(key: 'bench', scenarioId: 'barbell_bench_press', name: 'Bench'),
+    LiftSpec(key: 'deadlift', scenarioId: 'deadlift', name: 'Deadlift'),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +83,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
         return getInterpolatedEnergy(
           score: scoreWithMultiplier,
           thresholds: data.liftStandards,
-          liftKey: entry.key.toLowerCase(),
+          liftKey: entry.key,
           userMultiplier: weightMultiplier,
         );
       }).toList();
@@ -104,8 +104,6 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
         }
 
         if (roundedEnergy != user.energy.round()) {
-          debugPrint(
-              "New energy ($roundedEnergy) is different from old (${user.energy.round()}). Submitting...");
           final client = ref.read(privateHttpClientProvider);
           client.post('/energy/submit', data: {
             'user_id': user.id,
@@ -116,9 +114,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                   newEnergy: roundedEnergy.toDouble(),
                   newRank: overallRank,
                 );
-          }).catchError((e) {
-            debugPrint("Error submitting energy: $e");
-          });
+          }).catchError((_) {});
         }
       }
     });
@@ -136,6 +132,9 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                   message: err.toString(),
                   onRetry: () => ref.invalidate(rankedScreenDataProvider))),
           data: (data) {
+            final liftKeyToScenario = {
+              for (final l in defaultLifts) l.key: l.scenarioId
+            };
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
@@ -147,26 +146,28 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                     )
                   : RankingTable(
                       liftStandards: data.liftStandards,
+                      lifts: defaultLifts,
                       userHighScores: data.userHighScores,
                       onViewBenchmarks: () =>
                           setState(() => _showBenchmarks = true),
-                      onLiftTapped: (liftName) async {
-                        final scenarioId = scenarioIds[liftName];
+                      onLiftTapped: (liftKey) async {
+                        final scenarioId = liftKeyToScenario[liftKey];
                         if (scenarioId == null) return;
                         final shouldRefresh = await context.push<bool>(
                             '/scenario/$scenarioId',
-                            extra: liftName);
+                            extra: liftKey);
                         if (shouldRefresh == true && mounted) {
                           ref.invalidate(highScoresProvider);
                         }
                       },
                       onLeaderboardTapped: (scenarioId) {
-                        final liftName = scenarioIds.entries
-                            .firstWhere((e) => e.value == scenarioId,
-                                orElse: () => const MapEntry('Lift', ''))
-                            .key;
+                        final liftName = defaultLifts
+                            .firstWhere((l) => l.scenarioId == scenarioId,
+                                orElse: () =>
+                                    const LiftSpec(key: 'lift', scenarioId: ''))
+                            .name;
                         context.push(
-                            '/leaderboard/$scenarioId?liftName=$liftName');
+                            '/leaderboard/$scenarioId?liftName=${liftName ?? ''}');
                       },
                       onEnergyLeaderboardTapped: () =>
                           context.pushNamed('energyLeaderboard'),

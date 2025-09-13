@@ -176,7 +176,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           final finalScore = extra['finalScore'] as double? ?? 0.0;
-          final previousBest = extra['previousBest'] as int? ?? 0;
+          final previousBest =
+              (extra['previousBest'] as num?)?.toDouble() ?? 0.0;
           final scenarioId = extra['scenarioId'] as String? ?? '';
 
           if (scenarioId.isEmpty) {

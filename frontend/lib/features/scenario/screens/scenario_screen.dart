@@ -80,15 +80,14 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
       final client = ref.read(privateHttpClientProvider);
 
-      int previousBest = 0;
+      double previousBest = 0.0;
       try {
         final highscoreResponse = await client.get(
             '/scores/user/${user.id}/scenario/${widget.scenarioId}/highscore');
         previousBest =
-            (highscoreResponse.data['score_value'] as num?)?.round() ?? 0;
+            (highscoreResponse.data['score_value'] as num?)?.toDouble() ?? 0.0;
       } catch (e) {
-        debugPrint("No previous high score found. Setting to 0. Error: $e");
-        previousBest = 0;
+        previousBest = 0.0;
       }
 
       await client.post('/scores/scenario/${widget.scenarioId}/', data: {

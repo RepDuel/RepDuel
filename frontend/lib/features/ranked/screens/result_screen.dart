@@ -20,7 +20,7 @@ import '../widgets/score_history_chart.dart';
 class ShareableResultCard extends StatelessWidget {
   final String username;
   final String scenarioName;
-  final String finalScore; // include unit in this string
+  final String finalScore;
   final String rankName;
   final Color rankColor;
   const ShareableResultCard({
@@ -83,7 +83,6 @@ class ShareableResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // Shows e.g. "Score: 315.0 lbs"
           Text(
             'Score: $finalScore',
             style: const TextStyle(
@@ -130,7 +129,7 @@ final resultScreenDataProvider = FutureProvider.autoDispose
 
 class ResultScreen extends ConsumerStatefulWidget {
   final double finalScore;
-  final int previousBest;
+  final double previousBest;
   final String scenarioId;
   const ResultScreen({
     super.key,
@@ -147,7 +146,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _isSharing = false;
 
   String _unitFromMultiplier(double m) {
-    // Treat ~2.20462 as lbs; otherwise kg.
     return (m - 2.20462).abs() < 0.01 ? 'lbs' : 'kg';
   }
 
@@ -164,7 +162,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             screenshotController: _screenshotController,
             username: username,
             scenarioName: data.scenario['name'] as String? ?? 'Unnamed',
-            // Include unit for the share text as well
             finalScore:
                 '${(widget.finalScore * weightMultiplier).toStringAsFixed(1)} $unit',
             rankName: data.rank['current_rank'] as String? ?? 'Unranked',
@@ -217,15 +214,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         final currentRank = data.rank['current_rank'] ?? 'Unranked';
         final nextThreshold = data.rank['next_rank_threshold'];
 
-        // Always compute a "final threshold" for display.
-        // If API doesn't provide a positive nextThreshold (e.g., top rank),
-        // use current score as the "final" threshold so it shows X / X.
         final double displayThreshold =
             (nextThreshold is num && nextThreshold > 0)
                 ? nextThreshold.toDouble()
                 : scoreForRankCalc;
 
-        // Progress is current over threshold, clamped to [0,1]
         final double progressValue = displayThreshold > 0
             ? (scoreForRankCalc / displayThreshold).clamp(0.0, 1.0)
             : 0.0;
@@ -244,7 +237,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   (widget.finalScore * weightMultiplier).toStringAsFixed(1),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 56, // smaller than original 72
+                    fontSize: 56,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -258,7 +251,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Previous Best includes unit (as requested)
                 Text(
                   'Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)} $unit',
                   style: const TextStyle(color: Colors.white70),
@@ -295,7 +287,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // ✅ No "MAX RANK" logic; always show "<current>/<threshold>"
                 Text(
                   '${(scoreForRankCalc * weightMultiplier).toStringAsFixed(1)} / ${(displayThreshold * weightMultiplier).toStringAsFixed(1)}',
                   style: const TextStyle(color: Colors.white, fontSize: 16),
@@ -346,7 +337,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             ),
           ),
           actions: [
-            // Offstage screenshot card used for sharing — include unit here too
             Builder(
               builder: (context) => Offstage(
                 offstage: true,

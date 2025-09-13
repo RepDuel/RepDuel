@@ -8,47 +8,114 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../utils/rank_utils.dart';
 
+class LiftSpec {
+  final String key;
+  final String scenarioId;
+  final String? name;
+  final String? shortLabel;
+  const LiftSpec({
+    required this.key,
+    required this.scenarioId,
+    this.name,
+    this.shortLabel,
+  });
+}
+
 class RankingTable extends ConsumerWidget {
   final Map<String, dynamic> liftStandards;
+  final List<LiftSpec> lifts;
   final Map<String, double> userHighScores;
+  final Map<String, String>? aliases;
   final Function() onViewBenchmarks;
-  final Function(String liftName) onLiftTapped;
+  final Function(String liftKey) onLiftTapped;
   final Function(String scenarioId) onLeaderboardTapped;
   final VoidCallback onEnergyLeaderboardTapped;
 
   const RankingTable({
     super.key,
     required this.liftStandards,
+    required this.lifts,
     required this.userHighScores,
     required this.onViewBenchmarks,
     required this.onLiftTapped,
     required this.onLeaderboardTapped,
     required this.onEnergyLeaderboardTapped,
+    this.aliases,
   });
 
-  static const scenarioIds = {
-    'Squat': 'back_squat',
-    'Bench': 'barbell_bench_press',
-    'Deadlift': 'deadlift',
-  };
+  String _titleize(String s) {
+    if (s.isEmpty) return s;
+    final parts = s
+        .replaceAll('_', ' ')
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    final t = parts
+        .map((w) => w[0].toUpperCase() + (w.length > 1 ? w.substring(1) : ''))
+        .join(' ');
+    return t;
+  }
+
+  String _shorten(String input) {
+    if (input.length <= 10) return input;
+    final abbrev = <String, String>{
+      'Barbell Bench Press': 'Bench',
+      'Bench Press': 'Bench',
+      'Back Squat': 'BackSq',
+      'Front Squat': 'FrontSq',
+      'Deadlift': 'Deadlift',
+      'Conventional Deadlift': 'Deadlift',
+      'Overhead Press': 'OH Press',
+      'Shoulder Press': 'Sh Press',
+    };
+    if (abbrev.containsKey(input)) {
+      final v = abbrev[input]!;
+      return v.length <= 10 ? v : v.substring(0, 10);
+    }
+    final words =
+        input.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.length >= 2) {
+      String joinInitialsThenCore() {
+        final initials =
+            words.take(words.length - 1).map((w) => w[0].toUpperCase()).join();
+        final last = words.last.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+        final candidate = initials + last;
+        if (candidate.length <= 10) return candidate;
+        return candidate.substring(0, 10);
+      }
+
+      final candidate = joinInitialsThenCore();
+      if (candidate.isNotEmpty) return candidate;
+    }
+    return input.substring(0, 10);
+  }
+
+  double _round5(double v) => (v / 5).round() * 5.0;
+
+  double _scoreForKey(String key) {
+    if (userHighScores.containsKey(key)) return userHighScores[key] ?? 0.0;
+    final builtIn = {
+      'Squat': 'back_squat',
+      'Bench': 'barbell_bench_press',
+      'Deadlift': 'deadlift'
+    };
+    final aliasMap = {...builtIn, ...(aliases ?? {})};
+    final found = aliasMap.entries.firstWhere(
+      (e) => userHighScores.containsKey(e.key) && e.value == key,
+      orElse: () => const MapEntry('', ''),
+    );
+    if (found.key.isNotEmpty) return userHighScores[found.key] ?? 0.0;
+    return 0.0;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).valueOrNull?.user;
     if (user == null) return const Center(child: Text('User not found.'));
-
-    // Read the official energy and rank from the single source of truth.
     final officialEnergy = user.energy.round();
     final officialRank = user.rank ?? 'Unranked';
     final overallColor = getRankColor(officialRank);
-
     final weightMultiplier = user.weightMultiplier;
-    final defaultLifts = ['Squat', 'Bench', 'Deadlift'];
-    final allLifts = <String, double>{};
-    for (var lift in defaultLifts) {
-      final scoreInKg = userHighScores[lift] ?? 0.0;
-      allLifts[lift] = scoreInKg * weightMultiplier;
-    }
 
     return Column(
       children: [
@@ -58,10 +125,9 @@ class RankingTable extends ConsumerWidget {
             const Text(
               'Overall Energy: ',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
               maxLines: 1,
               softWrap: false,
               overflow: TextOverflow.visible,
@@ -69,40 +135,180 @@ class RankingTable extends ConsumerWidget {
             Text(
               '$officialEnergy',
               style: TextStyle(
-                color: overallColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: overallColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
               maxLines: 1,
               softWrap: false,
               overflow: TextOverflow.visible,
             ),
             const SizedBox(width: 8),
             SvgPicture.asset(
-              'assets/images/ranks/${officialRank.toLowerCase()}.svg',
-              height: 24,
-              width: 24,
-            ),
+                'assets/images/ranks/${officialRank.toLowerCase()}.svg',
+                height: 24,
+                width: 24),
             IconButton(
-              icon: const Icon(Icons.leaderboard, color: Colors.blueAccent),
-              onPressed: onEnergyLeaderboardTapped,
-            ),
+                icon: const Icon(Icons.leaderboard, color: Colors.blueAccent),
+                onPressed: onEnergyLeaderboardTapped),
           ],
         ),
         const SizedBox(height: 16),
         const _RankingTableHeader(),
         const SizedBox(height: 12),
-        ...allLifts.entries.map(
-          (entry) => _RankingRow(
-            lift: entry.key,
-            score: entry.value,
-            standards: liftStandards,
-            onTap: () => onLiftTapped(entry.key),
-            onLeaderboardTap: () =>
-                onLeaderboardTapped(scenarioIds[entry.key]!),
+        ...lifts.map((spec) {
+          final key = spec.key;
+          final lowerKey = key;
+          final scoreKg = _scoreForKey(key);
+          final score = scoreKg * weightMultiplier;
+
+          final entries = liftStandards.entries.toList()
+            ..sort((a, b) {
+              final av = (a.value['lifts'][lowerKey] ?? 0) as num;
+              final bv = (b.value['lifts'][lowerKey] ?? 0) as num;
+              return (av.compareTo(bv)) * -1;
+            });
+
+          String? matchedRank;
+          double currentThreshold = 0.0;
+          double nextThreshold = 0.0;
+
+          for (final e in entries) {
+            final threshold = (e.value['lifts'][lowerKey] ?? 0) as num;
+            final adjusted = _round5(threshold * weightMultiplier);
+            if (score >= adjusted) {
+              matchedRank = e.key;
+              currentThreshold = adjusted;
+              break;
+            }
+          }
+
+          final isMax = matchedRank != null &&
+              entries.isNotEmpty &&
+              matchedRank == entries.first.key;
+
+          if (isMax) {
+            nextThreshold = currentThreshold;
+          } else if (matchedRank != null) {
+            final idx = entries.indexWhere((e) => e.key == matchedRank);
+            if (idx > 0) {
+              nextThreshold = _round5(
+                  ((entries[idx - 1].value['lifts'][lowerKey] ?? 0) as num) *
+                      weightMultiplier);
+            }
+          } else {
+            nextThreshold = entries.isNotEmpty
+                ? _round5(
+                    ((entries.last.value['lifts'][lowerKey] ?? 0) as num) *
+                        weightMultiplier)
+                : 0;
+          }
+
+          double progress = 0.0;
+          if (isMax) {
+            progress = 1.0;
+          } else if (nextThreshold > currentThreshold) {
+            progress = ((score - currentThreshold) /
+                    (nextThreshold - currentThreshold))
+                .clamp(0.0, 1.0);
+          } else if (nextThreshold > 0) {
+            progress = (score / nextThreshold).clamp(0.0, 1.0);
+          }
+
+          final energy = getInterpolatedEnergy(
+            score: score,
+            thresholds: liftStandards,
+            liftKey: lowerKey,
             userMultiplier: weightMultiplier,
-          ),
-        ),
+          );
+          final rankColor = getRankColor(matchedRank ?? 'Unranked');
+          final iconPath =
+              'assets/images/ranks/${matchedRank?.toLowerCase() ?? 'unranked'}.svg';
+
+          final baseName = spec.name ?? _titleize(key);
+          final display = spec.shortLabel ?? _shorten(baseName);
+
+          Text oneLine(String s, {TextStyle? style}) => Text(s,
+              style: style,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible);
+
+          return GestureDetector(
+            onTap: () => onLiftTapped(key),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                      flex: 2,
+                      child: oneLine(display,
+                          style: const TextStyle(color: Colors.white))),
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: oneLine(formatKg(score),
+                            style: const TextStyle(color: Colors.white))),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          height: 6,
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.grey[800],
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(rankColor),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        oneLine(
+                            '${formatKg(score)} / ${formatKg(nextThreshold)}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                      flex: 2,
+                      child: Center(
+                          child: SvgPicture.asset(iconPath,
+                              height: 24, width: 24))),
+                  Expanded(
+                    flex: 1,
+                    child: Center(
+                      child: oneLine(
+                        NumberFormat("###0").format(energy),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        icon: const Icon(Icons.leaderboard,
+                            color: Colors.blueAccent, size: 20),
+                        onPressed: () => onLeaderboardTapped(spec.scenarioId),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
         const SizedBox(height: 20),
         ElevatedButton(
           onPressed: onViewBenchmarks,
@@ -125,206 +331,61 @@ class _RankingTableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     const headerStyle =
         TextStyle(color: Colors.white, fontWeight: FontWeight.bold);
-
-    Text oneLine(String s) => Text(
-          s,
-          style: headerStyle,
-          maxLines: 1,
-          softWrap: false,
-          overflow: TextOverflow.visible,
-        );
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       child: Row(
-        children: [
-          Expanded(flex: 2, child: oneLine('Lift')),
-          const SizedBox(width: 0), // keep layout stable
-          Expanded(flex: 2, child: Center(child: oneLine('Score'))),
-          Expanded(flex: 2, child: Center(child: oneLine('Progress'))),
-          Expanded(flex: 2, child: Center(child: oneLine('Rank'))),
-          Expanded(flex: 1, child: Center(child: oneLine('Energy'))),
-          const Expanded(flex: 1, child: SizedBox.shrink()),
+        children: const [
+          Expanded(
+            flex: 2,
+            child: Text('Lift',
+                style: headerStyle,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible),
+          ),
+          SizedBox(width: 0),
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Text('Score',
+                  style: headerStyle,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Text('Progress',
+                  style: headerStyle,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Text('Rank',
+                  style: headerStyle,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Center(
+              child: Text('Energy',
+                  style: headerStyle,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible),
+            ),
+          ),
+          Expanded(flex: 1, child: SizedBox.shrink()),
         ],
-      ),
-    );
-  }
-}
-
-class _RankingRow extends StatelessWidget {
-  final String lift;
-  final double score;
-  final Map<String, dynamic> standards;
-  final VoidCallback onTap;
-  final VoidCallback onLeaderboardTap;
-  final double userMultiplier;
-
-  const _RankingRow({
-    required this.lift,
-    required this.score,
-    required this.standards,
-    required this.onTap,
-    required this.onLeaderboardTap,
-    required this.userMultiplier,
-  });
-
-  double _roundToNearest5(double value) => (value / 5).round() * 5.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final lowerLift = lift.toLowerCase();
-    final sortedRanks = standards.entries.toList()
-      ..sort((a, b) =>
-          (a.value['lifts'][lowerLift] ?? 0)
-              .compareTo(b.value['lifts'][lowerLift] ?? 0) *
-          -1);
-
-    String? matchedRank;
-    double currentThreshold = 0.0;
-    double nextThreshold = 0.0;
-
-    for (final entry in sortedRanks) {
-      final threshold = (entry.value['lifts'][lowerLift] ?? 0) as num;
-      final adjustedThreshold = _roundToNearest5(threshold * userMultiplier);
-      if (score >= adjustedThreshold) {
-        matchedRank = entry.key;
-        currentThreshold = adjustedThreshold;
-        break;
-      }
-    }
-
-    final bool isMax = (matchedRank != null &&
-        matchedRank == (sortedRanks.isNotEmpty ? sortedRanks.first.key : null));
-
-    if (isMax) {
-      nextThreshold = currentThreshold;
-    } else if (matchedRank != null) {
-      final currentIndex = sortedRanks.indexWhere((e) => e.key == matchedRank);
-      if (currentIndex > 0) {
-        nextThreshold = _roundToNearest5(
-          (sortedRanks[currentIndex - 1].value['lifts'][lowerLift] ?? 0) *
-              userMultiplier,
-        );
-      }
-    } else {
-      nextThreshold = sortedRanks.isNotEmpty
-          ? _roundToNearest5(
-              (sortedRanks.last.value['lifts'][lowerLift] ?? 0) *
-                  userMultiplier,
-            )
-          : 0;
-    }
-
-    double progress = 0.0;
-    if (isMax) {
-      progress = 1.0;
-    } else if (nextThreshold > currentThreshold) {
-      progress =
-          ((score - currentThreshold) / (nextThreshold - currentThreshold))
-              .clamp(0.0, 1.0);
-    } else if (nextThreshold > 0) {
-      progress = (score / nextThreshold).clamp(0.0, 1.0);
-    }
-
-    final energy = getInterpolatedEnergy(
-      score: score,
-      thresholds: standards,
-      liftKey: lowerLift,
-      userMultiplier: userMultiplier,
-    );
-    final rankColor = getRankColor(matchedRank ?? 'Unranked');
-    final iconPath =
-        'assets/images/ranks/${matchedRank?.toLowerCase() ?? 'unranked'}.svg';
-
-    Text oneLine(String s, {TextStyle? style}) => Text(
-          s,
-          style: style,
-          maxLines: 1,
-          softWrap: false,
-          overflow: TextOverflow.visible,
-        );
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.grey[900],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              flex: 2,
-              child: oneLine(
-                lift,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Center(
-                child: oneLine(
-                  formatKg(score),
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 6,
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: Colors.grey[800],
-                      valueColor: AlwaysStoppedAnimation<Color>(rankColor),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  oneLine(
-                    '${formatKg(score)} / ${formatKg(nextThreshold)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Center(
-                child: SvgPicture.asset(iconPath, height: 24, width: 24),
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Center(
-                child: oneLine(
-                  NumberFormat("###0").format(energy),
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment:
-                    Alignment.centerRight, // 👈 push it to the right side
-                child: IconButton(
-                  icon: const Icon(Icons.leaderboard,
-                      color: Colors.blueAccent, size: 20),
-                  onPressed: onLeaderboardTap,
-                  padding: EdgeInsets.zero, // optional: removes extra space
-                  constraints:
-                      const BoxConstraints(), // optional: shrinks tap target
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
