@@ -1,3 +1,5 @@
+// frontend/lib/widgets/paywall_lock.dart
+
 import 'package:flutter/material.dart';
 
 class PaywallLock extends StatelessWidget {

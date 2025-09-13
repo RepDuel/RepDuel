@@ -1,4 +1,4 @@
-// lib/theme/app_theme.dart
+// frontend/lib/theme/app_theme.dart
 
 import 'package:flutter/material.dart';
 

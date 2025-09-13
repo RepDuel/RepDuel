@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../widgets/main_bottom_nav_bar.dart';
 
 class MainScaffold extends StatelessWidget {
@@ -22,8 +23,6 @@ class MainScaffold extends StatelessWidget {
     ];
 
     final int currentIndex = navigationShell.currentIndex;
-
-    // Grab current location from GoRouter
     final String location = GoRouterState.of(context).uri.toString();
 
     return Scaffold(
