@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/routine_submission_read.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_history_provider.dart';
+import '../../../core/providers/score_events_provider.dart';
 
 class WorkoutHistoryList extends ConsumerWidget {
   final String userId;
@@ -14,6 +15,12 @@ class WorkoutHistoryList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Small, safe listener: when scoreEvents changes (a routine/score was saved),
+    // invalidate history so it refetches next build.
+    ref.listen<int>(scoreEventsProvider, (prev, next) {
+      ref.invalidate(workoutHistoryProvider(userId));
+    });
+
     final historyAsyncValue = ref.watch(workoutHistoryProvider(userId));
     final authStateAsyncValue = ref.watch(authProvider);
 

@@ -11,7 +11,7 @@ import '../models/routine_submission_read.dart';
 import '../providers/auth_provider.dart';
 
 final workoutHistoryProvider =
-    FutureProvider.family<List<RoutineSubmissionRead>, String>(
+    FutureProvider.autoDispose.family<List<RoutineSubmissionRead>, String>(
   (ref, userId) async {
     final token = ref.read(authProvider).valueOrNull?.token;
 
