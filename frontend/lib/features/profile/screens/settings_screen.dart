@@ -24,6 +24,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isManagingSubscription = false;
+  // ignore: prefer_final_fields
+  bool _isDeletingScores = false;
 
   double _toDisplayUnit(User user, double value) =>
       value * user.weightMultiplier;
@@ -419,6 +421,70 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 trailing: const Icon(Icons.restore, size: 18),
                 onTap: _restorePurchases,
               ),
+              // Insert this just before the "Log out" tile
+              const Divider(color: Colors.grey),
+              ListTile(
+                title: const Text(
+                  'Delete All Scores',
+                  style: TextStyle(color: Colors.red),
+                ),
+                subtitle:
+                    const Text('Remove all your scores across all scenarios'),
+                trailing: _isDeletingScores
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      )
+                    : const Icon(Icons.delete_forever, color: Colors.red),
+                onTap: () async {
+                  final confirmed = await _showConfirmationDialog(
+                    title: 'Delete All Scores',
+                    content:
+                        'This will permanently remove ALL your scores across ALL scenarios. This cannot be undone.',
+                    confirmText: 'Delete',
+                    isDestructive: true,
+                  );
+                  if (confirmed == true) {
+                    try {
+                      final client = ref.read(privateHttpClientProvider);
+                      final userId =
+                          ref.read(authProvider).valueOrNull?.user?.id;
+                      if (userId == null) {
+                        _showFeedbackSnackbar(
+                          'No user found. Please log in again.',
+                          isSuccess: false,
+                        );
+                        return;
+                      }
+
+                      await client.delete('/scores/user/$userId');
+                      await ref.read(authProvider.notifier).refreshUserData();
+
+                      _showFeedbackSnackbar('All scores deleted.',
+                          isSuccess: true);
+                    } on DioException catch (e) {
+                      if (e.response?.statusCode == 404) {
+                        _showFeedbackSnackbar('No scores to delete.',
+                            isSuccess: true);
+                      } else {
+                        final data = e.response?.data;
+                        final String msg = (data is Map<String, dynamic> &&
+                                data['detail'] != null)
+                            ? data['detail'].toString()
+                            : 'Failed to delete scores.';
+                        _showFeedbackSnackbar(msg, isSuccess: false);
+                      }
+                    } catch (e) {
+                      _showFeedbackSnackbar(
+                        'Failed to delete scores: $e',
+                        isSuccess: false,
+                      );
+                    }
+                  }
+                },
+              ),
+
               const Divider(color: Colors.grey),
               ListTile(
                 title: const Text('Log out'),
