@@ -1,12 +1,11 @@
 // frontend/lib/features/scenario/screens/scenario_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../../core/providers/score_events_provider.dart'; // 👈 add this
+import '../../../core/providers/score_events_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 
@@ -91,7 +90,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         previousBest = 0.0;
       }
 
-      // save the set
       await client.post('/scores/scenario/${widget.scenarioId}/', data: {
         'user_id': user.id,
         'weight_lifted': weightInKg,
@@ -99,22 +97,23 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         'sets': 1,
       });
 
-      // 🔔 IMPORTANT: bump the global "version" so any listeners refetch
       ref.read(scoreEventsProvider.notifier).state++;
 
       if (!mounted) return;
 
-      // show results, then come back with a "true" so Ranked can refresh too
-      final shouldRefresh = await context.pushNamed<bool>(
-        'results',
-        extra: {
-          'scenarioId': widget.scenarioId,
-          'finalScore': scoreForRankCalc,
-          'previousBest': previousBest,
-        },
-      );
+      setState(() => _isSubmitting = false);
 
-      if (shouldRefresh == true && mounted) {
+      final shouldRefresh = (await context.pushNamed<bool>(
+            'results',
+            extra: {
+              'scenarioId': widget.scenarioId,
+              'finalScore': scoreForRankCalc,
+              'previousBest': previousBest,
+            },
+          )) ??
+          true;
+
+      if (shouldRefresh && mounted) {
         context.pop(true);
       }
     } catch (e) {

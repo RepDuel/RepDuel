@@ -1,5 +1,4 @@
 // frontend/lib/features/ranked/screens/result_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -13,11 +12,9 @@ import '../../../core/services/share_service.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../../../widgets/paywall_lock.dart';
+import '../utils/lift_progress.dart';
 import '../utils/rank_utils.dart';
 import '../widgets/score_history_chart.dart';
-
-// ✅ Single source of truth for thresholds/progress (your helper)
-import '../utils/lift_progress.dart';
 
 class ShareableResultCard extends StatelessWidget {
   final String username;
@@ -108,21 +105,6 @@ class ShareableResultCard extends StatelessWidget {
   }
 }
 
-/// Map scenarioId -> lift key used by standards pack
-String _liftKeyForScenario(String scenarioId) {
-  switch (scenarioId) {
-    case 'back_squat':
-      return 'squat';
-    case 'barbell_bench_press':
-      return 'bench';
-    case 'deadlift':
-      return 'deadlift';
-    default:
-      return 'squat';
-  }
-}
-
-/// Fetch scenario details (name, etc.)
 final scenarioDetailsProvider =
     FutureProvider.family<Map<String, dynamic>, String>(
         (ref, scenarioId) async {
@@ -131,12 +113,11 @@ final scenarioDetailsProvider =
   return (res.data as Map).cast<String, dynamic>();
 });
 
-/// Fetch the same standards pack used by the Rankings screen (always **kg**).
 final standardsPackProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) throw Exception("User not authenticated.");
-  final bodyweightKg = user.weight ?? 90.7; // stored in kg
+  final bodyweightKg = user.weight ?? 90.7;
   final gender = (user.gender ?? 'male').toLowerCase();
   final client = ref.watch(publicHttpClientProvider);
   final response = await client.get('/standards/$bodyweightKg?gender=$gender');
@@ -144,10 +125,9 @@ final standardsPackProvider =
 });
 
 class ResultScreen extends ConsumerStatefulWidget {
-  /// Raw scores from flow (in kg or reps for BW). We always compute ranks in kg.
   final double finalScore;
   final double previousBest;
-  final String scenarioId; // e.g. "barbell_bench_press"
+  final String scenarioId;
   const ResultScreen({
     super.key,
     required this.finalScore,
@@ -167,8 +147,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   double _round5(double v) => (v / 5).round() * 5.0;
 
-  /// Convert the kg standards pack to the user's display unit (kg*mult or lbs),
-  /// rounding lift thresholds to nearest 5 just like the table.
   Map<String, dynamic> _packToDisplay(
     Map<String, dynamic> standardsKg,
     double mult,
@@ -190,7 +168,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       }
 
       out[rank] = {
-        'total': total, // not used here, keep passthrough
+        'total': total,
         'lifts': mappedLifts,
         'metadata': (node is Map<String, dynamic>) ? node['metadata'] : null,
       };
@@ -239,10 +217,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       );
     }
 
-    final weightMultiplier = user.weightMultiplier; // kg → display unit
+    final weightMultiplier = user.weightMultiplier;
     final unit = _unitFromMultiplier(weightMultiplier);
 
-    // Progress/rank should use the **higher** of final vs previous, like RankingTable.
     final scoreForRankCalcKg = widget.finalScore > widget.previousBest
         ? widget.finalScore
         : widget.previousBest.toDouble();
@@ -282,16 +259,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
           data: (scenario) {
             final scenarioName = (scenario['name'] as String?) ?? 'Scenario';
-            final liftKey = _liftKeyForScenario(widget.scenarioId);
+            final liftKey = (scenario['id'] as String?) ?? widget.scenarioId;
+            final scenarioMultiplier =
+                (scenario['multiplier'] as num?)?.toDouble() ?? 1.0;
 
-            // Convert pack & scores to display units for UI and compute using helper.
             final standardsDisplay =
                 _packToDisplay(standardsKg, weightMultiplier);
+
+            standardsDisplay.forEach((rank, node) {
+              final totalKg = (standardsKg[rank]?['total'] as num?)?.toDouble();
+              if (totalKg == null) return;
+              final thresholdDisplay =
+                  _round5(totalKg * scenarioMultiplier * weightMultiplier);
+              final liftsMap = node['lifts'] as Map<String, double>;
+              liftsMap[liftKey] = thresholdDisplay;
+            });
+
             final finalScoreDisplay = widget.finalScore * weightMultiplier;
             final comparisonScoreDisplay =
                 scoreForRankCalcKg * weightMultiplier;
 
-            // ✅ Use shared logic (expects display-unit standards & score)
             final lp = computeLiftProgress(
               liftStandards: standardsDisplay,
               liftKey: liftKey,
@@ -356,16 +343,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       SizedBox(
                         width: 200,
                         child: LinearProgressIndicator(
-                          value: lp.progress, // same % as RankingTable
+                          value: lp.progress,
                           backgroundColor: Colors.grey[800],
                           valueColor: AlwaysStoppedAnimation<Color>(rankColor),
                           minHeight: 20,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // EXACT same "<a>/<b>" logic as the table:
-                      // - non-top: denominator is NEXT rank threshold
-                      // - top (Celestial): denominator == Celestial threshold
                       Text(
                         '${comparisonScoreDisplay.toStringAsFixed(1)} / ${lp.nextThreshold.toStringAsFixed(1)}',
                         style:
@@ -459,17 +443,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
   }
 
-  /// Wraps any scaffold with a PopScope so **any** system/gesture back attempt
-  /// returns `true` to the previous route (ScenarioScreen), which then pops to Ranked.
   Widget _wrapWithPopGuard(Widget scaffold) {
     return PopScope(
-      canPop: false, // we will handle all back attempts
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        // If the system already popped this route, do nothing.
         if (didPop) return;
         if (Navigator.of(context).canPop()) {
-          // Always return `true` to the previous route so it knows to refresh.
-          context.pop(true);
+          Navigator.of(context).pop(true);
         }
       },
       child: scaffold,
@@ -483,7 +463,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         title: const Text('Results'),
         backgroundColor: Colors.black,
         elevation: 0,
-        // ✅ Ensure the app bar back also returns `true`
         leading: BackButton(onPressed: () => context.pop(true)),
         actions: actions,
       ),
