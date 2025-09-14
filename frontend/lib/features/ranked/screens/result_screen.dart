@@ -1,4 +1,5 @@
 // frontend/lib/features/ranked/screens/result_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -205,6 +206,29 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
   }
 
+  void _popUpTwo(BuildContext context) {
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.pop(true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final nav2 = Navigator.of(context);
+        if (nav2.canPop()) {
+          nav2.pop(true);
+        } else {
+          final router = GoRouter.of(context);
+          if (router.canPop()) {
+            router.pop();
+          }
+        }
+      });
+    } else {
+      final router = GoRouter.of(context);
+      if (router.canPop()) {
+        router.pop();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider).valueOrNull;
@@ -388,7 +412,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       ),
                       const SizedBox(height: 32),
                       ElevatedButton(
-                        onPressed: () => context.pop(true),
+                        onPressed: () => _popUpTwo(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
@@ -448,9 +472,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop(true);
-        }
+        _popUpTwo(context);
       },
       child: scaffold,
     );
@@ -463,7 +485,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         title: const Text('Results'),
         backgroundColor: Colors.black,
         elevation: 0,
-        leading: BackButton(onPressed: () => context.pop(true)),
+        leading: BackButton(onPressed: () => _popUpTwo(context)),
         actions: actions,
       ),
       body: child,
