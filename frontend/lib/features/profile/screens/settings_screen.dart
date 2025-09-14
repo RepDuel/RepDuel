@@ -13,6 +13,7 @@ import '../../../core/models/user.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/iap_provider.dart';
+import '../../../core/providers/score_events_provider.dart';
 import '../../../widgets/loading_spinner.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -445,42 +446,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     confirmText: 'Delete',
                     isDestructive: true,
                   );
-                  if (confirmed == true) {
-                    try {
-                      final client = ref.read(privateHttpClientProvider);
-                      final userId =
-                          ref.read(authProvider).valueOrNull?.user?.id;
-                      if (userId == null) {
-                        _showFeedbackSnackbar(
-                          'No user found. Please log in again.',
-                          isSuccess: false,
-                        );
-                        return;
-                      }
+                  if (confirmed != true) return;
 
-                      await client.delete('/scores/user/$userId');
-                      await ref.read(authProvider.notifier).refreshUserData();
-
-                      _showFeedbackSnackbar('All scores deleted.',
-                          isSuccess: true);
-                    } on DioException catch (e) {
-                      if (e.response?.statusCode == 404) {
-                        _showFeedbackSnackbar('No scores to delete.',
-                            isSuccess: true);
-                      } else {
-                        final data = e.response?.data;
-                        final String msg = (data is Map<String, dynamic> &&
-                                data['detail'] != null)
-                            ? data['detail'].toString()
-                            : 'Failed to delete scores.';
-                        _showFeedbackSnackbar(msg, isSuccess: false);
-                      }
-                    } catch (e) {
+                  setState(() => _isDeletingScores = true);
+                  try {
+                    final client = ref.read(privateHttpClientProvider);
+                    final userId = ref.read(authProvider).valueOrNull?.user?.id;
+                    if (userId == null) {
                       _showFeedbackSnackbar(
-                        'Failed to delete scores: $e',
-                        isSuccess: false,
-                      );
+                          'No user found. Please log in again.',
+                          isSuccess: false);
+                      return;
                     }
+
+                    await client.delete('/scores/user/$userId');
+
+                    // Refresh user & notify rest of app that scores changed
+                    await ref.read(authProvider.notifier).refreshUserData();
+                    ref.read(scoreEventsProvider.notifier).state++;
+
+                    _showFeedbackSnackbar('All scores deleted.',
+                        isSuccess: true);
+                  } on DioException catch (e) {
+                    if (e.response?.statusCode == 404) {
+                      // Treat as success + notify listeners too
+                      ref.read(scoreEventsProvider.notifier).state++;
+                      _showFeedbackSnackbar('No scores to delete.',
+                          isSuccess: true);
+                    } else {
+                      final data = e.response?.data;
+                      final String msg = (data is Map<String, dynamic> &&
+                              data['detail'] != null)
+                          ? data['detail'].toString()
+                          : 'Failed to delete scores.';
+                      _showFeedbackSnackbar(msg, isSuccess: false);
+                    }
+                  } catch (e) {
+                    _showFeedbackSnackbar('Failed to delete scores: $e',
+                        isSuccess: false);
+                  } finally {
+                    if (mounted) setState(() => _isDeletingScores = false);
                   }
                 },
               ),

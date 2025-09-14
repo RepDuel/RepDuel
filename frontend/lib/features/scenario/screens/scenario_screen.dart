@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/score_events_provider.dart'; // 👈 add this
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 
@@ -13,7 +14,7 @@ final scenarioDetailsProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, scenarioId) async {
   final client = ref.watch(publicHttpClientProvider);
   final response = await client.get('/scenarios/$scenarioId/details');
-  return response.data as Map<String, dynamic>;
+  return (response.data as Map).cast<String, dynamic>();
 });
 
 class ScenarioScreen extends ConsumerStatefulWidget {
@@ -86,10 +87,11 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
             '/scores/user/${user.id}/scenario/${widget.scenarioId}/highscore');
         previousBest =
             (highscoreResponse.data['score_value'] as num?)?.toDouble() ?? 0.0;
-      } catch (e) {
+      } catch (_) {
         previousBest = 0.0;
       }
 
+      // save the set
       await client.post('/scores/scenario/${widget.scenarioId}/', data: {
         'user_id': user.id,
         'weight_lifted': weightInKg,
@@ -97,8 +99,12 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         'sets': 1,
       });
 
+      // 🔔 IMPORTANT: bump the global "version" so any listeners refetch
+      ref.read(scoreEventsProvider.notifier).state++;
+
       if (!mounted) return;
 
+      // show results, then come back with a "true" so Ranked can refresh too
       final shouldRefresh = await context.pushNamed<bool>(
         'results',
         extra: {

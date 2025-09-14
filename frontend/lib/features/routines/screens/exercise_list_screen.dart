@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/routine_details.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/score_events_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../providers/set_data_provider.dart';
@@ -107,6 +108,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
       await client.post('/routine_submission/', data: submissionBody);
 
+      // Post best score per scenario from this routine
       final Map<String, List<PerformedSet>> groupedSetsForBestScores = {};
       for (final s in allPerformedSets) {
         groupedSetsForBestScores.putIfAbsent(s.scenarioId, () => []).add(s);
@@ -131,12 +133,15 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         }
       }
 
-      final isLbs = (user.weightMultiplier) > 1.5;
-      final displayVolume = isLbs ? _totalVolumeKg * 2.20462 : _totalVolumeKg;
+      // Notify rest of the app that scores changed
+      ref.read(scoreEventsProvider.notifier).state++;
 
+      // Clear local set cache
       ref.read(routineSetProvider.notifier).clear();
+
       if (!mounted) return;
-      context.pushReplacement('/summary', extra: displayVolume.round());
+
+      context.go('/summary', extra: _totalVolumeKg);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

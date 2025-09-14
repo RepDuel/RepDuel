@@ -177,6 +177,20 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Listen for meaningful auth/user changes and clear the local cache.
+    ref.listen(authProvider, (prev, next) {
+      final prevUser = prev?.valueOrNull?.user;
+      final nextUser = next.valueOrNull?.user;
+      final changed = (prevUser?.id != nextUser?.id) ||
+          (prevUser?.energy != nextUser?.energy) ||
+          (prevUser?.rank != nextUser?.rank);
+
+      if (changed) {
+        _highScoreByScenario.clear();
+        if (mounted) setState(() {});
+      }
+    });
+
     final user = ref.watch(authProvider).valueOrNull?.user;
     final userId = user?.id.toString() ?? '';
     final weightMultiplier = (user?.weightMultiplier ?? 1.0).toDouble();

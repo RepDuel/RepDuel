@@ -2,11 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart'; // ← needed for context.go
 
 import '../../../core/providers/auth_provider.dart';
 
 class SummaryScreen extends ConsumerWidget {
-  final num totalVolume;
+  final num totalVolume; // raw KG passed in
 
   const SummaryScreen({super.key, required this.totalVolume});
 
@@ -16,62 +17,72 @@ class SummaryScreen extends ConsumerWidget {
     final isLbs = (user?.weightMultiplier ?? 1.0) > 1.5;
     final displayVolume = isLbs ? totalVolume * 2.20462 : totalVolume;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Routine Summary'),
+    return PopScope(
+      canPop: false, // block back navigation from returning to ExerciseList
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          // user tried to go back → send them to the Routines tab instead
+          GoRouter.of(context).go('/routines');
+        }
+      },
+      child: Scaffold(
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Routine Complete!',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Total Volume Lifted:',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey[400],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // Go back to ExerciseListScreen
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 14,
-                    horizontal: 32,
+        appBar: AppBar(
+          title: const Text('Routine Summary'),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Routine Complete!',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                  textStyle: const TextStyle(fontSize: 16),
                 ),
-                child: const Text('Back to Exercises'),
-              ),
-            ],
+                const SizedBox(height: 24),
+                Text(
+                  'Total Volume Lifted:',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[400],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: () {
+                    // Done → take them to the Routines tab (not back to exercise list)
+                    context.go('/routines');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 32,
+                    ),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                  child: const Text('Done'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

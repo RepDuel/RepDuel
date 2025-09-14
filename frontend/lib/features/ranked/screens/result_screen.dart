@@ -232,8 +232,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final auth = ref.watch(authProvider).valueOrNull;
     final user = auth?.user;
     if (user == null) {
-      return _buildScaffold(
-        const Center(child: Text("User not authenticated.")),
+      return _wrapWithPopGuard(
+        _buildScaffold(
+          const Center(child: Text("User not authenticated.")),
+        ),
       );
     }
 
@@ -249,24 +251,32 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final standardsAsync = ref.watch(standardsPackProvider);
 
     return standardsAsync.when(
-      loading: () => _buildScaffold(const Center(child: LoadingSpinner())),
-      error: (err, _) => _buildScaffold(
-        Center(
-          child: ErrorDisplay(
-            message: err.toString(),
-            onRetry: () => ref.refresh(standardsPackProvider),
+      loading: () => _wrapWithPopGuard(
+        _buildScaffold(const Center(child: LoadingSpinner())),
+      ),
+      error: (err, _) => _wrapWithPopGuard(
+        _buildScaffold(
+          Center(
+            child: ErrorDisplay(
+              message: err.toString(),
+              onRetry: () => ref.refresh(standardsPackProvider),
+            ),
           ),
         ),
       ),
       data: (standardsKg) {
         return scenarioAsync.when(
-          loading: () => _buildScaffold(const Center(child: LoadingSpinner())),
-          error: (err, _) => _buildScaffold(
-            Center(
-              child: ErrorDisplay(
-                message: err.toString(),
-                onRetry: () =>
-                    ref.refresh(scenarioDetailsProvider(widget.scenarioId)),
+          loading: () => _wrapWithPopGuard(
+            _buildScaffold(const Center(child: LoadingSpinner())),
+          ),
+          error: (err, _) => _wrapWithPopGuard(
+            _buildScaffold(
+              Center(
+                child: ErrorDisplay(
+                  message: err.toString(),
+                  onRetry: () =>
+                      ref.refresh(scenarioDetailsProvider(widget.scenarioId)),
+                ),
               ),
             ),
           ),
@@ -290,158 +300,179 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
             final rankColor = getRankColor(lp.matchedRank);
 
-            return _buildScaffold(
-              SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 24),
-                    const Text(
-                      'FINAL SCORE',
-                      style: TextStyle(color: Colors.white70, fontSize: 20),
-                    ),
-                    Text(
-                      finalScoreDisplay.toStringAsFixed(1),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 56,
-                        fontWeight: FontWeight.bold,
+            return _wrapWithPopGuard(
+              _buildScaffold(
+                SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 24),
+                      const Text(
+                        'FINAL SCORE',
+                        style: TextStyle(color: Colors.white70, fontSize: 20),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      scenarioName,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)} $unit',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 32),
-                    const Text(
-                      'CURRENT RANK',
-                      style: TextStyle(color: Colors.white70, fontSize: 18),
-                    ),
-                    const SizedBox(height: 16),
-                    SvgPicture.asset(
-                      'assets/images/ranks/${lp.matchedRank.toLowerCase()}.svg',
-                      height: 72,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      lp.matchedRank,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: rankColor,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: 200,
-                      child: LinearProgressIndicator(
-                        value: lp.progress, // same % as RankingTable
-                        backgroundColor: Colors.grey[800],
-                        valueColor: AlwaysStoppedAnimation<Color>(rankColor),
-                        minHeight: 20,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // EXACT same "<a>/<b>" logic as the table:
-                    // - non-top: denominator is NEXT rank threshold
-                    // - top (Celestial): denominator == Celestial threshold
-                    Text(
-                      '${comparisonScoreDisplay.toStringAsFixed(1)} / ${lp.nextThreshold.toStringAsFixed(1)}',
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    const SizedBox(height: 32),
-                    const Divider(color: Colors.white24),
-                    const SizedBox(height: 16),
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final subTier =
-                            ref.watch(subscriptionProvider).valueOrNull;
-                        if (subTier == SubscriptionTier.gold ||
-                            subTier == SubscriptionTier.platinum) {
-                          return ScoreHistoryChart(
-                            scenarioId: widget.scenarioId,
-                            weightMultiplier: weightMultiplier,
-                          );
-                        } else {
-                          return PaywallLock(
-                            message: "Upgrade to Gold to track your progress.",
-                            onTap: () async {
-                              final purchaseSuccess =
-                                  await context.push<bool>('/subscribe');
-                              if (purchaseSuccess == true && mounted) {
-                                await ref
-                                    .read(authProvider.notifier)
-                                    .refreshUserData();
-                                ref.invalidate(subscriptionProvider);
-                              }
-                            },
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 32),
-                    ElevatedButton(
-                      onPressed: () => context.pop(true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 14,
+                      Text(
+                        finalScoreDisplay.toStringAsFixed(1),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 56,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: const Text('Back to Menu'),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        scenarioName,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)} $unit',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'CURRENT RANK',
+                        style: TextStyle(color: Colors.white70, fontSize: 18),
+                      ),
+                      const SizedBox(height: 16),
+                      SvgPicture.asset(
+                        'assets/images/ranks/${lp.matchedRank.toLowerCase()}.svg',
+                        height: 72,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        lp.matchedRank,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: rankColor,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: 200,
+                        child: LinearProgressIndicator(
+                          value: lp.progress, // same % as RankingTable
+                          backgroundColor: Colors.grey[800],
+                          valueColor: AlwaysStoppedAnimation<Color>(rankColor),
+                          minHeight: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // EXACT same "<a>/<b>" logic as the table:
+                      // - non-top: denominator is NEXT rank threshold
+                      // - top (Celestial): denominator == Celestial threshold
+                      Text(
+                        '${comparisonScoreDisplay.toStringAsFixed(1)} / ${lp.nextThreshold.toStringAsFixed(1)}',
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                      const SizedBox(height: 32),
+                      const Divider(color: Colors.white24),
+                      const SizedBox(height: 16),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final subTier =
+                              ref.watch(subscriptionProvider).valueOrNull;
+                          if (subTier == SubscriptionTier.gold ||
+                              subTier == SubscriptionTier.platinum) {
+                            return ScoreHistoryChart(
+                              scenarioId: widget.scenarioId,
+                              weightMultiplier: weightMultiplier,
+                            );
+                          } else {
+                            return PaywallLock(
+                              message:
+                                  "Upgrade to Gold to track your progress.",
+                              onTap: () async {
+                                final purchaseSuccess =
+                                    await context.push<bool>('/subscribe');
+                                if (purchaseSuccess == true && mounted) {
+                                  await ref
+                                      .read(authProvider.notifier)
+                                      .refreshUserData();
+                                  ref.invalidate(subscriptionProvider);
+                                }
+                              },
+                            );
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: () => context.pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 14,
+                          ),
+                        ),
+                        child: const Text('Back to Menu'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              actions: [
-                Builder(
-                  builder: (context) => Offstage(
-                    offstage: true,
-                    child: Screenshot(
-                      controller: _screenshotController,
-                      child: ShareableResultCard(
-                        username: user.username,
-                        scenarioName: scenarioName,
-                        finalScore:
-                            '${finalScoreDisplay.toStringAsFixed(1)} $unit',
-                        rankName: lp.matchedRank,
-                        rankColor: rankColor,
+                actions: [
+                  Builder(
+                    builder: (context) => Offstage(
+                      offstage: true,
+                      child: Screenshot(
+                        controller: _screenshotController,
+                        child: ShareableResultCard(
+                          username: user.username,
+                          scenarioName: scenarioName,
+                          finalScore:
+                              '${finalScoreDisplay.toStringAsFixed(1)} $unit',
+                          rankName: lp.matchedRank,
+                          rankColor: rankColor,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: _isSharing
-                      ? const LoadingSpinner(size: 24)
-                      : const Icon(Icons.share),
-                  onPressed: _isSharing
-                      ? null
-                      : () => _handleShare(
-                            scenarioName: scenarioName,
-                            matchedRank: lp.matchedRank,
-                            finalScoreDisplay: finalScoreDisplay,
-                            unit: unit,
-                            username: user.username,
-                            rankColor: rankColor,
-                          ),
-                ),
-              ],
+                  IconButton(
+                    icon: _isSharing
+                        ? const LoadingSpinner(size: 24)
+                        : const Icon(Icons.share),
+                    onPressed: _isSharing
+                        ? null
+                        : () => _handleShare(
+                              scenarioName: scenarioName,
+                              matchedRank: lp.matchedRank,
+                              finalScoreDisplay: finalScoreDisplay,
+                              unit: unit,
+                              username: user.username,
+                              rankColor: rankColor,
+                            ),
+                  ),
+                ],
+              ),
             );
           },
         );
       },
+    );
+  }
+
+  /// Wraps any scaffold with a PopScope so **any** system/gesture back attempt
+  /// returns `true` to the previous route (ScenarioScreen), which then pops to Ranked.
+  Widget _wrapWithPopGuard(Widget scaffold) {
+    return PopScope(
+      canPop: false, // we will handle all back attempts
+      onPopInvokedWithResult: (didPop, result) {
+        // If the system already popped this route, do nothing.
+        if (didPop) return;
+        if (Navigator.of(context).canPop()) {
+          // Always return `true` to the previous route so it knows to refresh.
+          context.pop(true);
+        }
+      },
+      child: scaffold,
     );
   }
 
@@ -452,6 +483,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         title: const Text('Results'),
         backgroundColor: Colors.black,
         elevation: 0,
+        // ✅ Ensure the app bar back also returns `true`
+        leading: BackButton(onPressed: () => context.pop(true)),
         actions: actions,
       ),
       body: child,

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/score_events_provider.dart'; // 👈 add this
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../utils/rank_utils.dart';
@@ -20,26 +21,34 @@ class RankedScreenData {
 
 double _lbPerKg(double kg) => kg * 2.2046226218;
 
+// NOTE: make standards provider react to scoreEvents/version & auth changes.
 final liftStandardsProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  // 🔄 whenever scores/units/gender/weight change, providers that watch this rebuild
+  ref.watch(scoreEventsProvider);
+
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) throw Exception("User not authenticated.");
 
   final unit = user.preferredUnit;
-  final bodyweight = user.weight ?? 90.7; // stored in kg
+  final bodyweightKg = user.weight ?? 90.7; // stored in kg
+  final gender = (user.gender ?? 'male').toLowerCase();
   final bodyweightForRequest =
-      unit == 'lbs' ? _lbPerKg(bodyweight) : bodyweight;
-  final gender = user.gender?.toLowerCase() ?? 'male';
+      unit == 'lbs' ? _lbPerKg(bodyweightKg) : bodyweightKg;
 
   final client = ref.watch(publicHttpClientProvider);
   final response = await client.get(
     '/standards/$bodyweightForRequest?gender=$gender&unit=$unit',
   );
-  return response.data as Map<String, dynamic>;
+  return (response.data as Map).cast<String, dynamic>();
 });
 
+// NOTE: also make highscores reactive to scoreEvents & the current user id.
 final highScoresProvider =
     FutureProvider.autoDispose<Map<String, double>>((ref) async {
+  // 🔄 refetch highscores whenever we bump this
+  ref.watch(scoreEventsProvider);
+
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) return {};
   final client = ref.watch(privateHttpClientProvider);
@@ -79,6 +88,7 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // keep energy up-to-date (same as before)
     ref.listen<AsyncValue<RankedScreenData>>(rankedScreenDataProvider,
         (previous, next) {
       if (next is! AsyncData) return;
@@ -168,7 +178,14 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                             '/scenario/$scenarioId',
                             extra: liftKey);
                         if (shouldRefresh == true && mounted) {
-                          ref.invalidate(highScoresProvider);
+                          // option A: nuke the joined provider
+                          ref.invalidate(rankedScreenDataProvider);
+                          // also bump the global version in case other screens rely on it
+                          ref.read(scoreEventsProvider.notifier).state++;
+                          // pull user again (energy, etc.)
+                          await ref
+                              .read(authProvider.notifier)
+                              .refreshUserData();
                         }
                       },
                       onLeaderboardTapped: (scenarioId) {
