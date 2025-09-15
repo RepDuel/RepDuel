@@ -395,7 +395,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                       final displayScore =
                           isBw ? rawScore : rawScore * weightMultiplier;
                       final scoreText =
-                          rawScore > 0 ? formatKg(displayScore) : '—';
+                          rawScore > 0 ? formatKg(displayScore) : '0';
 
                       // Choose base pack: KG for bodyweight; user-unit pack otherwise
                       final basePack = isBw ? kgStandards : liftStandards;
@@ -516,7 +516,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                                               ((_scenarioMultiplier[id] ?? 0) >
                                                   0))
                                           ? '${formatKg(displayScore)} / ${formatKg(nextThreshold)}'
-                                          : '—',
+                                          : '0 / 0',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 14,
@@ -555,7 +555,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                                             ((_scenarioMultiplier[id] ?? 0) >
                                                 0))
                                         ? NumberFormat("###0").format(energy)
-                                        : '—',
+                                        : '0',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,

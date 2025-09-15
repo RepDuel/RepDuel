@@ -50,6 +50,21 @@ class HiddenRoutinesNotifier extends StateNotifier<Set<String>> {
 
   Future<void> _init() async {
     final userId = ref.read(authProvider).valueOrNull?.user?.id.toString();
+    // Try server first
+    try {
+      final client = ref.read(privateHttpClientProvider);
+      final res = await client.get('/users/me/hidden-routines');
+      if (res.statusCode == 200) {
+        final List data = res.data as List;
+        state = data.map((e) => e.toString()).toSet();
+        // mirror to local prefs as offline cache
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList(_prefsKeyFor(userId), state.toList());
+        return;
+      }
+    } catch (_) {
+      // fall through to local cache
+    }
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList(_prefsKeyFor(userId)) ?? <String>[];
     state = list.toSet();
@@ -63,7 +78,12 @@ class HiddenRoutinesNotifier extends StateNotifier<Set<String>> {
 
   Future<void> hide(String id) async {
     if (state.contains(id)) return;
+    // Optimistic update
     state = {...state, id};
+    try {
+      final client = ref.read(privateHttpClientProvider);
+      await client.post('/users/me/hidden-routines/$id');
+    } catch (_) {}
     await _persist();
   }
 
@@ -71,6 +91,10 @@ class HiddenRoutinesNotifier extends StateNotifier<Set<String>> {
     if (!state.contains(id)) return;
     final next = {...state}..remove(id);
     state = next;
+    try {
+      final client = ref.read(privateHttpClientProvider);
+      await client.delete('/users/me/hidden-routines/$id');
+    } catch (_) {}
     await _persist();
   }
 
@@ -176,7 +200,7 @@ class RoutinesScreen extends ConsumerWidget {
             final visibleRoutines = routines
                 .where((r) => !(r.userId == null && hidden.contains(r.id)))
                 .toList();
-            if (routines.isEmpty) {
+            if (visibleRoutines.isEmpty) {
               // Keeps the content scrollable to avoid overflow when centered.
               return Center(
                 child: SingleChildScrollView(

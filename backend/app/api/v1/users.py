@@ -17,6 +17,8 @@ from app.core.security import create_access_token, create_refresh_token, decode_
 from app.models import user as models
 from app.schemas import user as schemas
 from app.schemas.token import Token
+from sqlalchemy import select, delete
+from app.models.hidden_routine import HiddenRoutine
 from app.services.user_service import (
     authenticate_user,
     create_user,
@@ -236,3 +238,48 @@ async def delete_current_user(
 ):
     await delete_user(db, current_user)
     return None
+
+
+# --- Hidden routines (per-user server-side persistence) ---
+
+@router.get("/me/hidden-routines", response_model=list[str])
+async def get_hidden_routines(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    result = await db.execute(select(HiddenRoutine.routine_id).where(HiddenRoutine.user_id == current_user.id))
+    rows = result.scalars().all()
+    # Return as string UUIDs
+    return [str(r) for r in rows]
+
+
+@router.post("/me/hidden-routines/{routine_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def hide_routine(
+    routine_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    try:
+        entry = HiddenRoutine(user_id=current_user.id, routine_id=routine_id)
+        db.add(entry)
+        await db.commit()
+    except Exception:
+        # Ignore duplicates or casting issues silently for idempotency
+        await db.rollback()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/me/hidden-routines/{routine_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unhide_routine(
+    routine_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    await db.execute(
+        delete(HiddenRoutine).where(
+            HiddenRoutine.user_id == current_user.id,
+            HiddenRoutine.routine_id == routine_id,
+        )
+    )
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
