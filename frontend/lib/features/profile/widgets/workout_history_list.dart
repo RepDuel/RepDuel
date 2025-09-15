@@ -109,20 +109,14 @@ class WorkoutHistoryList extends ConsumerWidget {
                       const SizedBox(height: 8),
                       ...grouped.entries.expand((grp) {
                         final scenarioName = scenarioTitle(grp.key);
-                        final items = <Widget>[
-                          Text(
-                            '$scenarioName:',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ];
+                        final setItems = <Widget>[];
 
-                        // Build set lines in incrementing order with 1-based index
+                        // Build set lines with 1-based, sequential numbering
+                        var displayedSetIndex = 0;
                         for (var i = 0; i < grp.value.length; i++) {
                           final s = grp.value[i];
-                          final isBodyweightScenario = grp.key.startsWith('bodyweight_');
+                          final isBodyweightScenario =
+                              grp.key.startsWith('bodyweight_');
                           final weightUser = toUserUnit(s.weight);
                           final reps = s.reps;
 
@@ -130,18 +124,14 @@ class WorkoutHistoryList extends ConsumerWidget {
                           if (reps <= 0) continue;
 
                           // Determine if this is a bodyweight set (only when the scenario is bodyweight)
-                          final isBodyweightSet = isBodyweightScenario && s.weight == 0;
+                          final isBodyweightSet =
+                              isBodyweightScenario && s.weight == 0;
 
                           // For weighted exercises: only show sets with positive weight
                           if (!isBodyweightSet && weightUser <= 0) continue;
 
-                          final setLabel = Text(
-                            'Set ${i + 1}: ',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          );
+                          // Increment only for sets that are actually shown
+                          displayedSetIndex += 1;
 
                           // Pluralize reps label
                           final repsLabel = reps == 1 ? 'rep' : 'reps';
@@ -150,11 +140,17 @@ class WorkoutHistoryList extends ConsumerWidget {
                               ? '$reps $repsLabel'
                               : '${formatNum(weightUser)} $unit x $reps $repsLabel';
 
-                          items.add(
+                          setItems.add(
                             RichText(
                               text: TextSpan(
                                 children: [
-                                  WidgetSpan(child: setLabel),
+                                  TextSpan(
+                                    text: 'Set $displayedSetIndex: ',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   TextSpan(
                                     text: setText,
                                     style: const TextStyle(color: Colors.white),
@@ -165,8 +161,22 @@ class WorkoutHistoryList extends ConsumerWidget {
                           );
                         }
 
-                        items.add(const SizedBox(height: 8));
-                        return items;
+                        // If no visible sets, hide the scenario header entirely
+                        if (displayedSetIndex == 0) {
+                          return const <Widget>[];
+                        }
+
+                        return [
+                          Text(
+                            '$scenarioName:',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          ...setItems,
+                          const SizedBox(height: 8),
+                        ];
                       }),
                       Text(
                         'Total Volume: ${formatNum(totalVolumeUser)} $unit',
