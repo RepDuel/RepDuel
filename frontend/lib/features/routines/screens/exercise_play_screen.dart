@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/providers/api_providers.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../providers/set_data_provider.dart';
@@ -26,6 +27,8 @@ class ExercisePlayScreen extends ConsumerStatefulWidget {
 }
 
 class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
+  // Cache for scenario details to avoid repeated requests within this screen
+  final Map<String, Map<String, dynamic>> _scenarioDetailsCache = {};
   late final List<TextEditingController> _weightControllers;
   late final List<TextEditingController> _repControllers;
 
@@ -122,15 +125,98 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
     context.pop(setDataToReturn);
   }
 
+  Future<Map<String, dynamic>?> _getScenarioDetails(String id) async {
+    if (_scenarioDetailsCache.containsKey(id)) return _scenarioDetailsCache[id];
+    try {
+      final client = ref.read(publicHttpClientProvider);
+      final res = await client.get('/scenarios/$id/details');
+      final data = (res.data as Map).cast<String, dynamic>();
+      _scenarioDetailsCache[id] = data;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _showScenarioInfo() async {
+    final id = widget.exerciseId;
+    final fallbackName = widget.exerciseName;
+    final details = await _getScenarioDetails(id);
+    final name = details?['name'] as String? ?? fallbackName;
+    final desc = details?['description'] as String? ?? 'No description available.';
+    if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (_) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          builder: (ctx, controller) => Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white70),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: controller,
+                    child: Text(
+                      desc,
+                      style: const TextStyle(color: Colors.white70, height: 1.4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final unitLabel = _isLbs(ref) ? 'lbs' : 'kg';
 
     return Scaffold(
       appBar: AppBar(
-          title: Text(widget.exerciseName),
-          backgroundColor: Colors.black,
-          elevation: 0),
+        title: Text(widget.exerciseName),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Exercise info',
+            icon: const Icon(Icons.info_outline),
+            onPressed: _showScenarioInfo,
+          ),
+        ],
+      ),
       backgroundColor: Colors.black,
       body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
