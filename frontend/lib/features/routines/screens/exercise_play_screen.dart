@@ -109,7 +109,11 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
       final weightInKg = _toKg(ref, weightUserUnit);
       final reps = int.tryParse(repsText) ?? 0;
 
-      if (reps > 0) {
+      // Skip submitting sets whose total volume is 0
+      // - For weighted lifts: require weightInKg > 0 and reps > 0
+      // - For bodyweight-style entry: allow weight==0 but require reps > 0 (volume defined elsewhere)
+      final isWeighted = weightInKg > 0;
+      if ((isWeighted && reps > 0) || (!isWeighted && reps > 0)) {
         setDataForProvider.add({
           'scenario_id': widget.exerciseId,
           'weight': weightInKg,
