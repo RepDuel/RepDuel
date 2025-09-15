@@ -147,6 +147,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       (m - 2.20462).abs() < 0.01 ? 'lbs' : 'kg';
 
   double _round5(double v) => (v / 5).round() * 5.0;
+  double _round1(double v) => v.roundToDouble();
 
   Map<String, dynamic> _packToDisplay(
     Map<String, dynamic> standardsKg,
@@ -286,22 +287,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             final liftKey = (scenario['id'] as String?) ?? widget.scenarioId;
             final scenarioMultiplier =
                 (scenario['multiplier'] as num?)?.toDouble() ?? 1.0;
+            final isBodyweight = (scenario['is_bodyweight'] as bool?) ?? false;
+            final displayUnit = isBodyweight ? 'reps' : unit;
 
-            final standardsDisplay =
-                _packToDisplay(standardsKg, weightMultiplier);
+            // Use kg-only pack for bodyweight scenarios; otherwise scale to user unit
+            final standardsDisplay = _packToDisplay(
+                standardsKg, isBodyweight ? 1.0 : weightMultiplier);
 
             standardsDisplay.forEach((rank, node) {
               final totalKg = (standardsKg[rank]?['total'] as num?)?.toDouble();
               if (totalKg == null) return;
-              final thresholdDisplay =
-                  _round5(totalKg * scenarioMultiplier * weightMultiplier);
+              final base = totalKg * scenarioMultiplier;
+              final thresholdDisplay = isBodyweight
+                  ? _round1(base)
+                  : _round5(base * weightMultiplier);
               final liftsMap = node['lifts'] as Map<String, double>;
               liftsMap[liftKey] = thresholdDisplay;
             });
 
-            final finalScoreDisplay = widget.finalScore * weightMultiplier;
-            final comparisonScoreDisplay =
-                scoreForRankCalcKg * weightMultiplier;
+            final multForScenario = isBodyweight ? 1.0 : weightMultiplier;
+            final finalScoreDisplay = widget.finalScore * multForScenario;
+            final comparisonScoreDisplay = scoreForRankCalcKg * multForScenario;
 
             final lp = computeLiftProgress(
               liftStandards: standardsDisplay,
@@ -341,7 +347,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Previous Best: ${(widget.previousBest * weightMultiplier).toStringAsFixed(1)} $unit',
+                        'Previous Best: ${(widget.previousBest * multForScenario).toStringAsFixed(1)} $displayUnit',
                         style: const TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 32),
@@ -390,7 +396,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               subTier == SubscriptionTier.platinum) {
                             return ScoreHistoryChart(
                               scenarioId: widget.scenarioId,
-                              weightMultiplier: weightMultiplier,
+                              weightMultiplier: multForScenario,
                             );
                           } else {
                             return PaywallLock(
@@ -436,7 +442,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           username: user.username,
                           scenarioName: scenarioName,
                           finalScore:
-                              '${finalScoreDisplay.toStringAsFixed(1)} $unit',
+                              '${finalScoreDisplay.toStringAsFixed(1)} $displayUnit',
                           rankName: lp.matchedRank,
                           rankColor: rankColor,
                         ),
@@ -453,7 +459,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               scenarioName: scenarioName,
                               matchedRank: lp.matchedRank,
                               finalScoreDisplay: finalScoreDisplay,
-                              unit: unit,
+                              unit: displayUnit,
                               username: user.username,
                               rankColor: rankColor,
                             ),

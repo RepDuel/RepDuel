@@ -4,12 +4,17 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/search_bar.dart'; // ExerciseSearchField
-import '../../ranked/utils/rank_utils.dart'; // formatKg
+import '../../ranked/utils/rank_utils.dart'; // formatKg, getRankColor, getInterpolatedEnergy
+import '../../ranked/utils/lift_progress.dart';
+import '../../ranked/screens/ranked_screen.dart' show liftStandardsProvider;
+import '../../ranked/screens/result_screen.dart' show standardsPackProvider;
 
 class NormalScreen extends ConsumerStatefulWidget {
   const NormalScreen({super.key});
@@ -30,6 +35,13 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
   final Map<String, double> _highScoreByScenario = {};
   // In-flight request guards
   final Set<String> _pending = {};
+
+  // Per-scenario metadata caches and guards
+  final Map<String, double> _scenarioMultiplier = {};
+  final Map<String, bool> _scenarioIsBodyweight = {};
+  final Set<String> _pendingScenarioDetails = {};
+
+  // Rank thresholds now come from liftStandardsProvider (reactive)
 
   static const _headerStyle = TextStyle(
     color: Colors.white,
@@ -79,6 +91,47 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
       });
     }
   }
+
+  double _round5(num x) => ((x / 5).round() * 5).toDouble();
+  double _round1(num x) => x.roundToDouble();
+
+  Future<void> _ensureScenarioDetails(String scenarioId) async {
+    if (_pendingScenarioDetails.contains(scenarioId)) return;
+    if (_scenarioMultiplier.containsKey(scenarioId) &&
+        _scenarioIsBodyweight.containsKey(scenarioId)) {
+      return;
+    }
+
+    _pendingScenarioDetails.add(scenarioId);
+    try {
+      final client = ref.read(publicHttpClientProvider);
+      final res = await client.get('/scenarios/$scenarioId/details');
+      double mult = 0.0;
+      bool isBw = false;
+      if (res.statusCode == 200) {
+        final body = res.data as Map<String, dynamic>;
+        final m = body['multiplier'];
+        if (m is num) mult = m.toDouble();
+        final bw = body['is_bodyweight'];
+        if (bw is bool) isBw = bw;
+      }
+      if (!mounted) return;
+      setState(() {
+        _scenarioMultiplier[scenarioId] = mult;
+        _scenarioIsBodyweight[scenarioId] = isBw;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _scenarioMultiplier[scenarioId] = 0.0;
+        _scenarioIsBodyweight[scenarioId] = false;
+      });
+    } finally {
+      _pendingScenarioDetails.remove(scenarioId);
+    }
+  }
+
+  // Removed: standards are provided by liftStandardsProvider
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
@@ -134,6 +187,8 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
       queryParameters: {'liftName': liftName},
     );
   }
+
+  // _ensureMultiplier removed; replaced by _ensureScenarioDetails
 
   Future<void> _ensureHighScore({
     required String scenarioId,
@@ -215,6 +270,15 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
       );
     }
 
+    // Watch standards reactively so gender/unit/weight changes update rows
+    final liftStandards = ref
+        .watch(liftStandardsProvider)
+        .maybeWhen(data: (v) => v, orElse: () => null);
+    // KG-only pack for bodyweight scenarios
+    final kgStandards = ref
+        .watch(standardsPackProvider)
+        .maybeWhen(data: (v) => v, orElse: () => null);
+
     return Column(
       children: [
         // Search
@@ -236,7 +300,17 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
             children: [
               Expanded(child: Text('Lift', style: _headerStyle)),
               Expanded(
-                child: Center(child: Text('Score', style: _headerStyle)),
+                  child: Center(child: Text('Score', style: _headerStyle))),
+              Expanded(
+                flex: 2,
+                child: Center(child: Text('Progress', style: _headerStyle)),
+              ),
+              Expanded(
+                flex: 2,
+                child: Center(child: Text('Rank', style: _headerStyle)),
+              ),
+              Expanded(
+                child: Center(child: Text('Energy', style: _headerStyle)),
               ),
               SizedBox(width: 40), // leaderboard icon
             ],
@@ -293,9 +367,66 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                       }
 
                       final rawScore = _highScoreByScenario[id] ?? 0.0;
-                      final adjustedScore = rawScore * weightMultiplier;
+
+                      // Rank/progress/energy for any scenario using its multiplier
+                      // Ensure details (multiplier + is_bodyweight) are fetched
+                      if (!_scenarioMultiplier.containsKey(id) ||
+                          !_scenarioIsBodyweight.containsKey(id)) {
+                        _ensureScenarioDetails(id).then((_) {
+                          if (mounted) setState(() {});
+                        });
+                      }
+
+                      String matchedRank = 'Unranked';
+                      double nextThreshold = 0.0;
+                      double progress = 0.0;
+                      double energy = 0.0;
+
+                      final mult = _scenarioMultiplier[id] ?? 0.0;
+                      final isBw = _scenarioIsBodyweight[id] ?? false;
+
+                      // For bodyweight exercises, do not scale score by unit
+                      final displayScore = isBw
+                          ? rawScore
+                          : rawScore * weightMultiplier;
                       final scoreText =
-                          rawScore > 0 ? formatKg(adjustedScore) : '—';
+                          rawScore > 0 ? formatKg(displayScore) : '—';
+
+                      // Choose base pack: KG for bodyweight; user-unit pack otherwise
+                      final basePack = isBw ? kgStandards : liftStandards;
+                      if (basePack != null && mult > 0) {
+                        // Build per-scenario standards by scaling total thresholds by the multiplier.
+                        // Round to nearest 5 ONLY for non-bodyweight scenarios.
+                        final Map<String, dynamic> scenarioStandards = {
+                          for (final e in basePack.entries)
+                            e.key: {
+                              'lifts': {
+                                'scenario': isBw
+                                    ? _round1(((e.value['total'] ?? 0) as num)
+                                            .toDouble() *
+                                        mult)
+                                    : _round5(((e.value['total'] ?? 0) as num)
+                                            .toDouble() *
+                                        mult),
+                              }
+                            }
+                        };
+
+                        final lp = computeLiftProgress(
+                          liftStandards: scenarioStandards,
+                          liftKey: 'scenario',
+                          score: displayScore,
+                        );
+                        matchedRank = lp.matchedRank;
+                        nextThreshold = lp.nextThreshold;
+                        progress = lp.progress;
+                        energy = getInterpolatedEnergy(
+                          score: displayScore,
+                          thresholds: scenarioStandards,
+                          liftKey: 'scenario',
+                          userMultiplier: 1.0,
+                        );
+                      }
 
                       return Container(
                         margin: const EdgeInsets.symmetric(
@@ -314,11 +445,17 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                               children: [
                                 // Lift
                                 Expanded(
-                                  child: Text(
-                                    name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
+                                  child: Tooltip(
+                                    message: name,
+                                    waitDuration: Duration(milliseconds: 400),
+                                    child: Text(
+                                      name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -328,6 +465,90 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                                   child: Center(
                                     child: Text(
                                       scoreText,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                // Progress (mirrors RankingTable)
+                                Expanded(
+                                  flex: 2,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        height: 6,
+                                        child: LinearProgressIndicator(
+                                          value: (((_scenarioIsBodyweight[id] ?? false)
+                                                          ? kgStandards
+                                                          : liftStandards) !=
+                                                      null &&
+                                                      ((_scenarioMultiplier[id] ??
+                                                              0) >
+                                                          0))
+                                              ? progress
+                                              : 0.0,
+                                          backgroundColor: Colors.grey[800],
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            getRankColor(matchedRank),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        (((_scenarioIsBodyweight[id] ?? false)
+                                                    ? kgStandards
+                                                    : liftStandards) !=
+                                                null &&
+                                                ((_scenarioMultiplier[id] ??
+                                                        0) >
+                                                    0))
+                                            ? '${formatKg(displayScore)} / ${formatKg(nextThreshold)}'
+                                            : '—',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Rank icon
+                                Expanded(
+                                  flex: 2,
+                                  child: Center(
+                                    child: (((_scenarioIsBodyweight[id] ?? false)
+                                                ? kgStandards
+                                                : liftStandards) !=
+                                            null &&
+                                            ((_scenarioMultiplier[id] ?? 0) >
+                                                0))
+                                        ? SvgPicture.asset(
+                                            'assets/images/ranks/${matchedRank.toLowerCase()}.svg',
+                                            height: 24,
+                                            width: 24,
+                                          )
+                                        : const SizedBox(height: 24, width: 24),
+                                  ),
+                                ),
+
+                                // Energy
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
+                                      (((_scenarioIsBodyweight[id] ?? false)
+                                                  ? kgStandards
+                                                  : liftStandards) !=
+                                              null &&
+                                              ((_scenarioMultiplier[id] ?? 0) >
+                                                  0))
+                                          ? NumberFormat("###0").format(energy)
+                                          : '—',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 14,
