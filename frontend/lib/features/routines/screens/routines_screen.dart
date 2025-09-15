@@ -11,6 +11,7 @@ import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../widgets/add_routine_card.dart';
 import '../widgets/routine_card.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final routinesProvider = FutureProvider.autoDispose<List<Routine>>((ref) async {
   return ref.watch(authProvider).when(
@@ -25,6 +26,62 @@ final routinesProvider = FutureProvider.autoDispose<List<Routine>>((ref) async {
         },
       );
 });
+
+// Stores the set of globally hidden routine IDs for the current user in SharedPreferences
+final hiddenGlobalRoutinesProvider =
+    StateNotifierProvider.autoDispose<HiddenRoutinesNotifier, Set<String>>(
+        (ref) => HiddenRoutinesNotifier(ref));
+
+class HiddenRoutinesNotifier extends StateNotifier<Set<String>> {
+  final Ref ref;
+  HiddenRoutinesNotifier(this.ref) : super(<String>{}) {
+    _init();
+    // Reload when user switches
+    ref.listen(authProvider, (prev, next) {
+      final prevId = prev?.valueOrNull?.user?.id.toString();
+      final nextId = next.valueOrNull?.user?.id.toString();
+      if (prevId != nextId) {
+        _init();
+      }
+    });
+  }
+
+  String _prefsKeyFor(String? userId) => 'hidden_routines_${userId ?? 'anon'}';
+
+  Future<void> _init() async {
+    final userId = ref.read(authProvider).valueOrNull?.user?.id.toString();
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_prefsKeyFor(userId)) ?? <String>[];
+    state = list.toSet();
+  }
+
+  Future<void> _persist() async {
+    final userId = ref.read(authProvider).valueOrNull?.user?.id.toString();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_prefsKeyFor(userId), state.toList());
+  }
+
+  Future<void> hide(String id) async {
+    if (state.contains(id)) return;
+    state = {...state, id};
+    await _persist();
+  }
+
+  Future<void> unhide(String id) async {
+    if (!state.contains(id)) return;
+    final next = {...state}..remove(id);
+    state = next;
+    await _persist();
+  }
+
+  Future<void> toggle(String id) async {
+    if (state.contains(id)) {
+      await unhide(id);
+    } else {
+      await hide(id);
+    }
+  }
+}
 
 class RoutinesScreen extends ConsumerWidget {
   const RoutinesScreen({super.key});
@@ -114,6 +171,11 @@ class RoutinesScreen extends ConsumerWidget {
                   message: err.toString(),
                   onRetry: () => ref.invalidate(routinesProvider))),
           data: (routines) {
+            final hidden = ref.watch(hiddenGlobalRoutinesProvider);
+            // Filter out hidden global routines (those without a userId)
+            final visibleRoutines = routines
+                .where((r) => !(r.userId == null && hidden.contains(r.id)))
+                .toList();
             if (routines.isEmpty) {
               // Keeps the content scrollable to avoid overflow when centered.
               return Center(
@@ -146,7 +208,7 @@ class RoutinesScreen extends ConsumerWidget {
             }
             return GridView.builder(
               padding: const EdgeInsets.all(12),
-              itemCount: routines.length + 1,
+              itemCount: visibleRoutines.length + 1,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount:
                     (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6),
@@ -160,9 +222,11 @@ class RoutinesScreen extends ConsumerWidget {
                       onPressed: () =>
                           _onAddRoutinePressed(context, ref, routines));
                 }
-                final routine = routines[index - 1];
+                final routine = visibleRoutines[index - 1];
                 final canEditDelete =
                     routine.userId != null && routine.userId == currentUserId;
+                final isGlobal = routine.userId == null;
+                final isHidden = hidden.contains(routine.id);
 
                 return Stack(
                   children: [
@@ -177,34 +241,54 @@ class RoutinesScreen extends ConsumerWidget {
                         difficultyLevel: 2,
                       ),
                     ),
-                    if (canEditDelete)
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert,
-                              color: Colors.white70),
-                          onSelected: (value) async {
-                            if (value == 'edit') {
-                              final result = await context.pushNamed<bool>(
-                                  'editRoutine',
-                                  extra: routine);
-                              if (result == true && context.mounted) {
-                                ref.invalidate(routinesProvider);
-                              }
-                            } else if (value == 'delete') {
-                              _deleteRoutine(context, ref, routine.id);
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: PopupMenuButton<String>(
+                        icon:
+                            const Icon(Icons.more_vert, color: Colors.white70),
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            final result = await context.pushNamed<bool>(
+                                'editRoutine',
+                                extra: routine);
+                            if (result == true && context.mounted) {
+                              ref.invalidate(routinesProvider);
                             }
-                          },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete',
-                                    style: TextStyle(color: Colors.red))),
-                          ],
-                        ),
+                          } else if (value == 'delete') {
+                            _deleteRoutine(context, ref, routine.id);
+                          } else if (value == 'hide') {
+                            await ref
+                                .read(hiddenGlobalRoutinesProvider.notifier)
+                                .hide(routine.id);
+                          } else if (value == 'unhide') {
+                            await ref
+                                .read(hiddenGlobalRoutinesProvider.notifier)
+                                .unhide(routine.id);
+                          }
+                        },
+                        itemBuilder: (context) {
+                          final items = <PopupMenuEntry<String>>[];
+                          if (canEditDelete) {
+                            items.addAll(const [
+                              PopupMenuItem(value: 'edit', child: Text('Edit')),
+                              PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete',
+                                      style: TextStyle(color: Colors.red))),
+                            ]);
+                          }
+                          if (isGlobal) {
+                            items.add(
+                              PopupMenuItem(
+                                  value: isHidden ? 'unhide' : 'hide',
+                                  child: Text(isHidden ? 'Unhide' : 'Hide')),
+                            );
+                          }
+                          return items;
+                        },
                       ),
+                    ),
                   ],
                 );
               },
