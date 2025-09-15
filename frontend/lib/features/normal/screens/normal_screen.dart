@@ -13,6 +13,8 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/search_bar.dart'; // ExerciseSearchField
 import '../../ranked/utils/rank_utils.dart'; // formatKg, getRankColor, getInterpolatedEnergy
 import '../../ranked/utils/lift_progress.dart';
+import '../../ranked/screens/ranked_screen.dart' show liftStandardsProvider;
+import '../../ranked/screens/result_screen.dart' show standardsPackProvider;
 
 class NormalScreen extends ConsumerStatefulWidget {
   const NormalScreen({super.key});
@@ -39,8 +41,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
   final Map<String, bool> _scenarioIsBodyweight = {};
   final Set<String> _pendingScenarioDetails = {};
 
-  // Rank thresholds fetched for the current user (display unit)
-  Map<String, dynamic>? _liftStandards;
+  // Rank thresholds now come from liftStandardsProvider (reactive)
 
   static const _headerStyle = TextStyle(
     color: Colors.white,
@@ -51,7 +52,6 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
   void initState() {
     super.initState();
     _fetchScenarios();
-    _fetchStandards();
   }
 
   @override
@@ -92,7 +92,6 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
     }
   }
 
-  double _lbPerKg(double kg) => kg * 2.2046226218;
   double _round5(num x) => ((x / 5).round() * 5).toDouble();
   double _round1(num x) => x.roundToDouble();
 
@@ -132,38 +131,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
     }
   }
 
-  Future<void> _fetchStandards() async {
-    setState(() {});
-
-    try {
-      final user = ref.read(authProvider).valueOrNull?.user;
-      if (user == null) {
-        setState(() {
-          _liftStandards = null;
-        });
-        return;
-      }
-
-      final unit = user.preferredUnit;
-      final bodyweightKg = user.weight ?? 90.7; // stored in kg
-      final gender = (user.gender ?? 'male').toLowerCase();
-      final bodyweightForRequest =
-          unit == 'lbs' ? _lbPerKg(bodyweightKg) : bodyweightKg;
-
-      final client = ref.read(publicHttpClientProvider);
-      final response = await client
-          .get('/standards/$bodyweightForRequest?gender=$gender&unit=$unit');
-      final data = (response.data as Map).cast<String, dynamic>();
-
-      if (!mounted) return;
-      setState(() {
-        _liftStandards = data;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {});
-    }
-  }
+  // Removed: standards are provided by liftStandardsProvider
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
@@ -302,6 +270,15 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
       );
     }
 
+    // Watch standards reactively so gender/unit/weight changes update rows
+    final liftStandards = ref
+        .watch(liftStandardsProvider)
+        .maybeWhen(data: (v) => v, orElse: () => null);
+    // KG-only pack for bodyweight scenarios
+    final kgStandards = ref
+        .watch(standardsPackProvider)
+        .maybeWhen(data: (v) => v, orElse: () => null);
+
     return Column(
       children: [
         // Search
@@ -346,7 +323,6 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
             onRefresh: () async {
               _highScoreByScenario.clear();
               await _fetchScenarios();
-              await _fetchStandards();
               // Optionally warm up highscores for visible items after refresh
               if (userId.isNotEmpty) {
                 final futures = _filteredScenarios.map((s) {
@@ -391,9 +367,6 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                       }
 
                       final rawScore = _highScoreByScenario[id] ?? 0.0;
-                      final adjustedScore = rawScore * weightMultiplier;
-                      final scoreText =
-                          rawScore > 0 ? formatKg(adjustedScore) : '—';
 
                       // Rank/progress/energy for any scenario using its multiplier
                       // Ensure details (multiplier + is_bodyweight) are fetched
@@ -411,11 +384,21 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
 
                       final mult = _scenarioMultiplier[id] ?? 0.0;
                       final isBw = _scenarioIsBodyweight[id] ?? false;
-                      if (_liftStandards != null && mult > 0) {
+
+                      // For bodyweight exercises, do not scale score by unit
+                      final displayScore = isBw
+                          ? rawScore
+                          : rawScore * weightMultiplier;
+                      final scoreText =
+                          rawScore > 0 ? formatKg(displayScore) : '—';
+
+                      // Choose base pack: KG for bodyweight; user-unit pack otherwise
+                      final basePack = isBw ? kgStandards : liftStandards;
+                      if (basePack != null && mult > 0) {
                         // Build per-scenario standards by scaling total thresholds by the multiplier.
                         // Round to nearest 5 ONLY for non-bodyweight scenarios.
                         final Map<String, dynamic> scenarioStandards = {
-                          for (final e in _liftStandards!.entries)
+                          for (final e in basePack.entries)
                             e.key: {
                               'lifts': {
                                 'scenario': isBw
@@ -432,13 +415,13 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                         final lp = computeLiftProgress(
                           liftStandards: scenarioStandards,
                           liftKey: 'scenario',
-                          score: adjustedScore,
+                          score: displayScore,
                         );
                         matchedRank = lp.matchedRank;
                         nextThreshold = lp.nextThreshold;
                         progress = lp.progress;
                         energy = getInterpolatedEnergy(
-                          score: adjustedScore,
+                          score: displayScore,
                           thresholds: scenarioStandards,
                           liftKey: 'scenario',
                           userMultiplier: 1.0,
@@ -499,10 +482,13 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                                       SizedBox(
                                         height: 6,
                                         child: LinearProgressIndicator(
-                                          value: (_liftStandards != null &&
-                                                  ((_scenarioMultiplier[id] ??
-                                                          0) >
-                                                      0))
+                                          value: (((_scenarioIsBodyweight[id] ?? false)
+                                                          ? kgStandards
+                                                          : liftStandards) !=
+                                                      null &&
+                                                      ((_scenarioMultiplier[id] ??
+                                                              0) >
+                                                          0))
                                               ? progress
                                               : 0.0,
                                           backgroundColor: Colors.grey[800],
@@ -514,11 +500,14 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        (_liftStandards != null &&
+                                        (((_scenarioIsBodyweight[id] ?? false)
+                                                    ? kgStandards
+                                                    : liftStandards) !=
+                                                null &&
                                                 ((_scenarioMultiplier[id] ??
                                                         0) >
                                                     0))
-                                            ? '${formatKg(adjustedScore)} / ${formatKg(nextThreshold)}'
+                                            ? '${formatKg(displayScore)} / ${formatKg(nextThreshold)}'
                                             : '—',
                                         style: const TextStyle(
                                           color: Colors.white,
@@ -533,7 +522,10 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                                 Expanded(
                                   flex: 2,
                                   child: Center(
-                                    child: (_liftStandards != null &&
+                                    child: (((_scenarioIsBodyweight[id] ?? false)
+                                                ? kgStandards
+                                                : liftStandards) !=
+                                            null &&
                                             ((_scenarioMultiplier[id] ?? 0) >
                                                 0))
                                         ? SvgPicture.asset(
@@ -549,7 +541,10 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                                 Expanded(
                                   child: Center(
                                     child: Text(
-                                      (_liftStandards != null &&
+                                      (((_scenarioIsBodyweight[id] ?? false)
+                                                  ? kgStandards
+                                                  : liftStandards) !=
+                                              null &&
                                               ((_scenarioMultiplier[id] ?? 0) >
                                                   0))
                                           ? NumberFormat("###0").format(energy)
