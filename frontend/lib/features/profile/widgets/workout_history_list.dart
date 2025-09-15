@@ -119,15 +119,52 @@ class WorkoutHistoryList extends ConsumerWidget {
                           ),
                         ];
 
-                        for (final s in grp.value) {
+                        // Build set lines in incrementing order with 1-based index
+                        for (var i = 0; i < grp.value.length; i++) {
+                          final s = grp.value[i];
+                          final isBodyweightScenario = grp.key.startsWith('bodyweight_');
                           final weightUser = toUserUnit(s.weight);
+                          final reps = s.reps;
+
+                          // Skip any set with 0 reps
+                          if (reps <= 0) continue;
+
+                          // Determine if this is a bodyweight set (only when the scenario is bodyweight)
+                          final isBodyweightSet = isBodyweightScenario && s.weight == 0;
+
+                          // For weighted exercises: only show sets with positive weight
+                          if (!isBodyweightSet && weightUser <= 0) continue;
+
+                          final setLabel = Text(
+                            'Set ${i + 1}: ',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          );
+
+                          // Pluralize reps label
+                          final repsLabel = reps == 1 ? 'rep' : 'reps';
+                          // Text for the set
+                          final setText = isBodyweightSet
+                              ? '$reps $repsLabel'
+                              : '${formatNum(weightUser)} $unit x $reps $repsLabel';
+
                           items.add(
-                            Text(
-                              '${formatNum(weightUser)}$unit x ${s.reps}',
-                              style: const TextStyle(color: Colors.white),
+                            RichText(
+                              text: TextSpan(
+                                children: [
+                                  WidgetSpan(child: setLabel),
+                                  TextSpan(
+                                    text: setText,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         }
+
                         items.add(const SizedBox(height: 8));
                         return items;
                       }),
