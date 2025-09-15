@@ -296,23 +296,29 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
             color: Colors.black,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Expanded(child: Text('Lift', style: _headerStyle)),
-              Expanded(
-                  child: Center(child: Text('Score', style: _headerStyle))),
-              Expanded(
+              const Expanded(
+                flex: 2,
+                child: Text('Lift', style: _headerStyle),
+              ),
+              const Expanded(
+                flex: 2,
+                child: Center(child: Text('Score', style: _headerStyle)),
+              ),
+              const Expanded(
                 flex: 2,
                 child: Center(child: Text('Progress', style: _headerStyle)),
               ),
-              Expanded(
+              const Expanded(
                 flex: 2,
                 child: Center(child: Text('Rank', style: _headerStyle)),
               ),
-              Expanded(
+              const Expanded(
+                flex: 1,
                 child: Center(child: Text('Energy', style: _headerStyle)),
               ),
-              SizedBox(width: 40), // leaderboard icon
+              const Expanded(flex: 1, child: SizedBox.shrink()),
             ],
           ),
         ),
@@ -386,9 +392,8 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                       final isBw = _scenarioIsBodyweight[id] ?? false;
 
                       // For bodyweight exercises, do not scale score by unit
-                      final displayScore = isBw
-                          ? rawScore
-                          : rawScore * weightMultiplier;
+                      final displayScore =
+                          isBw ? rawScore : rawScore * weightMultiplier;
                       final scoreText =
                           rawScore > 0 ? formatKg(displayScore) : '—';
 
@@ -402,12 +407,16 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                             e.key: {
                               'lifts': {
                                 'scenario': isBw
-                                    ? _round1(((e.value['total'] ?? 0) as num)
-                                            .toDouble() *
-                                        mult)
-                                    : _round5(((e.value['total'] ?? 0) as num)
-                                            .toDouble() *
-                                        mult),
+                                    ? _round1(
+                                        ((e.value['total'] ?? 0) as num)
+                                                .toDouble() *
+                                            mult,
+                                      )
+                                    : _round5(
+                                        ((e.value['total'] ?? 0) as num)
+                                                .toDouble() *
+                                            mult,
+                                      ),
                               }
                             }
                         };
@@ -429,142 +438,150 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                       }
 
                       return Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
+                        margin: const EdgeInsets.only(
+                            left: 16, right: 16, bottom: 8),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 0),
+                            vertical: 10, horizontal: 8),
                         decoration: BoxDecoration(
                           color: Colors.grey[900],
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: InkWell(
                           onTap: () => _goToScenario(id, name),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                // Lift
-                                Expanded(
-                                  child: Tooltip(
-                                    message: name,
-                                    waitDuration: Duration(milliseconds: 400),
-                                    child: Text(
-                                      name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
+                          child: Row(
+                            children: [
+                              // Lift
+                              Expanded(
+                                flex: 2,
+                                child: Tooltip(
+                                  message: name,
+                                  waitDuration:
+                                      const Duration(milliseconds: 400),
+                                  child: Text(
+                                    name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
+                              ),
 
-                                // Score
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      scoreText,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                      ),
+                              // Score
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: Text(
+                                    scoreText,
+                                    style: const TextStyle(
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
+                              ),
 
-                                // Progress (mirrors RankingTable)
-                                Expanded(
-                                  flex: 2,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        height: 6,
-                                        child: LinearProgressIndicator(
-                                          value: (((_scenarioIsBodyweight[id] ?? false)
-                                                          ? kgStandards
-                                                          : liftStandards) !=
-                                                      null &&
-                                                      ((_scenarioMultiplier[id] ??
-                                                              0) >
-                                                          0))
-                                              ? progress
-                                              : 0.0,
-                                          backgroundColor: Colors.grey[800],
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                            getRankColor(matchedRank),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        (((_scenarioIsBodyweight[id] ?? false)
-                                                    ? kgStandards
-                                                    : liftStandards) !=
-                                                null &&
+                              // Progress (mirrors RankingTable)
+                              Expanded(
+                                flex: 2,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 6,
+                                      child: LinearProgressIndicator(
+                                        value: (((_scenarioIsBodyweight[id] ??
+                                                            false)
+                                                        ? kgStandards
+                                                        : liftStandards) !=
+                                                    null &&
                                                 ((_scenarioMultiplier[id] ??
                                                         0) >
                                                     0))
-                                            ? '${formatKg(displayScore)} / ${formatKg(nextThreshold)}'
-                                            : '—',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
+                                            ? progress
+                                            : 0.0,
+                                        backgroundColor: Colors.grey[800],
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          getRankColor(matchedRank),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Rank icon
-                                Expanded(
-                                  flex: 2,
-                                  child: Center(
-                                    child: (((_scenarioIsBodyweight[id] ?? false)
-                                                ? kgStandards
-                                                : liftStandards) !=
-                                            null &&
-                                            ((_scenarioMultiplier[id] ?? 0) >
-                                                0))
-                                        ? SvgPicture.asset(
-                                            'assets/images/ranks/${matchedRank.toLowerCase()}.svg',
-                                            height: 24,
-                                            width: 24,
-                                          )
-                                        : const SizedBox(height: 24, width: 24),
-                                  ),
-                                ),
-
-                                // Energy
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
                                       (((_scenarioIsBodyweight[id] ?? false)
-                                                  ? kgStandards
-                                                  : liftStandards) !=
-                                              null &&
+                                                      ? kgStandards
+                                                      : liftStandards) !=
+                                                  null &&
                                               ((_scenarioMultiplier[id] ?? 0) >
                                                   0))
-                                          ? NumberFormat("###0").format(energy)
+                                          ? '${formatKg(displayScore)} / ${formatKg(nextThreshold)}'
                                           : '—',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 14,
                                       ),
                                     ),
+                                  ],
+                                ),
+                              ),
+
+                              // Rank icon
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: (((_scenarioIsBodyweight[id] ?? false)
+                                                  ? kgStandards
+                                                  : liftStandards) !=
+                                              null &&
+                                          ((_scenarioMultiplier[id] ?? 0) > 0))
+                                      ? SvgPicture.asset(
+                                          'assets/images/ranks/${matchedRank.toLowerCase()}.svg',
+                                          height: 24,
+                                          width: 24,
+                                        )
+                                      : const SizedBox(height: 24, width: 24),
+                                ),
+                              ),
+
+                              // Energy
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    (((_scenarioIsBodyweight[id] ?? false)
+                                                    ? kgStandards
+                                                    : liftStandards) !=
+                                                null &&
+                                            ((_scenarioMultiplier[id] ?? 0) >
+                                                0))
+                                        ? NumberFormat("###0").format(energy)
+                                        : '—',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ),
+                              ),
 
-                                // Leaderboard
-                                IconButton(
-                                  icon: const Icon(Icons.leaderboard,
-                                      color: Colors.blue),
-                                  onPressed: () => _goToLeaderboard(id, name),
+                              // Leaderboard
+                              Expanded(
+                                flex: 1,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      Icons.leaderboard,
+                                      color: Colors.blueAccent,
+                                      size: 20,
+                                    ),
+                                    onPressed: () => _goToLeaderboard(id, name),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       );
