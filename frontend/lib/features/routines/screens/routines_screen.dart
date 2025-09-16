@@ -12,6 +12,7 @@ import '../../../widgets/loading_spinner.dart';
 import '../widgets/add_routine_card.dart';
 import '../widgets/routine_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/share_service.dart';
 
 final routinesProvider = FutureProvider.autoDispose<List<Routine>>((ref) async {
   return ref.watch(authProvider).when(
@@ -289,6 +290,12 @@ class RoutinesScreen extends ConsumerWidget {
                             await ref
                                 .read(hiddenGlobalRoutinesProvider.notifier)
                                 .unhide(routine.id);
+                          } else if (value == 'share') {
+                            await ref.read(shareServiceProvider).showShareRoutineDialog(
+                                  context: context,
+                                  routineId: routine.id,
+                                  routineName: routine.name,
+                                );
                           }
                         },
                         itemBuilder: (context) {
@@ -309,6 +316,12 @@ class RoutinesScreen extends ConsumerWidget {
                                   child: Text(isHidden ? 'Unhide' : 'Hide')),
                             );
                           }
+                          items.add(
+                            const PopupMenuItem(
+                              value: 'share',
+                              child: Text('Share link'),
+                            ),
+                          );
                           return items;
                         },
                       ),

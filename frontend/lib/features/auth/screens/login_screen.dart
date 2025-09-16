@@ -51,7 +51,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         },
         data: (authState) {
           if (authState.user != null) {
-            context.go('/profile');
+            // Navigate back to the originally requested route if provided
+            final from = GoRouterState.of(context).uri.queryParameters['from'];
+            if (from != null && from.isNotEmpty) {
+              context.go(from);
+            } else {
+              context.go('/profile');
+            }
           }
         },
       );

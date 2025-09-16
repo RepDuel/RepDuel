@@ -37,6 +37,20 @@ class Env {
     return dotenv.env['MERCHANT_DISPLAY_NAME'] ?? 'RepDuel';
   }
 
+  // Public base URL for shareable links and deep links
+  // Example: https://repduel.com
+  static String get publicBaseUrl {
+    const fromEnv = String.fromEnvironment('PUBLIC_BASE_URL');
+    if (fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    final fromDot = dotenv.env['PUBLIC_BASE_URL'];
+    if (fromDot != null && fromDot.isNotEmpty) {
+      return fromDot;
+    }
+    return 'https://repduel.com';
+  }
+
   static String get stripePremiumPlanId {
     const fromEnv = String.fromEnvironment('STRIPE_PREMIUM_PLAN_ID');
     if (fromEnv.isNotEmpty) {

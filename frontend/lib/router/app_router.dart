@@ -297,9 +297,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authStateAsync.valueOrNull?.user != null;
       final publicRoutes = ['/login', '/register'];
       final isAuthRoute = publicRoutes.contains(state.uri.path);
+      final fromParam = state.uri.queryParameters['from'];
 
-      if (!isLoggedIn && !isAuthRoute) return '/login';
-      if (isLoggedIn && isAuthRoute) return '/profile';
+      // If not logged in and trying to access a private route, redirect to login
+      // and preserve the intended destination as ?from=...
+      if (!isLoggedIn && !isAuthRoute) {
+        final dest = Uri.encodeComponent(state.uri.toString());
+        return '/login?from=$dest';
+      }
+
+      // If logged in and currently on an auth route, send them to the original
+      // requested location if provided, otherwise default to profile
+      if (isLoggedIn && isAuthRoute) {
+        if (fromParam != null && fromParam.isNotEmpty) {
+          return fromParam;
+        }
+        return '/profile';
+      }
       return null;
     },
   );

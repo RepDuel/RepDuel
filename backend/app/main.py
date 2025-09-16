@@ -51,6 +51,8 @@ _mount_if_exists("/icons", "icons")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(api_router, prefix="/api/v1")
+from app.api.aasa import router as aasa_router
+app.include_router(aasa_router, include_in_schema=False)
 
 
 @app.get("/", tags=["health"])
@@ -98,6 +100,8 @@ def main_js():
     if os.path.exists(path):
         return FileResponse(path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return Response(status_code=404)
+
+
 
 
 if os.path.exists(INDEX_FILE):

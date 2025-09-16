@@ -244,9 +244,44 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 TextButton(
                   onPressed: () => _openLink(
                       'https://repduel.github.io/repduel-website/terms.html'),
-                  child: const Text('Terms'),
+                  child: const Text('Terms of Use'),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            // Required subscription disclosure details
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade900,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Gold Subscription Details',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Length: 1 month (auto-renewing)',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    kIsWeb
+                        ? 'Price: \$4.99 per month'
+                        : (iosPriceLabel.isNotEmpty
+                            ? 'Price: $iosPriceLabel per month'
+                            : 'Price: see purchase sheet'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
