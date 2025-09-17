@@ -29,6 +29,7 @@ import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/routines/screens/routine_play_screen.dart'; // Option A route
+import '../features/routines/screens/routine_import_screen.dart';
 import '../presentation/scaffolds/main_scaffold.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -82,11 +83,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                     if (extra is Routine) {
                       return RoutinePlayScreen(routine: extra);
                     }
-                    // Fallbacks so we never crash on a null/invalid extra
                     final routineId = state.uri.queryParameters['routineId'];
                     if (routineId != null && routineId.isNotEmpty) {
-                      // Fall back to the ExerciseList screen when only an id is available.
-                      return ExerciseListScreen(routineId: routineId);
+                      return RoutineImportScreen(routineId: routineId);
                     }
                     return const Scaffold(
                       backgroundColor: Colors.black,
