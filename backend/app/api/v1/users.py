@@ -88,12 +88,41 @@ async def login_user(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+def _origin_allowed(request: Request) -> bool:
+    """Allow refresh only from configured frontend origins or APP_URL.
+
+    Source of truth: settings.FRONTEND_ORIGINS (+ APP_URL).
+    If none configured, only non-browser clients (no Origin/Referer) pass.
+    """
+    try:
+        allowed = set((settings.FRONTEND_ORIGINS or []))
+        if settings.APP_URL:
+            allowed.add(settings.APP_URL)
+        allowed_hosts = [str(u).rstrip('/') for u in allowed]
+    except Exception:
+        allowed_hosts = []
+
+    origin = (request.headers.get("origin") or "").rstrip('/').lower()
+    referer = (request.headers.get("referer") or "").rstrip('/').lower()
+
+    def match(url: str) -> bool:
+        return any(url.startswith(h.lower()) for h in allowed_hosts if h)
+
+    # Allow non-browser clients (no Origin/Referer) to pass
+    if not origin and not referer:
+        return True
+    return (origin and match(origin)) or (referer and match(referer))
+
+
 @router.post("/refresh", response_model=Token)
 async def refresh_token_endpoint(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    # Minimal CSRF protection for cross-site cookie refresh
+    if not _origin_allowed(request):
+        raise HTTPException(status_code=403, detail="Invalid origin")
     cookie = request.cookies.get("refresh_token")
     if not cookie:
         raise HTTPException(status_code=401, detail="Missing refresh cookie")

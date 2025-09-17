@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from app.core.config import settings
 
 from app.api.v1.api_router import api_router
 
@@ -15,11 +16,18 @@ app = FastAPI(
     description="Backend for the RepDuel app",
 )
 
-ALLOWED_ORIGINS = [
-    "https://repduel-web-dev.onrender.com",
-    "https://repduel.com",
-    "https://www.repduel.com",
-]
+try:
+    _origins = [str(u).rstrip('/') for u in (settings.FRONTEND_ORIGINS or [])]
+except Exception:
+    _origins = []
+
+if getattr(settings, "APP_URL", None):
+    _origins.append(str(settings.APP_URL).rstrip('/'))
+
+# Dedupe while preserving order
+ALLOWED_ORIGINS = list(dict.fromkeys(_origins))
+
+# Keep localhost regex for dev convenience
 ALLOWED_ORIGIN_REGEX = r"^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$"
 
 app.add_middleware(

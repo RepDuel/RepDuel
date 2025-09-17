@@ -11,6 +11,7 @@ import '../config/env.dart';
 import '../http/adapter.dart';
 import '../models/guild.dart';
 import '../providers/auth_provider.dart';
+import '../providers/secure_storage_provider.dart';
 import '../utils/http_client.dart';
 
 final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
@@ -48,6 +49,8 @@ class AuthInterceptor extends Interceptor {
   final Ref _ref;
   AuthInterceptor(this._ref);
 
+  Future<void>? _refreshing;
+
   @override
   void onRequest(
     RequestOptions options,
@@ -58,6 +61,83 @@ class AuthInterceptor extends Interceptor {
       options.headers['Authorization'] = 'Bearer $token';
     }
     handler.next(options);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final status = err.response?.statusCode;
+    final alreadyRetried = err.requestOptions.extra['__retried__'] == true;
+
+    if (status == 401 && !alreadyRetried) {
+      try {
+        _refreshing ??= _doRefresh();
+        await _refreshing;
+      } catch (_) {
+        // fall through to reject
+      } finally {
+        _refreshing = null;
+      }
+
+      final newToken = _ref.read(authTokenProvider);
+      if (newToken != null && newToken.isNotEmpty) {
+        try {
+          final orig = err.requestOptions;
+          final dio = _ref.read(privateHttpClientProvider).dio;
+
+          final newOptions = Options(
+            method: orig.method,
+            headers: Map<String, dynamic>.from(orig.headers)
+              ..['Authorization'] = 'Bearer $newToken',
+            responseType: orig.responseType,
+            contentType: orig.contentType,
+            followRedirects: orig.followRedirects,
+            validateStatus: orig.validateStatus,
+            receiveDataWhenStatusError: orig.receiveDataWhenStatusError,
+            extra: Map<String, dynamic>.from(orig.extra)
+              ..['__retried__'] = true,
+          );
+
+          final response = await dio.request<dynamic>(
+            orig.path,
+            data: orig.data,
+            queryParameters: orig.queryParameters,
+            options: newOptions,
+            cancelToken: orig.cancelToken,
+            onSendProgress: orig.onSendProgress,
+            onReceiveProgress: orig.onReceiveProgress,
+          );
+
+          return handler.resolve(response);
+        } catch (_) {}
+      }
+    }
+
+    return handler.next(err);
+  }
+
+  Future<void> _doRefresh() async {
+    final publicClient = _ref.read(publicHttpClientProvider);
+    final storage = _ref.read(secureStorageProvider);
+
+    try {
+      final res = await publicClient.post('/users/refresh');
+      if (res.statusCode == 200 && res.data is Map<String, dynamic>) {
+        final map = res.data as Map<String, dynamic>;
+        final access = (map['access_token'] as String?) ?? '';
+        if (access.isNotEmpty) {
+          await storage.writeToken(access);
+          await _ref.read(authProvider.notifier).loadUserFromToken();
+          return;
+        }
+      }
+      await storage.deleteToken();
+      await _ref.read(authProvider.notifier).logout();
+      throw Exception('No access token in refresh response');
+    } catch (e) {
+      await storage.deleteToken();
+      await _ref.read(authProvider.notifier).logout();
+      rethrow;
+    }
   }
 }
 
