@@ -1,5 +1,6 @@
 // frontend/lib/features/routines/screens/exercise_list_screen.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,6 +31,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   double _totalVolumeKg = 0;
   late DateTime _startTime;
   bool _isFinishing = false;
+  Timer? _sessionTicker;
+  Duration _sessionElapsed = Duration.zero;
 
   /// Locally added exercises via /add-exercise (maps convertible to Scenario)
   final List<Map<String, dynamic>> _localAddedExercises = [];
@@ -42,6 +45,13 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   void initState() {
     super.initState();
     _startTime = DateTime.now();
+    _startSessionTimer();
+  }
+
+  @override
+  void dispose() {
+    _sessionTicker?.cancel();
+    super.dispose();
   }
 
   void _updateVolume(List<Map<String, dynamic>> setData) {
@@ -86,6 +96,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     try {
       final client = ref.read(privateHttpClientProvider);
       final allPerformedSets = ref.read(routineSetProvider);
+      final elapsedSeconds = DateTime.now().difference(_startTime).inSeconds;
+      final durationMinutes = elapsedSeconds / 60.0;
 
       final scenariosPayload = allPerformedSets.map((set) {
         return {
@@ -100,7 +112,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final submissionBody = {
         'routine_id': widget.routineId,
         'user_id': user.id,
-        'duration': DateTime.now().difference(_startTime).inSeconds / 60.0,
+        'duration': durationMinutes,
         'completion_timestamp': DateTime.now().toIso8601String(),
         'status': 'completed',
         'scenario_submissions': scenariosPayload,
@@ -317,13 +329,14 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         (ref.watch(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0) >
             1.5;
     final displayVolume = isLbs ? _totalVolumeKg * 2.20462 : _totalVolumeKg;
+    final sessionTimerText = _formatDuration(_sessionElapsed);
 
     return Scaffold(
       appBar: AppBar(
         title: routineDetailsAsync.when(
           data: (details) => Text(details.name),
           loading: () => const Text('Loading...'),
-          error: (_, __) => const Text('Error'),
+          error: (_, __) => const Text('Routine'),
         ),
         backgroundColor: Colors.black,
         elevation: 0,
@@ -350,10 +363,26 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                      'Total Volume: ${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}',
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 16)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Volume: ${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Session Time: $sessionTimerText',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const Divider(color: Colors.white24),
                 Expanded(
@@ -535,6 +564,26 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         },
       ),
     );
+  }
+
+  void _startSessionTimer() {
+    _sessionTicker?.cancel();
+    _sessionTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _sessionElapsed = DateTime.now().difference(_startTime);
+      });
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 }
 

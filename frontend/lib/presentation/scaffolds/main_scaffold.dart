@@ -23,24 +23,32 @@ class MainScaffold extends StatelessWidget {
     ];
 
     final int currentIndex = navigationShell.currentIndex;
-    final String location = GoRouterState.of(context).uri.toString();
+    final Uri uri = GoRouterState.of(context).uri;
+    final String location = uri.toString();
+    final String path = uri.path;
+
+    final bool hideTitleBar = path.startsWith('/routines/play') ||
+        path.startsWith('/routines/exercise-list');
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text(titles[currentIndex]),
-        centerTitle: true,
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (currentIndex == 3 && !location.contains('/profile/settings'))
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () => context.go('/profile/settings'),
+      appBar: hideTitleBar
+          ? null
+          : AppBar(
+              title: Text(titles[currentIndex]),
+              centerTitle: true,
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              actions: [
+                if (currentIndex == 3 &&
+                    !location.contains('/profile/settings'))
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    onPressed: () => context.go('/profile/settings'),
+                  ),
+              ],
             ),
-        ],
-      ),
       body: navigationShell,
       bottomNavigationBar: MainBottomNavBar(
         navigationShell: navigationShell,
