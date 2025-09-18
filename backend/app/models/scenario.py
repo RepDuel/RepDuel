@@ -44,3 +44,11 @@ class Scenario(Base):
     )
 
     scores = relationship("Score", back_populates="scenario")
+    
+    calibration = relationship(
+        "BodyweightCalibration",
+        back_populates="scenario",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
