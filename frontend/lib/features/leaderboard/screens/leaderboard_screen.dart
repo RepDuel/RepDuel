@@ -44,6 +44,18 @@ final leaderboardProvider = FutureProvider.autoDispose
   }
 });
 
+final scenarioDetailsProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
+  (ref, scenarioId) async {
+    final client = ref.watch(privateHttpClientProvider);
+    final response = await client.get('/scenarios/$scenarioId/details');
+    if (response.statusCode == 200) {
+      return (response.data as Map).cast<String, dynamic>();
+    }
+    throw Exception('Failed to load scenario details.');
+  },
+);
+
 class LeaderboardScreen extends ConsumerWidget {
   final String scenarioId;
   final String liftName;
@@ -57,8 +69,10 @@ class LeaderboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final leaderboardDataAsync = ref.watch(leaderboardProvider(scenarioId));
-    final weightMultiplier = ref.watch(authProvider
-        .select((state) => state.valueOrNull?.user?.weightMultiplier ?? 1.0));
+    final scenarioAsync = ref.watch(scenarioDetailsProvider(scenarioId));
+    final authState =
+        ref.watch(authProvider.select((s) => s.valueOrNull?.user));
+    final weightMultiplier = (authState?.weightMultiplier ?? 1.0).toDouble();
     final unit = weightMultiplier > 1.5 ? 'lbs' : 'kg';
 
     return Scaffold(
@@ -76,46 +90,62 @@ class LeaderboardScreen extends ConsumerWidget {
           ),
         ),
         data: (scores) {
-          if (scores.isEmpty) {
-            return const Center(
-              child: Text(
-                'No scores yet. Be the first!',
-                style: TextStyle(color: Colors.white54, fontSize: 16),
+          return scenarioAsync.when(
+            loading: () => const Center(child: LoadingSpinner()),
+            error: (err, _) => Center(
+              child: ErrorDisplay(
+                message: err.toString(),
+                onRetry: () => ref.refresh(scenarioDetailsProvider(scenarioId)),
               ),
-            );
-          }
+            ),
+            data: (scenario) {
+              final isBodyweight =
+                  (scenario['is_bodyweight'] as bool?) ?? false;
+              final displayUnit = isBodyweight ? 'reps' : unit;
+              final multiplier = isBodyweight ? 1.0 : weightMultiplier;
 
-          return ListView.builder(
-            itemCount: scores.length,
-            itemBuilder: (_, index) {
-              final entry = scores[index];
-              final adjustedScore = entry.scoreValue * weightMultiplier;
-              final displayScore = adjustedScore % 1 == 0
-                  ? adjustedScore.toInt().toString()
-                  : adjustedScore.toStringAsFixed(1);
+              if (scores.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No scores yet. Be the first!',
+                    style: TextStyle(color: Colors.white54, fontSize: 16),
+                  ),
+                );
+              }
 
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.grey[800],
-                  backgroundImage: entry.avatarUrl != null
-                      ? NetworkImage(entry.avatarUrl!)
-                      : null,
-                  child: entry.avatarUrl == null
-                      ? const Icon(Icons.person, color: Colors.white54)
-                      : null,
-                ),
-                title: Text(
-                  '${index + 1}. ${entry.username}',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-                trailing: Text(
-                  '$displayScore $unit',
-                  style: const TextStyle(
-                      color: Colors.amber,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500),
-                ),
+              return ListView.builder(
+                itemCount: scores.length,
+                itemBuilder: (_, index) {
+                  final entry = scores[index];
+                  final adjustedScore = entry.scoreValue * multiplier;
+                  final displayScore = adjustedScore % 1 == 0
+                      ? adjustedScore.toInt().toString()
+                      : adjustedScore.toStringAsFixed(1);
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.grey[800],
+                      backgroundImage: entry.avatarUrl != null
+                          ? NetworkImage(entry.avatarUrl!)
+                          : null,
+                      child: entry.avatarUrl == null
+                          ? const Icon(Icons.person, color: Colors.white54)
+                          : null,
+                    ),
+                    title: Text(
+                      '${index + 1}. ${entry.username}',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    trailing: Text(
+                      '$displayScore $displayUnit',
+                      style: const TextStyle(
+                          color: Colors.amber,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  );
+                },
               );
             },
           );
