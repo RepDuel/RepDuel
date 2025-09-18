@@ -3,18 +3,45 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_db
 from app.models.energy_history import EnergyHistory
 from app.models.user import User
-from app.schemas.energy import DailyEnergyEntry, EnergyEntry, EnergyLeaderboardEntry, EnergySubmit
+from app.schemas.energy import (
+    DailyEnergyEntry,
+    EnergyEntry,
+    EnergyLeaderboardEntry,
+    EnergySubmit,
+)
 
 router = APIRouter(
     prefix="/energy",
     tags=["Energy"],
 )
+
+def _rank_from_energy(energy: float) -> str:
+    thresholds = [
+        (1200, "Celestial"),
+        (1100, "Astra"),
+        (1000, "Nova"),
+        (900, "Grandmaster"),
+        (800, "Master"),
+        (700, "Jade"),
+        (600, "Diamond"),
+        (500, "Platinum"),
+        (400, "Gold"),
+        (300, "Silver"),
+        (200, "Bronze"),
+        (100, "Iron"),
+    ]
+    for threshold, rank in thresholds:
+        if energy >= threshold:
+            return rank
+    return "Unranked"
 
 
 @router.post("/submit")
@@ -51,31 +78,33 @@ async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
 @router.get("/leaderboard", response_model=list[EnergyLeaderboardEntry])
 async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
-    stmt = (
-        select(
-            User.id.label("user_id"),
-            User.username,
-            User.avatar_url,
-            User.energy.label("total_energy"),
-            User.rank.label("user_rank"),
-        )
-        .where(User.is_active == True)
-        .order_by(User.energy.desc().nullslast(), User.updated_at.asc())
-    )
+    stmt = select(User).where(User.is_active == True)
     result = await db.execute(stmt)
-    rows = result.all()
+    users = result.scalars().all()
 
-    return [
-        EnergyLeaderboardEntry(
-            rank=index + 1,
-            user_id=row.user_id,
-            username=row.username,
-            avatar_url=row.avatar_url,
-            total_energy=row.total_energy or 0,
-            user_rank=row.user_rank or "Unranked",
+    users.sort(
+        key=lambda u: (
+            -(u.energy or 0),
+            u.updated_at if isinstance(u.updated_at, datetime) else datetime.min,
         )
-        for index, row in enumerate(rows)
-    ]
+    )
+
+    entries = []
+    for index, user in enumerate(users, start=1):
+        total_energy = int(round(user.energy or 0))
+        final_rank = _rank_from_energy(total_energy)
+        entries.append(
+            EnergyLeaderboardEntry(
+                rank=index,
+                user_id=user.id,
+                username=user.username,
+                avatar_url=user.avatar_url,
+                total_energy=total_energy,
+                user_rank=final_rank,
+            )
+        )
+
+    return entries
 
 
 @router.get("/daily/{user_id}", response_model=list[DailyEnergyEntry])

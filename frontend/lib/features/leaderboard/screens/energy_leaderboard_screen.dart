@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/providers/api_providers.dart';
-import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../../ranked/utils/rank_utils.dart';
@@ -13,18 +12,22 @@ import '../../ranked/utils/rank_utils.dart';
 class EnergyLeaderboardEntry {
   final String username;
   final int totalEnergy;
+  final String userRank;
 
   EnergyLeaderboardEntry({
     required this.username,
     required this.totalEnergy,
+    required this.userRank,
   });
 
   factory EnergyLeaderboardEntry.fromJson(Map<String, dynamic> json) {
     final userNode = json['user'] as Map<String, dynamic>?;
     final name = json['username'] ?? userNode?['username'];
+    final rank = json['user_rank'] ?? userNode?['rank'];
     return EnergyLeaderboardEntry(
       username: (name is String && name.isNotEmpty) ? name : 'Anonymous',
       totalEnergy: (json['total_energy'] ?? 0).round(),
+      userRank: (rank is String && rank.isNotEmpty) ? rank : 'Unranked',
     );
   }
 }
@@ -37,18 +40,6 @@ final energyLeaderboardProvider =
   return data.map((entry) => EnergyLeaderboardEntry.fromJson(entry)).toList();
 });
 
-String _rankForEnergy(int energy) {
-  String currentRank = 'Iron';
-  int currentThreshold = 0;
-  rankEnergy.forEach((rank, threshold) {
-    if (energy >= threshold && threshold >= currentThreshold) {
-      currentRank = rank;
-      currentThreshold = threshold;
-    }
-  });
-  return currentRank;
-}
-
 class EnergyLeaderboardScreen extends ConsumerWidget {
   const EnergyLeaderboardScreen({super.key});
 
@@ -56,10 +47,6 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<EnergyLeaderboardEntry>> leaderboardData =
         ref.watch(energyLeaderboardProvider);
-    final user = ref.watch(authProvider).valueOrNull?.user;
-    final officialEnergy = user?.energy.round();
-    final officialRank = user?.rank ?? 'Unranked';
-    final overallColor = getRankColor(officialRank);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -132,7 +119,7 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
                     final rowColor = index.isEven
                         ? const Color(0xFF101218)
                         : const Color(0xFF0B0D13);
-                    final entryRank = _rankForEnergy(entry.totalEnergy);
+                    final entryRank = entry.userRank;
                     final entryRankColor = getRankColor(entryRank);
 
                     return Container(
