@@ -67,7 +67,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<bool> login(String email, String password) async {
     state = const AsyncValue.loading();
     try {
       final tokenResponse = await _authApi.login(email, password);
@@ -77,6 +77,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
         if (user != null) {
           state = AsyncValue.data(
               AuthState(user: user, token: tokenResponse.accessToken));
+          return true;
         } else {
           await _secureStorage.deleteToken();
           state = AsyncValue.error(
@@ -98,15 +99,17 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       state = AsyncValue.error(errorMessage, StackTrace.current);
       debugPrint("[AuthNotifier] Login error: $e");
     }
+    return false;
   }
 
-  Future<void> register(String username, String email, String password) async {
+  Future<bool> register(String username, String email, String password) async {
     state = const AsyncValue.loading();
     try {
       final newUser = await _authApi.register(username, email, password);
       if (newUser != null) {
         state = AsyncValue.data(AuthState.initial());
         debugPrint("[AuthNotifier] Registration successful for $username.");
+        return true;
       } else {
         state = AsyncValue.error(
             'Registration failed. Please try again.', StackTrace.current);
@@ -116,6 +119,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
           AsyncValue.error('Error during registration: $e', StackTrace.current);
       debugPrint("[AuthNotifier] Registration error: $e");
     }
+    return false;
   }
 
   Future<void> logout() async {
@@ -171,6 +175,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     double? weight,
     double? weightMultiplier,
     String? subscriptionLevel,
+    String? preferredUnit,
   }) async {
     final currentStateData = state.valueOrNull;
     final token = currentStateData?.token;
@@ -185,6 +190,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       }
       if (subscriptionLevel != null) {
         updates['subscription_level'] = subscriptionLevel;
+      }
+      if (preferredUnit != null) {
+        updates['preferred_unit'] = preferredUnit;
       }
 
       if (updates.isEmpty) return true;

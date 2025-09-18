@@ -23,6 +23,7 @@ import '../features/premium/screens/subscription_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/profile/screens/theme_selector_screen.dart';
+import '../features/onboarding/screens/onboarding_profile_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
 import '../features/ranked/screens/result_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
@@ -162,6 +163,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/profile',
+        name: 'onboardingProfile',
+        builder: (context, state) => const OnboardingProfileScreen(),
       ),
       GoRoute(
         path: '/subscribe',

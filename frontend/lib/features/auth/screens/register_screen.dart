@@ -19,6 +19,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _pendingOnboardingRedirect = false;
 
   @override
   void dispose() {
@@ -36,7 +37,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final username = _usernameController.text.trim();
       final password = _passwordController.text;
 
-      await ref.read(authProvider.notifier).register(username, email, password);
+      final registered =
+          await ref.read(authProvider.notifier).register(username, email, password);
+      if (!mounted) return;
+      if (registered) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created! Let\'s finish setting things up.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _pendingOnboardingRedirect = true;
+        final loggedIn =
+            await ref.read(authProvider.notifier).login(email, password);
+        if (!loggedIn) {
+          _pendingOnboardingRedirect = false;
+        }
+      }
     }
   }
 
@@ -53,16 +70,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
         },
         data: (authState) {
-          final didRegisterSuccessfully =
-              previous is AsyncLoading<AuthState> && authState.user == null;
-          if (didRegisterSuccessfully) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Registration successful! Please log in.'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            context.go('/login');
+          final user = authState.user;
+          if (_pendingOnboardingRedirect && user != null) {
+            _pendingOnboardingRedirect = false;
+            if (!mounted) return;
+            context.go('/onboarding/profile');
           }
         },
       );
