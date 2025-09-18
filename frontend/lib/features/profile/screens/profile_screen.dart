@@ -144,8 +144,8 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Widget _buildPlaceholderAvatar() {
-    return Image.asset(
-      'assets/images/profile_placeholder.png',
+    return SvgPicture.asset(
+      'assets/images/profile_placeholder.svg',
       width: 80,
       height: 80,
       fit: BoxFit.cover,

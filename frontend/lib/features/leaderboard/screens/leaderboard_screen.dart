@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:repduel/core/providers/api_providers.dart';
 
 import '../../../core/providers/auth_provider.dart';
@@ -113,6 +114,8 @@ class LeaderboardScreen extends ConsumerWidget {
                 );
               }
 
+              const double avatarSize = 48;
+
               return ListView.builder(
                 itemCount: scores.length,
                 itemBuilder: (_, index) {
@@ -122,27 +125,39 @@ class LeaderboardScreen extends ConsumerWidget {
                       ? adjustedScore.toInt().toString()
                       : adjustedScore.toStringAsFixed(1);
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.grey[800],
-                      backgroundImage: entry.avatarUrl != null
-                          ? NetworkImage(entry.avatarUrl!)
-                          : null,
-                      child: entry.avatarUrl == null
-                          ? const Icon(Icons.person, color: Colors.white54)
-                          : null,
-                    ),
-                    title: Text(
-                      '${index + 1}. ${entry.username}',
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    trailing: Text(
-                      '$displayScore $displayUnit',
-                      style: const TextStyle(
-                          color: Colors.amber,
+                  final rowColor = index.isEven
+                      ? const Color(0xFF101218)
+                      : const Color(0xFF0B0D13);
+
+                  return Container(
+                    color: rowColor,
+                    child: ListTile(
+                      leading: _SquareAvatar(
+                        size: avatarSize,
+                        backgroundColor: Colors.black,
+                        avatarUrl: entry.avatarUrl,
+                        placeholderBuilder: () => SvgPicture.asset(
+                          'assets/images/profile_placeholder.svg',
+                          width: avatarSize * 0.8,
+                          height: avatarSize * 0.8,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      title: Text(
+                        '${index + 1}. ${entry.username}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      trailing: Text(
+                        '$displayScore $displayUnit',
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 16,
-                          fontWeight: FontWeight.w500),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -150,6 +165,51 @@ class LeaderboardScreen extends ConsumerWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+/// A sharp-edged square avatar (no rounding) that shows either a network image
+/// or a provided placeholder widget (e.g., an SVG).
+class _SquareAvatar extends StatelessWidget {
+  final double size;
+  final Color backgroundColor;
+  final String? avatarUrl;
+  final Widget Function() placeholderBuilder;
+
+  const _SquareAvatar({
+    required this.size,
+    required this.backgroundColor,
+    required this.avatarUrl,
+    required this.placeholderBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          // Square edges: no borderRadius
+          borderRadius: BorderRadius.zero,
+        ),
+        child: avatarUrl != null
+            ? ClipRRect(
+                // keep edges perfectly square
+                borderRadius: BorderRadius.zero,
+                child: Image.network(
+                  avatarUrl!,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Center(child: placeholderBuilder()),
+                ),
+              )
+            : Center(child: placeholderBuilder()),
       ),
     );
   }

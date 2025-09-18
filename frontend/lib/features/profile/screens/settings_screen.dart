@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -378,9 +379,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       backgroundColor: Colors.grey[700],
                       backgroundImage: _isValidImageUrl(user.avatarUrl)
                           ? NetworkImage(user.avatarUrl!)
-                          : const AssetImage(
-                                  'assets/images/profile_placeholder.png')
-                              as ImageProvider,
+                          : null,
+                      child: !_isValidImageUrl(user.avatarUrl)
+                          ? SvgPicture.asset(
+                              'assets/images/profile_placeholder.svg',
+                              width: 96,
+                              height: 96,
+                            )
+                          : null,
                     ),
                     const SizedBox(height: 8),
                     const Text(
