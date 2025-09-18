@@ -27,6 +27,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isManagingSubscription = false;
   // ignore: prefer_final_fields
   bool _isDeletingScores = false;
+  bool _isDeletingAccount = false;
 
   double _toDisplayUnit(User user, double value) =>
       value * user.weightMultiplier;
@@ -288,6 +289,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    if (_isDeletingAccount) return;
+    final confirmed = await _showConfirmationDialog(
+      title: 'Delete Account',
+      content:
+          'This will permanently delete your account and all associated data. This cannot be undone.',
+      confirmText: 'Delete Account',
+      isDestructive: true,
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isDeletingAccount = true);
+    try {
+      final client = ref.read(privateHttpClientProvider);
+      await client.delete('/users/me');
+      if (mounted) {
+        _showFeedbackSnackbar('Account deleted.', isSuccess: true);
+      }
+      await ref.read(authProvider.notifier).logout();
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final message =
+          (data is Map<String, dynamic> && data['detail'] != null)
+              ? data['detail'].toString()
+              : 'Failed to delete account.';
+      _showFeedbackSnackbar(message, isSuccess: false);
+    } catch (e) {
+      _showFeedbackSnackbar('Failed to delete account: $e',
+          isSuccess: false);
+    } finally {
+      if (mounted) {
+        setState(() => _isDeletingAccount = false);
+      }
+    }
+  }
+
   bool _isValidImageUrl(String? url) {
     if (url == null || url.isEmpty) return false;
     final uri = Uri.tryParse(url);
@@ -488,6 +525,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     if (mounted) setState(() => _isDeletingScores = false);
                   }
                 },
+              ),
+
+              const Divider(color: Colors.grey),
+              ListTile(
+                title: const Text(
+                  'Delete Account',
+                  style: TextStyle(color: Colors.red),
+                ),
+                subtitle: const Text(
+                    'Permanently remove your account and personal data'),
+                trailing: _isDeletingAccount
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      )
+                    : const Icon(Icons.person_off, color: Colors.red),
+                onTap: _deleteAccount,
               ),
 
               const Divider(color: Colors.grey),
