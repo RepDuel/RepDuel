@@ -2,10 +2,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/providers/api_providers.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
+import '../../ranked/utils/rank_utils.dart';
 
 class EnergyLeaderboardEntry {
   final String username;
@@ -34,6 +37,18 @@ final energyLeaderboardProvider =
   return data.map((entry) => EnergyLeaderboardEntry.fromJson(entry)).toList();
 });
 
+String _rankForEnergy(int energy) {
+  String currentRank = 'Iron';
+  int currentThreshold = 0;
+  rankEnergy.forEach((rank, threshold) {
+    if (energy >= threshold && threshold >= currentThreshold) {
+      currentRank = rank;
+      currentThreshold = threshold;
+    }
+  });
+  return currentRank;
+}
+
 class EnergyLeaderboardScreen extends ConsumerWidget {
   const EnergyLeaderboardScreen({super.key});
 
@@ -41,6 +56,10 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<EnergyLeaderboardEntry>> leaderboardData =
         ref.watch(energyLeaderboardProvider);
+    final user = ref.watch(authProvider).valueOrNull?.user;
+    final officialEnergy = user?.energy.round();
+    final officialRank = user?.rank ?? 'Unranked';
+    final overallColor = getRankColor(officialRank);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -69,10 +88,11 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
-                  children: [
+                  children: const [
                     SizedBox(
                       width: 40,
                       child: Text(
@@ -112,6 +132,8 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
                     final rowColor = index.isEven
                         ? const Color(0xFF101218)
                         : const Color(0xFF0B0D13);
+                    final entryRank = _rankForEnergy(entry.totalEnergy);
+                    final entryRankColor = getRankColor(entryRank);
 
                     return Container(
                       color: rowColor,
@@ -141,13 +163,24 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          Text(
-                            '${entry.totalEnergy}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${entry.totalEnergy} $entryRank',
+                                style: TextStyle(
+                                  color: entryRankColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              SvgPicture.asset(
+                                'assets/images/ranks/${entryRank.toLowerCase()}.svg',
+                                height: 20,
+                                width: 20,
+                              ),
+                            ],
                           ),
                         ],
                       ),
