@@ -20,6 +20,7 @@ class ScoreHistoryChart extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final historyAsync = ref.watch(scoreHistoryProvider(scenarioId));
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return historyAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, s) => Center(child: Text(e.toString().replaceFirst("Exception: ", ""), style: const TextStyle(color: Colors.red, fontSize: 14))),
@@ -83,11 +84,14 @@ class ScoreHistoryChart extends ConsumerWidget {
                 LineChartBarData(
                   spots: spots,
                   isCurved: true,
-                  color: Colors.blueAccent,
+                  color: primaryColor,
                   barWidth: 3,
                   isStrokeCapRound: true,
                   dotData: const FlDotData(show: true),
-                  belowBarData: BarAreaData(show: true),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: primaryColor.withValues(alpha: 0.15),
+                  ),
                 ),
               ],
             ),

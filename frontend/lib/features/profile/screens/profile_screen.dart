@@ -19,6 +19,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authStateAsync = ref.watch(authProvider);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -46,7 +47,7 @@ class ProfileScreen extends ConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: refresh,
-            color: Colors.blueAccent,
+            color: primaryColor,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16.0),
@@ -108,7 +109,7 @@ class ProfileScreen extends ConsumerWidget {
                                 .state = !showGraph,
                             child: Text(
                               showGraph ? 'Hide Graph' : 'View Graph',
-                              style: const TextStyle(color: Colors.blueAccent),
+                              style: TextStyle(color: primaryColor),
                             ),
                           ),
                         ],

@@ -570,9 +570,9 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                                 child: Align(
                                   alignment: Alignment.centerRight,
                                   child: IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.leaderboard,
-                                      color: Colors.blueAccent,
+                                      color: Theme.of(context).colorScheme.primary,
                                       size: 20,
                                     ),
                                     onPressed: () => _goToLeaderboard(id, name),

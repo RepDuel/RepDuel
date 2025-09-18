@@ -117,6 +117,10 @@ class RankingTable extends ConsumerWidget {
     // Multiplier converts stored kg scores to display/pack unit
     final weightMultiplier = user.weightMultiplier;
 
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final onPrimary = theme.colorScheme.onPrimary;
+
     return Column(
       children: [
         Row(
@@ -148,7 +152,7 @@ class RankingTable extends ConsumerWidget {
                 height: 24,
                 width: 24),
             IconButton(
-                icon: const Icon(Icons.leaderboard, color: Colors.blueAccent),
+                icon: Icon(Icons.leaderboard, color: primaryColor),
                 onPressed: onEnergyLeaderboardTapped),
           ],
         ),
@@ -295,8 +299,8 @@ class RankingTable extends ConsumerWidget {
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: IconButton(
-                        icon: const Icon(Icons.leaderboard,
-                            color: Colors.blueAccent, size: 20),
+                        icon: Icon(Icons.leaderboard,
+                            color: primaryColor, size: 20),
                         onPressed: () => onLeaderboardTapped(spec.scenarioId),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -312,8 +316,8 @@ class RankingTable extends ConsumerWidget {
         ElevatedButton(
           onPressed: onViewBenchmarks,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+            backgroundColor: primaryColor,
+            foregroundColor: onPrimary,
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
           ),
           child: const Text('View Benchmarks'),

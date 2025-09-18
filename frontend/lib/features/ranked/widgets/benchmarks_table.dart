@@ -63,8 +63,8 @@ class BenchmarksTable extends ConsumerWidget {
             ElevatedButton(
               onPressed: onViewRankings,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               ),

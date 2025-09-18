@@ -46,6 +46,7 @@ class EnergyGraph extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final energyData = ref.watch(energyGraphProvider(userId));
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return energyData.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -117,9 +118,12 @@ class EnergyGraph extends ConsumerWidget {
                     (i) => FlSpot(i.toDouble(), entries[i].totalEnergy),
                   ),
                   isCurved: true,
-                  color: Colors.blueAccent,
+                  color: primaryColor,
                   barWidth: 3,
-                  belowBarData: BarAreaData(show: true),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: primaryColor.withValues(alpha: 0.15),
+                  ),
                   dotData: const FlDotData(show: true),
                 ),
               ],
