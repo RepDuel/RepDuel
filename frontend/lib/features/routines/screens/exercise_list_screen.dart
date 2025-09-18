@@ -96,6 +96,24 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     try {
       final client = ref.read(privateHttpClientProvider);
       final allPerformedSets = ref.read(routineSetProvider);
+      final totalVolume = allPerformedSets.fold<double>(
+        0,
+        (sum, set) => sum + (set.weight * set.reps),
+      );
+      if (totalVolume <= 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Log at least one set with volume before finishing.'),
+            ),
+          );
+          setState(() => _isFinishing = false);
+        } else {
+          _isFinishing = false;
+        }
+        return;
+      }
       final elapsedSeconds = DateTime.now().difference(_startTime).inSeconds;
       final durationMinutes = elapsedSeconds / 60.0;
 
@@ -153,7 +171,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
       if (!mounted) return;
 
-      context.go('/summary', extra: _totalVolumeKg);
+      context.go('/summary', extra: totalVolume);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
