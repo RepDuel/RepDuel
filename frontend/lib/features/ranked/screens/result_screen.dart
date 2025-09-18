@@ -244,6 +244,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
 
     final weightMultiplier = user.weightMultiplier;
+    final isFemale = (user.gender?.toLowerCase() == 'female');
     final unit = _unitFromMultiplier(weightMultiplier);
 
     final scoreForRankCalcKg = widget.finalScore > widget.previousBest
@@ -307,6 +308,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 final thresholds = generateBodyweightBenchmarks(
                   calibration,
                   weightKg > 0 ? weightKg : 90.7,
+                  isFemale: isFemale,
                 );
                 scenarioStandards = {
                   for (final entry in thresholds.entries)

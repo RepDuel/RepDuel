@@ -45,6 +45,8 @@ def _as_value(obj: Union[Any, Dict[str, Any]], key: str) -> float:
 def generate_bodyweight_benchmarks(
     calibration: Union[Any, Dict[str, Any]],
     bodyweight_kg: float,
+    *,
+    gender: str = "male",
 ) -> Dict[str, int]:
     """Generate per-rank thresholds for a bodyweight exercise.
 
@@ -125,12 +127,13 @@ def generate_bodyweight_benchmarks(
             fractions[rank] = alpha + (1.0 - alpha) * (idx / denom)
 
     # ---- 4) Convert to absolute values (exclude Celestial for now) ----
+    scale = 0.6 if gender.lower() == "female" else 1.0
     thresholds: Dict[str, int] = {}
     for rank in RANKS_ORDER:
         if rank == "Celestial":
             continue
         fraction = fractions[rank]
-        value = beginner_bw + fraction * gap
+        value = (beginner_bw + fraction * gap) * scale
         thresholds[rank] = int(round(value))
 
     # ---- 5) Celestial uses the same step size as Nova → Astra ----

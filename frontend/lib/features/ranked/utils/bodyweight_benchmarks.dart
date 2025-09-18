@@ -26,7 +26,7 @@ double _asDouble(Map<String, dynamic> source, String key) {
 Map<String, double> generateBodyweightBenchmarks(
   Map<String, dynamic> calibration,
   double bodyweightKg,
-) {
+  {bool isFemale = false}) {
   if (bodyweightKg <= 0) {
     throw ArgumentError('bodyweightKg must be positive');
   }
@@ -95,14 +95,16 @@ Map<String, double> generateBodyweightBenchmarks(
   }
 
   final thresholds = <String, double>{};
+  final scale = isFemale ? 0.6 : 1.0;
+
   for (final rank in kRankOrder) {
     if (rank == 'Celestial') continue;
     final fraction = fractions[rank] ?? 0.0;
-    thresholds[rank] = beginnerBw + fraction * gap;
+    thresholds[rank] = (beginnerBw + fraction * gap) * scale;
   }
 
-  final astra = thresholds['Astra'] ?? eliteBw;
-  final nova = thresholds['Nova'] ?? (astra - gap / 5);
+  final astra = thresholds['Astra'] ?? (eliteBw * scale);
+  final nova = thresholds['Nova'] ?? (astra - (gap * scale) / 5);
   thresholds['Celestial'] = astra + (astra - nova);
 
   return thresholds;

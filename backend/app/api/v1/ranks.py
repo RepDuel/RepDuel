@@ -155,7 +155,11 @@ async def get_rank_progress(
         status_code=404,
         detail="No bodyweight calibration configured for this scenario",
       )
-    standards = generate_bodyweight_benchmarks(calibration, bodyweight_kg=user_weight)
+    standards = generate_bodyweight_benchmarks(
+      calibration,
+      bodyweight_kg=user_weight,
+      gender=user_gender,
+    )
   else:
     multiplier = scenario.multiplier or 1.0
     standards = DotsCalculator.calculate_lift_standards(

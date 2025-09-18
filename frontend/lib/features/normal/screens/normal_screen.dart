@@ -274,6 +274,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
     final user = ref.watch(authProvider).valueOrNull?.user;
     final userId = user?.id.toString() ?? '';
     final weightMultiplier = (user?.weightMultiplier ?? 1.0).toDouble();
+    final isFemale = (user?.gender?.toLowerCase() == 'female');
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -433,6 +434,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
                           final thresholds = generateBodyweightBenchmarks(
                             calibration,
                             weightKg,
+                            isFemale: isFemale,
                           );
                           scenarioStandards = {
                             for (final entry in thresholds.entries)
