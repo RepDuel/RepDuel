@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
+from app.schemas.bodyweight_calibration import BodyweightCalibrationRead
 
 class ScenarioBase(BaseModel):
     name: str
@@ -44,6 +45,7 @@ class ScenarioRead(BaseModel):
     primary_muscles: List[str]
     secondary_muscles: List[str]
     equipment: List[str]
+    calibration: Optional[BodyweightCalibrationRead] = None
 
     class Config:
         from_attributes = True

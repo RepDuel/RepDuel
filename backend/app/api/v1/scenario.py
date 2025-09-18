@@ -47,6 +47,7 @@ async def get_scenario_details(scenario_id: str, db: AsyncSession = Depends(get_
             selectinload(Scenario.primary_muscles),
             selectinload(Scenario.secondary_muscles),
             selectinload(Scenario.equipment),
+            selectinload(Scenario.calibration),
         )
         .filter(Scenario.id == scenario_id)
     )

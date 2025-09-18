@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../widgets/search_bar.dart'; // ExerciseSearchField
+import '../../ranked/utils/bodyweight_benchmarks.dart';
 import '../../ranked/utils/rank_utils.dart'; // formatKg, getRankColor, getInterpolatedEnergy
 import '../../ranked/utils/lift_progress.dart';
 import '../../ranked/screens/ranked_screen.dart' show liftStandardsProvider;
@@ -40,6 +41,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
   final Map<String, double> _scenarioMultiplier = {};
   final Map<String, bool> _scenarioIsBodyweight = {};
   final Set<String> _pendingScenarioDetails = {};
+  final Map<String, Map<String, double>> _scenarioCalibration = {};
 
   // Rank thresholds now come from liftStandardsProvider (reactive)
 
@@ -108,23 +110,46 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
       final res = await client.get('/scenarios/$scenarioId/details');
       double mult = 0.0;
       bool isBw = false;
+      Map<String, double>? calibration;
       if (res.statusCode == 200) {
         final body = res.data as Map<String, dynamic>;
         final m = body['multiplier'];
         if (m is num) mult = m.toDouble();
         final bw = body['is_bodyweight'];
         if (bw is bool) isBw = bw;
+        final cal = body['calibration'];
+        if (cal is Map<String, dynamic>) {
+          final keys = [
+            'beginner_50',
+            'elite_50',
+            'beginner_140',
+            'elite_140',
+            'intermediate_95',
+          ];
+          if (keys.every((key) => cal[key] is num)) {
+            calibration = {
+              for (final key in keys)
+                key: (cal[key] as num).toDouble(),
+            };
+          }
+        }
       }
       if (!mounted) return;
       setState(() {
         _scenarioMultiplier[scenarioId] = mult;
         _scenarioIsBodyweight[scenarioId] = isBw;
+        if (calibration != null) {
+          _scenarioCalibration[scenarioId] = calibration;
+        } else {
+          _scenarioCalibration.remove(scenarioId);
+        }
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _scenarioMultiplier[scenarioId] = 0.0;
         _scenarioIsBodyweight[scenarioId] = false;
+        _scenarioCalibration.remove(scenarioId);
       });
     } finally {
       _pendingScenarioDetails.remove(scenarioId);
@@ -399,28 +424,41 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
 
                       // Choose base pack: KG for bodyweight; user-unit pack otherwise
                       final basePack = isBw ? kgStandards : liftStandards;
-                      if (basePack != null && mult > 0) {
-                        // Build per-scenario standards by scaling total thresholds by the multiplier.
-                        // Round to nearest 5 ONLY for non-bodyweight scenarios.
-                        final Map<String, dynamic> scenarioStandards = {
+                      Map<String, dynamic>? scenarioStandards;
+
+                      if (isBw) {
+                        final calibration = _scenarioCalibration[id];
+                        final weightKg = (user?.weight ?? 90.7).toDouble();
+                        if (calibration != null && weightKg > 0) {
+                          final thresholds = generateBodyweightBenchmarks(
+                            calibration,
+                            weightKg,
+                          );
+                          scenarioStandards = {
+                            for (final entry in thresholds.entries)
+                              entry.key: {
+                                'lifts': {
+                                  'scenario': _round1(entry.value),
+                                },
+                              },
+                          };
+                        }
+                      } else if (basePack != null && mult > 0) {
+                        scenarioStandards = {
                           for (final e in basePack.entries)
                             e.key: {
                               'lifts': {
-                                'scenario': isBw
-                                    ? _round1(
-                                        ((e.value['total'] ?? 0) as num)
-                                                .toDouble() *
-                                            mult,
-                                      )
-                                    : _round5(
-                                        ((e.value['total'] ?? 0) as num)
-                                                .toDouble() *
-                                            mult,
-                                      ),
+                                'scenario': _round5(
+                                  ((e.value['total'] ?? 0) as num).toDouble() *
+                                      mult,
+                                ),
                               }
-                            }
+                            },
                         };
+                      }
 
+                      if (scenarioStandards != null &&
+                          scenarioStandards.isNotEmpty) {
                         final lp = computeLiftProgress(
                           liftStandards: scenarioStandards,
                           liftKey: 'scenario',

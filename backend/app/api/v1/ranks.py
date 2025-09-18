@@ -3,10 +3,17 @@
 import os
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.services.dots_service import DotsCalculator
+from app.api.v1.deps import get_db
+from app.models.bodyweight_calibration import BodyweightCalibration
+from app.models.scenario import Scenario
+from app.services.bodyweight_benchmarks import generate_bodyweight_benchmarks
 
 router = APIRouter(prefix="/ranks", tags=["Ranks"])
 
@@ -129,22 +136,33 @@ async def get_rank_progress(
   final_score: float,
   user_weight: float,
   user_gender: str = "male",
+  db: AsyncSession = Depends(get_db),
 ):
-  async with httpx.AsyncClient() as client:
-    response = await client.get(f"{settings.BASE_URL}/api/v1/scenarios/{scenario_id}/multiplier")
-
-  if response.status_code != 200:
-    raise HTTPException(status_code=response.status_code, detail="Failed to fetch scenario multiplier")
-
-  scenario_multiplier = response.json()
-  if not isinstance(scenario_multiplier, float):
-    scenario_multiplier = scenario_multiplier.get("multiplier", 1)
-
-  standards = DotsCalculator.calculate_lift_standards(
-    bodyweight_kg=user_weight,
-    gender=user_gender,
-    lift_ratio=scenario_multiplier,
+  result = await db.execute(
+    select(Scenario)
+    .options(selectinload(Scenario.calibration))
+    .where(Scenario.id == scenario_id)
   )
+  scenario = result.scalars().first()
+
+  if not scenario:
+    raise HTTPException(status_code=404, detail="Scenario not found")
+
+  if scenario.is_bodyweight:
+    calibration: BodyweightCalibration | None = scenario.calibration
+    if calibration is None:
+      raise HTTPException(
+        status_code=404,
+        detail="No bodyweight calibration configured for this scenario",
+      )
+    standards = generate_bodyweight_benchmarks(calibration, bodyweight_kg=user_weight)
+  else:
+    multiplier = scenario.multiplier or 1.0
+    standards = DotsCalculator.calculate_lift_standards(
+      bodyweight_kg=user_weight,
+      gender=user_gender,
+      lift_ratio=multiplier,
+    )
 
   return DotsCalculator.get_current_rank_and_next_rank(
     user_lift_score=final_score,

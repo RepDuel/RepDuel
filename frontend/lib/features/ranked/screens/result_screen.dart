@@ -13,6 +13,7 @@ import '../../../core/services/share_service.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../../../widgets/paywall_lock.dart';
+import '../utils/bodyweight_benchmarks.dart';
 import '../utils/lift_progress.dart';
 import '../utils/rank_utils.dart';
 import '../widgets/score_history_chart.dart';
@@ -288,29 +289,94 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             final scenarioMultiplier =
                 (scenario['multiplier'] as num?)?.toDouble() ?? 1.0;
             final isBodyweight = (scenario['is_bodyweight'] as bool?) ?? false;
-            final displayUnit = isBodyweight ? 'reps' : unit;
+            Map<String, dynamic> scenarioStandards;
+            String displayUnit;
+            double multForScenario;
+            double finalScoreDisplay;
+            double comparisonScoreDisplay;
 
-            // Use kg-only pack for bodyweight scenarios; otherwise scale to user unit
-            final standardsDisplay = _packToDisplay(
-                standardsKg, isBodyweight ? 1.0 : weightMultiplier);
+            if (isBodyweight) {
+              final calibrationRaw =
+                  scenario['calibration'] as Map<String, dynamic>?;
+              final weightKg = (user.weight ?? 90.7).toDouble();
+              if (calibrationRaw != null && calibrationRaw.isNotEmpty) {
+                final calibration = {
+                  for (final entry in calibrationRaw.entries)
+                    entry.key: (entry.value as num).toDouble(),
+                };
+                final thresholds = generateBodyweightBenchmarks(
+                  calibration,
+                  weightKg > 0 ? weightKg : 90.7,
+                );
+                scenarioStandards = {
+                  for (final entry in thresholds.entries)
+                    entry.key: {
+                      'lifts': {
+                        liftKey: _round1(entry.value),
+                      },
+                    },
+                };
+              } else {
+                scenarioStandards = {};
+              }
+              displayUnit = 'reps';
+              multForScenario = 1.0;
+              finalScoreDisplay = widget.finalScore;
+              comparisonScoreDisplay = scoreForRankCalcKg;
+            } else {
+              final standardsDisplay = _packToDisplay(
+                  standardsKg, weightMultiplier);
+              standardsDisplay.forEach((rank, node) {
+                final totalKg =
+                    (standardsKg[rank]?['total'] as num?)?.toDouble();
+                if (totalKg == null) return;
+                final base = totalKg * scenarioMultiplier;
+                final thresholdDisplay = _round5(base * weightMultiplier);
+                final liftsMap = node['lifts'] as Map<String, double>;
+                liftsMap[liftKey] = thresholdDisplay;
+              });
+              scenarioStandards = standardsDisplay;
+              displayUnit = unit;
+              multForScenario = weightMultiplier;
+              finalScoreDisplay = widget.finalScore * multForScenario;
+              comparisonScoreDisplay = scoreForRankCalcKg * multForScenario;
+            }
 
-            standardsDisplay.forEach((rank, node) {
-              final totalKg = (standardsKg[rank]?['total'] as num?)?.toDouble();
-              if (totalKg == null) return;
-              final base = totalKg * scenarioMultiplier;
-              final thresholdDisplay = isBodyweight
-                  ? _round1(base)
-                  : _round5(base * weightMultiplier);
-              final liftsMap = node['lifts'] as Map<String, double>;
-              liftsMap[liftKey] = thresholdDisplay;
-            });
+            if (scenarioStandards.isEmpty) {
+              final fallback = _packToDisplay(standardsKg, weightMultiplier);
+              fallback.forEach((rank, node) {
+                final totalKg =
+                    (standardsKg[rank]?['total'] as num?)?.toDouble();
+                if (totalKg == null) return;
+                final base = totalKg * scenarioMultiplier;
+                final thresholdDisplay = _round5(base * weightMultiplier);
+                final liftsMap = node['lifts'] as Map<String, double>;
+                liftsMap[liftKey] = thresholdDisplay;
+              });
+              scenarioStandards = fallback;
+              displayUnit = unit;
+              multForScenario = weightMultiplier;
+              finalScoreDisplay = widget.finalScore * multForScenario;
+              comparisonScoreDisplay = scoreForRankCalcKg * multForScenario;
+            }
 
-            final multForScenario = isBodyweight ? 1.0 : weightMultiplier;
-            final finalScoreDisplay = widget.finalScore * multForScenario;
-            final comparisonScoreDisplay = scoreForRankCalcKg * multForScenario;
+            if (scenarioStandards.isEmpty) {
+              return _wrapWithPopGuard(
+                _buildScaffold(
+                  Center(
+                    child: ErrorDisplay(
+                      message:
+                          'No benchmarks available for this scenario yet.',
+                      onRetry: () => ref.refresh(
+                          scenarioDetailsProvider(widget.scenarioId)),
+                    ),
+                  ),
+                ),
+              );
+            }
 
             final lp = computeLiftProgress(
-              liftStandards: standardsDisplay,
+              liftStandards: scenarioStandards,
               liftKey: liftKey,
               score: comparisonScoreDisplay,
             );
