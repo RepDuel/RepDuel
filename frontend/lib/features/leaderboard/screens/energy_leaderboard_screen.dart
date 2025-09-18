@@ -1,22 +1,26 @@
 // frontend/lib/features/leaderboard/screens/energy_leaderboard_screen.dart
 
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 
-import '../../../core/config/env.dart';
+import '../../../core/providers/api_providers.dart';
+import '../../../widgets/error_display.dart';
+import '../../../widgets/loading_spinner.dart';
 
 class EnergyLeaderboardEntry {
   final String username;
   final int totalEnergy;
 
-  EnergyLeaderboardEntry({required this.username, required this.totalEnergy});
+  EnergyLeaderboardEntry({
+    required this.username,
+    required this.totalEnergy,
+  });
 
   factory EnergyLeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    final userNode = json['user'] as Map<String, dynamic>?;
+    final name = json['username'] ?? userNode?['username'];
     return EnergyLeaderboardEntry(
-      username: json['username'] ?? 'Anonymous',
+      username: (name is String && name.isNotEmpty) ? name : 'Anonymous',
       totalEnergy: (json['total_energy'] ?? 0).round(),
     );
   }
@@ -24,23 +28,10 @@ class EnergyLeaderboardEntry {
 
 final energyLeaderboardProvider =
     FutureProvider<List<EnergyLeaderboardEntry>>((ref) async {
-  final url = '${Env.baseUrl}/api/v1/energy/leaderboard';
-
-  try {
-    final response = await http.get(Uri.parse(url));
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data
-          .map((entry) => EnergyLeaderboardEntry.fromJson(entry))
-          .toList();
-    } else {
-      throw Exception(
-          'Failed to load leaderboard: Status code ${response.statusCode}');
-    }
-  } catch (e) {
-    throw Exception('Failed to load leaderboard: $e');
-  }
+  final client = ref.watch(privateHttpClientProvider);
+  final response = await client.get('/energy/leaderboard');
+  final data = response.data as List<dynamic>;
+  return data.map((entry) => EnergyLeaderboardEntry.fromJson(entry)).toList();
 });
 
 class EnergyLeaderboardScreen extends ConsumerWidget {
@@ -59,98 +50,114 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
       ),
       body: leaderboardData.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: LoadingSpinner()),
         error: (err, stack) => Center(
-          child: Text(
-            'Error: $err',
-            style: const TextStyle(color: Colors.red),
+          child: ErrorDisplay(
+            message: err.toString(),
+            onRetry: () => ref.refresh(energyLeaderboardProvider),
           ),
         ),
-        data: (entries) => Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 40,
-                    child: Text(
-                      'Rank',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'User',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    'Energy',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+        data: (entries) {
+          if (entries.isEmpty) {
+            return const Center(
+              child: Text(
+                'No scores yet. Be the first!',
+                style: TextStyle(color: Colors.white54, fontSize: 16),
               ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: entries.length,
-                itemBuilder: (_, index) {
-                  final entry = entries[index];
+            );
+          }
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8.0,
-                      horizontal: 16.0,
+          return Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        'Rank',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Text(
-                            '${index + 1}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
+                    SizedBox(width: 20),
+                    Expanded(
+                      child: Text(
+                        'User',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            entry.username,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '${entry.totalEnergy}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  );
-                },
+                    Text(
+                      'Energy',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: entries.length,
+                  itemBuilder: (_, index) {
+                    final entry = entries[index];
+                    final rowColor = index.isEven
+                        ? const Color(0xFF101218)
+                        : const Color(0xFF0B0D13);
+
+                    return Container(
+                      color: rowColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 40,
+                            child: Text(
+                              '${index + 1}',
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Text(
+                              entry.username,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${entry.totalEnergy}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
