@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
+from app.models.hidden_routine import HiddenRoutine
 from app.models.routine import Routine
 from app.models.routine_scenario import RoutineScenario
 from app.schemas.routine import (RoutineCreate, RoutineRead, RoutineUpdate,
@@ -55,7 +56,11 @@ async def get_user_routines(
 ) -> List[RoutineRead]:
     stmt = select(Routine)
     if user_id:
+        hidden_subquery = select(HiddenRoutine.routine_id).where(
+            HiddenRoutine.user_id == user_id
+        )
         stmt = stmt.where((Routine.user_id == user_id) | (Routine.user_id.is_(None)))
+        stmt = stmt.where(~Routine.id.in_(hidden_subquery))
 
     result = await db.execute(stmt)
     routines = result.scalars().all()
