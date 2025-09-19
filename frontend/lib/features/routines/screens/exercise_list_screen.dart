@@ -34,6 +34,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   bool _isFinishing = false;
   Timer? _sessionTicker;
   Duration _sessionElapsed = Duration.zero;
+  late final StateController<bool> _bottomNavController;
 
   /// Locally added exercises via /add-exercise (maps convertible to Scenario)
   final List<Map<String, dynamic>> _localAddedExercises = [];
@@ -45,9 +46,10 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   @override
   void initState() {
     super.initState();
+    _bottomNavController = ref.read(bottomNavVisibilityProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(bottomNavVisibilityProvider.notifier).state = false;
+      _bottomNavController.state = false;
     });
     _startTime = DateTime.now();
     _startSessionTimer();
@@ -55,8 +57,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
   @override
   void dispose() {
-    ref.read(bottomNavVisibilityProvider.notifier).state = true;
-    _sessionTicker?.cancel();
+    _stopSessionTimer();
+    _bottomNavController.state = true;
     super.dispose();
   }
 
@@ -177,7 +179,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
       if (!mounted) return;
 
-      ref.read(bottomNavVisibilityProvider.notifier).state = true;
+      _stopSessionTimer();
+      _bottomNavController.state = true;
       context.go('/summary', extra: totalVolume);
     } catch (e) {
       if (mounted) {
@@ -367,8 +370,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
           ),
           tooltip: isBottomNavVisible ? 'Hide Menu' : 'Show Menu',
           onPressed: () {
-            final navNotifier = ref.read(bottomNavVisibilityProvider.notifier);
-            navNotifier.state = !isBottomNavVisible;
+            _bottomNavController.state = !isBottomNavVisible;
           },
         ),
         title: routineDetailsAsync.when(
@@ -584,8 +586,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                       if (!mounted || confirmed != true) return;
 
                       ref.read(routineSetProvider.notifier).clear();
-                      ref.read(bottomNavVisibilityProvider.notifier).state =
-                          true;
+                      _stopSessionTimer();
+                      _bottomNavController.state = true;
 
                       if (router.canPop()) {
                         router.pop(); // first pop
@@ -624,6 +626,11 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         _sessionElapsed = DateTime.now().difference(_startTime);
       });
     });
+  }
+
+  void _stopSessionTimer() {
+    _sessionTicker?.cancel();
+    _sessionTicker = null;
   }
 
   String _formatDuration(Duration duration) {

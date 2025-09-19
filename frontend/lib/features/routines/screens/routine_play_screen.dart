@@ -22,20 +22,22 @@ class RoutinePlayScreen extends ConsumerStatefulWidget {
 
 class _RoutinePlayScreenState extends ConsumerState<RoutinePlayScreen> {
   Map<String, String> scenarioIdToName = {};
+  late final StateController<bool> _bottomNavController;
 
   @override
   void initState() {
     super.initState();
+    _bottomNavController = ref.read(bottomNavVisibilityProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(bottomNavVisibilityProvider.notifier).state = false;
+      _bottomNavController.state = false;
     });
     fetchScenarioNames();
   }
 
   @override
   void dispose() {
-    ref.read(bottomNavVisibilityProvider.notifier).state = true;
+    _bottomNavController.state = true;
     super.dispose();
   }
 
