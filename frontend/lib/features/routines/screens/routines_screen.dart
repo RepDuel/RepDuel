@@ -1,18 +1,20 @@
 // frontend/lib/features/routines/screens/routines_screen.dart
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/models/routine.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/share_service.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../widgets/add_routine_card.dart';
 import '../widgets/routine_card.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/services/share_service.dart';
 
 final routinesProvider = FutureProvider.autoDispose<List<Routine>>((ref) async {
   return ref.watch(authProvider).when(
@@ -147,6 +149,103 @@ class RoutinesScreen extends ConsumerWidget {
     }
   }
 
+  Future<Routine?> _prepareRoutineForEditing(
+      BuildContext context, WidgetRef ref, Routine routine) async {
+    // Already owned by the user → edit in place
+    if (routine.userId != null &&
+        routine.userId == ref.read(authProvider).valueOrNull?.user?.id) {
+      return routine;
+    }
+
+    final user = ref.read(authProvider).valueOrNull?.user;
+    if (user == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('You need to be signed in to edit routines.')),
+        );
+      }
+      return null;
+    }
+
+    // Clone the global routine into a user-owned copy.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final client = ref.read(privateHttpClientProvider);
+      final payload = {
+        'name': routine.name,
+        'image_url': routine.imageUrl,
+        'scenarios': routine.scenarios
+            .map((s) => {
+                  'scenario_id': s.scenarioId,
+                  // Backend expects a name; reuse id when unknown.
+                  'name': s.scenarioId,
+                  'sets': s.sets,
+                  'reps': s.reps,
+                })
+            .toList(),
+      };
+
+      final response = await client.post('/routines/', data: payload);
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          error: response.data,
+        );
+      }
+
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          error: 'Unexpected response when creating routine copy.',
+        );
+      }
+
+      final cloned = Routine.fromJson(data);
+
+      // Hide the global routine for this user so their customised copy is front-and-centre.
+      await ref.read(hiddenGlobalRoutinesProvider.notifier).hide(routine.id);
+      ref.invalidate(routinesProvider);
+      return cloned;
+    } on DioException catch (e) {
+      final message = e.response?.data is Map<String, dynamic>
+          ? (e.response?.data['detail'] as String?)
+          : e.message;
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message ?? 'Failed to prepare routine for editing.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return null;
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to prepare routine: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return null;
+    } finally {
+      if (navigator.mounted) {
+        navigator.pop();
+      }
+    }
+  }
+
   Future<void> _deleteRoutine(
       BuildContext context, WidgetRef ref, String routineId) async {
     final confirmed = await showDialog<bool>(
@@ -248,7 +347,9 @@ class RoutinesScreen extends ConsumerWidget {
                           _onAddRoutinePressed(context, ref, routines));
                 }
                 final routine = visibleRoutines[index - 1];
-                final canEditDelete =
+                final canEdit =
+                    routine.userId == null || routine.userId == currentUserId;
+                final canDelete =
                     routine.userId != null && routine.userId == currentUserId;
                 final isGlobal = routine.userId == null;
                 final isHidden = hidden.contains(routine.id);
@@ -274,9 +375,15 @@ class RoutinesScreen extends ConsumerWidget {
                             const Icon(Icons.more_vert, color: Colors.white70),
                         onSelected: (value) async {
                           if (value == 'edit') {
+                            final routineToEdit =
+                                await _prepareRoutineForEditing(
+                                    context, ref, routine);
+                            if (routineToEdit == null) return;
+                            if (!context.mounted) return;
                             final result = await context.pushNamed<bool>(
-                                'editRoutine',
-                                extra: routine);
+                              'editRoutine',
+                              extra: routineToEdit,
+                            );
                             if (result == true && context.mounted) {
                               ref.invalidate(routinesProvider);
                             }
@@ -291,7 +398,9 @@ class RoutinesScreen extends ConsumerWidget {
                                 .read(hiddenGlobalRoutinesProvider.notifier)
                                 .unhide(routine.id);
                           } else if (value == 'share') {
-                            await ref.read(shareServiceProvider).showShareRoutineDialog(
+                            await ref
+                                .read(shareServiceProvider)
+                                .showShareRoutineDialog(
                                   context: context,
                                   routineId: routine.id,
                                   routineName: routine.name,
@@ -300,14 +409,20 @@ class RoutinesScreen extends ConsumerWidget {
                         },
                         itemBuilder: (context) {
                           final items = <PopupMenuEntry<String>>[];
-                          if (canEditDelete) {
-                            items.addAll(const [
-                              PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          if (canEdit) {
+                            items.add(const PopupMenuItem(
+                                value: 'edit', child: Text('Edit')));
+                          }
+                          if (canDelete) {
+                            items.add(
                               PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete',
-                                      style: TextStyle(color: Colors.red))),
-                            ]);
+                                value: 'delete',
+                                child: Text(
+                                  'Delete',
+                                  style: const TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            );
                           }
                           if (isGlobal) {
                             items.add(

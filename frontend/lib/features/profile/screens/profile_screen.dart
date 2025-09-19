@@ -58,17 +58,7 @@ class ProfileScreen extends ConsumerWidget {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child:
-                            user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                                ? Image.network(
-                                    user.avatarUrl!,
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (c, e, s) =>
-                                        _buildPlaceholderAvatar(),
-                                  )
-                                : _buildPlaceholderAvatar(),
+                        child: _buildAvatar(user.avatarUrl),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -143,11 +133,47 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPlaceholderAvatar() {
-    return SvgPicture.asset(
-      'assets/images/profile_placeholder.svg',
-      width: 80,
-      height: 80,
+  Widget _buildAvatar(String? avatarUrl, {double size = 80}) {
+    if (_looksLikeRemoteImage(avatarUrl)) {
+      return Image.network(
+        avatarUrl!,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildDefaultAvatar(size),
+      );
+    }
+
+    if (avatarUrl != null &&
+        avatarUrl.isNotEmpty &&
+        avatarUrl.startsWith('assets/')) {
+      return Image.asset(
+        avatarUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildDefaultAvatar(size),
+      );
+    }
+
+    return _buildDefaultAvatar(size);
+  }
+
+  bool _looksLikeRemoteImage(String? url) {
+    if (url == null || url.isEmpty) return false;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    if (uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      return true;
+    }
+    return !uri.hasScheme && uri.hasAbsolutePath;
+  }
+
+  Widget _buildDefaultAvatar(double size) {
+    return Image.asset(
+      'assets/images/default_nonbinary.png',
+      width: size,
+      height: size,
       fit: BoxFit.cover,
     );
   }

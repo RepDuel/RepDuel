@@ -176,6 +176,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     double? weightMultiplier,
     String? subscriptionLevel,
     String? preferredUnit,
+    String? displayName,
   }) async {
     final currentStateData = state.valueOrNull;
     final token = currentStateData?.token;
@@ -193,6 +194,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       }
       if (preferredUnit != null) {
         updates['preferred_unit'] = preferredUnit;
+      }
+      if (displayName != null) {
+        updates['display_name'] = displayName;
       }
 
       if (updates.isEmpty) return true;

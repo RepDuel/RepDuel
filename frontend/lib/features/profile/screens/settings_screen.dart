@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -30,9 +29,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isDeletingScores = false;
   bool _isDeletingAccount = false;
 
+  static final List<RegExp> _offensivePatterns = [
+    RegExp(r'\bnigg+(?:er|a)\b', caseSensitive: false, unicode: true),
+    RegExp(r'\bfagg(?:ot)?\b', caseSensitive: false, unicode: true),
+  ];
+
   double _toDisplayUnit(User user, double value) =>
       value * user.weightMultiplier;
   String _unitLabel(User user) => user.preferredUnit; // 'kg' or 'lbs'
+
+  bool _containsOffensiveLanguage(String value) {
+    for (final pattern in _offensivePatterns) {
+      if (pattern.hasMatch(value)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   void _showFeedbackSnackbar(String message, {required bool isSuccess}) {
     if (!mounted) return;
@@ -143,6 +156,78 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       success
           ? 'Profile picture updated!'
           : 'Failed to update profile picture.',
+      isSuccess: success,
+    );
+  }
+
+  Future<void> _editDisplayName() async {
+    final user = ref.read(authProvider).valueOrNull?.user;
+    if (user == null) return;
+
+    final controller = TextEditingController(
+      text: user.displayName ?? user.username,
+    );
+
+    final updatedName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Edit Display Name"),
+        backgroundColor: Colors.grey[900],
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 50,
+          style: const TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text("Save", style: TextStyle(color: Colors.amber)),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (updatedName == null) return;
+
+    if (updatedName.isEmpty) {
+      _showFeedbackSnackbar('Display name cannot be empty.', isSuccess: false);
+      return;
+    }
+
+    if (updatedName.length > 50) {
+      _showFeedbackSnackbar(
+        'Display name must be 50 characters or less.',
+        isSuccess: false,
+      );
+      return;
+    }
+
+    if (_containsOffensiveLanguage(updatedName)) {
+      _showFeedbackSnackbar(
+        'Display name contains disallowed language.',
+        isSuccess: false,
+      );
+      return;
+    }
+
+    if (updatedName == (user.displayName ?? user.username)) {
+      return;
+    }
+
+    final success = await ref
+        .read(authProvider.notifier)
+        .updateUser(displayName: updatedName);
+
+    _showFeedbackSnackbar(
+      success ? 'Display name updated!' : 'Failed to update display name.',
       isSuccess: success,
     );
   }
@@ -311,14 +396,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await ref.read(authProvider.notifier).logout();
     } on DioException catch (e) {
       final data = e.response?.data;
-      final message =
-          (data is Map<String, dynamic> && data['detail'] != null)
-              ? data['detail'].toString()
-              : 'Failed to delete account.';
+      final message = (data is Map<String, dynamic> && data['detail'] != null)
+          ? data['detail'].toString()
+          : 'Failed to delete account.';
       _showFeedbackSnackbar(message, isSuccess: false);
     } catch (e) {
-      _showFeedbackSnackbar('Failed to delete account: $e',
-          isSuccess: false);
+      _showFeedbackSnackbar('Failed to delete account: $e', isSuccess: false);
     } finally {
       if (mounted) {
         setState(() => _isDeletingAccount = false);
@@ -329,7 +412,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isValidImageUrl(String? url) {
     if (url == null || url.isEmpty) return false;
     final uri = Uri.tryParse(url);
-    return uri != null && uri.hasAbsolutePath;
+    if (uri == null) return false;
+    if (uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      return true;
+    }
+    return !uri.hasScheme && uri.hasAbsolutePath;
+  }
+
+  bool _isAssetPath(String? url) {
+    return url != null && url.isNotEmpty && url.startsWith('assets/');
+  }
+
+  ImageProvider<Object> _resolveAvatarImage(String? url) {
+    if (_isValidImageUrl(url)) {
+      return NetworkImage(url!);
+    }
+    if (_isAssetPath(url)) {
+      return AssetImage(url!);
+    }
+    return const AssetImage('assets/images/default_nonbinary.png');
   }
 
   @override
@@ -377,16 +478,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     CircleAvatar(
                       radius: 48,
                       backgroundColor: Colors.grey[700],
-                      backgroundImage: _isValidImageUrl(user.avatarUrl)
-                          ? NetworkImage(user.avatarUrl!)
-                          : null,
-                      child: !_isValidImageUrl(user.avatarUrl)
-                          ? SvgPicture.asset(
-                              'assets/images/profile_placeholder.svg',
-                              width: 96,
-                              height: 96,
-                            )
-                          : null,
+                      backgroundImage: _resolveAvatarImage(user.avatarUrl),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -430,6 +522,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onTap: () => _showFeedbackSnackbar(
                     'Username cannot be changed.',
                     isSuccess: true),
+              ),
+              const Divider(color: Colors.grey),
+              ListTile(
+                title: const Text('Display Name'),
+                subtitle: Text(
+                  (user.displayName != null &&
+                          user.displayName!.trim().isNotEmpty)
+                      ? user.displayName!
+                      : 'Not set',
+                ),
+                trailing: const Icon(Icons.edit, size: 18),
+                onTap: _editDisplayName,
               ),
               const Divider(color: Colors.grey),
               ListTile(

@@ -11,6 +11,7 @@ class UserBase(BaseModel):
     username: str
     email: EmailStr
     avatar_url: str | None = None
+    display_name: str | None = None
     subscription_level: str = "free"
     preferred_unit: Literal["kg", "lbs"] = "kg"
 
@@ -25,6 +26,7 @@ class UserRead(UserBase):
     created_at: datetime
     updated_at: datetime
     avatar_url: str | None = None
+    display_name: str | None = None
     weight: float | None = None
     gender: str | None = None
     weight_multiplier: float = 1.0
@@ -41,6 +43,7 @@ class UserUpdate(BaseModel):
     username: str | None = None
     email: EmailStr | None = None
     avatar_url: str | None = None
+    display_name: str | None = None
     weight: float | None = None
     gender: str | None = None
     password: str | None = None

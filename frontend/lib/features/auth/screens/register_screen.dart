@@ -57,6 +57,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  String _mapAuthError(Object error) {
+    final raw = error.toString();
+    final normalized = raw.toLowerCase();
+    final usernameTaken =
+        normalized.contains('username') && normalized.contains('already') &&
+            (normalized.contains('taken') || normalized.contains('exists'));
+    if (usernameTaken) {
+      return 'That username is already taken. Try a different one.';
+    }
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<AsyncValue<AuthState>>(authProvider, (previous, next) {
@@ -64,7 +76,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         error: (error, stackTrace) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(error.toString()),
+              content: Text(_mapAuthError(error)),
               backgroundColor: Colors.red,
             ),
           );
