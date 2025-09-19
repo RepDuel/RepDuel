@@ -358,6 +358,28 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         ),
         backgroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: ElevatedButton(
+              onPressed: _isFinishing ? null : _finishRoutine,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.green.shade900,
+                disabledForegroundColor: Colors.white70,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: _isFinishing
+                  ? const LoadingSpinner(size: 18)
+                  : const Text('Finish'),
+            ),
+          ),
+        ],
       ),
       backgroundColor: Colors.black,
       body: routineDetailsAsync.when(
@@ -500,19 +522,6 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                   child: ElevatedButton(
                     onPressed: _navigateToAddExercise,
                     child: const Text('Add Exercise'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isFinishing ? null : _finishRoutine,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                    ),
-                    child: _isFinishing
-                        ? const LoadingSpinner(size: 20)
-                        : const Text('Finish Routine'),
                   ),
                 ),
                 const SizedBox(height: 8),
