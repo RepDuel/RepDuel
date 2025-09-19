@@ -53,7 +53,10 @@ final energyLeaderboardProvider =
   final client = ref.watch(privateHttpClientProvider);
   final response = await client.get('/energy/leaderboard');
   final data = response.data as List<dynamic>;
-  return data.map((entry) => EnergyLeaderboardEntry.fromJson(entry)).toList();
+  return data
+      .map((entry) => EnergyLeaderboardEntry.fromJson(entry))
+      .where((entry) => entry.totalEnergy > 0)
+      .toList();
 });
 
 class EnergyLeaderboardScreen extends ConsumerWidget {
