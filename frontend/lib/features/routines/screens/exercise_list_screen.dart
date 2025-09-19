@@ -603,6 +603,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                         style: TextStyle(color: Colors.red)),
                   ),
                 ),
+                SizedBox(height: 16),
                 SizedBox(height: MediaQuery.of(context).padding.bottom),
               ],
             ),
