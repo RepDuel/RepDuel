@@ -63,7 +63,9 @@ class ProfileScreen extends ConsumerWidget {
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(
-                          user.username,
+                          user.displayName?.trim().isNotEmpty == true
+                              ? user.displayName!.trim()
+                              : user.username,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,

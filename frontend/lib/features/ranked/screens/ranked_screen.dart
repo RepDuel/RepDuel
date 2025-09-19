@@ -81,8 +81,8 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
   bool _showBenchmarks = false;
 
   static const defaultLifts = <LiftSpec>[
-    LiftSpec(key: 'squat', scenarioId: 'back_squat', name: 'Squat'),
     LiftSpec(key: 'bench', scenarioId: 'barbell_bench_press', name: 'Bench'),
+    LiftSpec(key: 'squat', scenarioId: 'back_squat', name: 'Squat'),
     LiftSpec(key: 'deadlift', scenarioId: 'deadlift', name: 'Deadlift'),
   ];
 
