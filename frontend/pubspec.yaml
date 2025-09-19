@@ -60,5 +60,5 @@ flutter:
     - .env
     - assets/images/
     - assets/images/ranks/
-    - assets/images/routine_placeholder.svg
+    - assets/images/routine_placeholder.png
     - assets/images/profile_placeholder.svg

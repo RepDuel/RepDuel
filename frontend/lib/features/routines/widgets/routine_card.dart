@@ -1,7 +1,6 @@
 // frontend/lib/features/routines/widgets/routine_card.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 class RoutineCard extends StatelessWidget {
   final String name;
@@ -36,7 +35,7 @@ class RoutineCard extends StatelessWidget {
   }
 
   Widget _buildThumb() {
-    const placeholder = 'assets/images/routine_placeholder.svg';
+    const placeholder = 'assets/images/routine_placeholder.png';
 
     if (imageUrl != null &&
         (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://'))) {
@@ -44,7 +43,7 @@ class RoutineCard extends StatelessWidget {
         imageUrl!,
         fit: BoxFit.cover,
         width: double.infinity,
-        errorBuilder: (_, __, ___) => SvgPicture.asset(
+        errorBuilder: (_, __, ___) => Image.asset(
           placeholder,
           fit: BoxFit.cover,
           width: double.infinity,
@@ -52,7 +51,7 @@ class RoutineCard extends StatelessWidget {
       );
     }
 
-    return SvgPicture.asset(
+    return Image.asset(
       placeholder,
       fit: BoxFit.cover,
       width: double.infinity,
