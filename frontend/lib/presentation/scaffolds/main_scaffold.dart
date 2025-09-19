@@ -1,11 +1,13 @@
 // frontend/lib/presentation/scaffolds/main_scaffold.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers/navigation_provider.dart';
 import '../../widgets/main_bottom_nav_bar.dart';
 
-class MainScaffold extends StatelessWidget {
+class MainScaffold extends ConsumerWidget {
   const MainScaffold({
     super.key,
     required this.navigationShell,
@@ -14,7 +16,7 @@ class MainScaffold extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const List<String> titles = [
       'Normal',
       'Ranked',
@@ -29,6 +31,8 @@ class MainScaffold extends StatelessWidget {
 
     final bool hideTitleBar = path.startsWith('/routines/play') ||
         path.startsWith('/routines/exercise-list');
+
+    final showBottomNav = ref.watch(bottomNavVisibilityProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -50,9 +54,9 @@ class MainScaffold extends StatelessWidget {
               ],
             ),
       body: navigationShell,
-      bottomNavigationBar: MainBottomNavBar(
-        navigationShell: navigationShell,
-      ),
+      bottomNavigationBar: showBottomNav
+          ? MainBottomNavBar(navigationShell: navigationShell)
+          : null,
     );
   }
 }

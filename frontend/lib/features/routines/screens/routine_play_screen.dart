@@ -3,28 +3,40 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/config/env.dart';
 import '../../../core/models/routine.dart';
+import '../../../core/providers/navigation_provider.dart';
 
-class RoutinePlayScreen extends StatefulWidget {
+class RoutinePlayScreen extends ConsumerStatefulWidget {
   final Routine routine;
 
   const RoutinePlayScreen({super.key, required this.routine});
 
   @override
-  State<RoutinePlayScreen> createState() => _RoutinePlayScreenState();
+  ConsumerState<RoutinePlayScreen> createState() => _RoutinePlayScreenState();
 }
 
-class _RoutinePlayScreenState extends State<RoutinePlayScreen> {
+class _RoutinePlayScreenState extends ConsumerState<RoutinePlayScreen> {
   Map<String, String> scenarioIdToName = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(bottomNavVisibilityProvider.notifier).state = false;
+    });
     fetchScenarioNames();
+  }
+
+  @override
+  void dispose() {
+    ref.read(bottomNavVisibilityProvider.notifier).state = true;
+    super.dispose();
   }
 
   Future<void> fetchScenarioNames() async {

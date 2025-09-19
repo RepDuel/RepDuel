@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/routine_details.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/navigation_provider.dart';
 import '../../../core/providers/score_events_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
@@ -44,12 +45,17 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(bottomNavVisibilityProvider.notifier).state = false;
+    });
     _startTime = DateTime.now();
     _startSessionTimer();
   }
 
   @override
   void dispose() {
+    ref.read(bottomNavVisibilityProvider.notifier).state = true;
     _sessionTicker?.cancel();
     super.dispose();
   }
@@ -343,6 +349,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   Widget build(BuildContext context) {
     final routineDetailsAsync =
         ref.watch(routineDetailsProvider(widget.routineId));
+    final isBottomNavVisible = ref.watch(bottomNavVisibilityProvider);
     final isLbs =
         (ref.watch(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0) >
             1.5;
@@ -351,6 +358,18 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: Icon(
+            isBottomNavVisible ? Icons.visibility_off : Icons.visibility,
+            color: Colors.white,
+          ),
+          tooltip: isBottomNavVisible ? 'Hide Menu' : 'Show Menu',
+          onPressed: () {
+            final navNotifier = ref.read(bottomNavVisibilityProvider.notifier);
+            navNotifier.state = !isBottomNavVisible;
+          },
+        ),
         title: routineDetailsAsync.when(
           data: (details) => Text(details.name),
           loading: () => const Text('Loading...'),
