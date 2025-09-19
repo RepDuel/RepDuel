@@ -5,35 +5,51 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/providers/api_providers.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/score_events_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../../ranked/utils/rank_utils.dart';
 
 class EnergyLeaderboardEntry {
-  final String username;
+  final String displayName;
   final int totalEnergy;
   final String userRank;
 
   EnergyLeaderboardEntry({
-    required this.username,
+    required this.displayName,
     required this.totalEnergy,
     required this.userRank,
   });
 
   factory EnergyLeaderboardEntry.fromJson(Map<String, dynamic> json) {
     final userNode = json['user'] as Map<String, dynamic>?;
-    final name = json['username'] ?? userNode?['username'];
+    final displayName = json['display_name'] ??
+        json['displayName'] ??
+        userNode?['display_name'] ??
+        userNode?['displayName'];
+    final username = json['username'] ?? userNode?['username'];
     final rank = json['user_rank'] ?? userNode?['rank'];
     return EnergyLeaderboardEntry(
-      username: (name is String && name.isNotEmpty) ? name : 'Anonymous',
+      displayName: _resolveDisplayName(displayName, username),
       totalEnergy: (json['total_energy'] ?? 0).round(),
       userRank: (rank is String && rank.isNotEmpty) ? rank : 'Unranked',
     );
   }
 }
 
+String _resolveDisplayName(dynamic rawDisplayName, dynamic fallbackName) {
+  final displayName = rawDisplayName is String ? rawDisplayName.trim() : '';
+  if (displayName.isNotEmpty) {
+    return displayName;
+  }
+
+  final username = fallbackName is String ? fallbackName.trim() : '';
+  return username.isNotEmpty ? username : 'Anonymous';
+}
+
 final energyLeaderboardProvider =
-    FutureProvider<List<EnergyLeaderboardEntry>>((ref) async {
+    FutureProvider.autoDispose<List<EnergyLeaderboardEntry>>((ref) async {
   final client = ref.watch(privateHttpClientProvider);
   final response = await client.get('/energy/leaderboard');
   final data = response.data as List<dynamic>;
@@ -45,6 +61,27 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<int>(scoreEventsProvider, (previous, next) {
+      if (previous == next) {
+        return;
+      }
+      ref.invalidate(energyLeaderboardProvider);
+    });
+
+    ref.listen<AsyncValue<AuthState>>(authProvider, (previous, next) {
+      if (previous == null) {
+        return;
+      }
+      final previousUser = previous.valueOrNull?.user;
+      final nextUser = next.valueOrNull?.user;
+      final previousName = previousUser?.displayName ?? previousUser?.username;
+      final nextName = nextUser?.displayName ?? nextUser?.username;
+
+      if (previousName != nextName) {
+        ref.invalidate(energyLeaderboardProvider);
+      }
+    });
+
     final AsyncValue<List<EnergyLeaderboardEntry>> leaderboardData =
         ref.watch(energyLeaderboardProvider);
 
@@ -143,7 +180,7 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
                           const SizedBox(width: 20),
                           Expanded(
                             child: Text(
-                              entry.username,
+                              entry.displayName,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

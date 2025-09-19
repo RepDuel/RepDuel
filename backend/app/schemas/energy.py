@@ -33,6 +33,7 @@ class EnergyLeaderboardEntry(BaseModel):
     rank: int
     user_id: UUID
     username: str
+    display_name: Optional[str] = None
     total_energy: float
     avatar_url: Optional[str] = None
     user_rank: Optional[str] = None

@@ -98,6 +98,7 @@ async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
                 rank=index,
                 user_id=user.id,
                 username=user.username,
+                display_name=user.display_name,
                 avatar_url=user.avatar_url,
                 total_energy=total_energy,
                 user_rank=final_rank,

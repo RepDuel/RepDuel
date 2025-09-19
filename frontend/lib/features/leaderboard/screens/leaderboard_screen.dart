@@ -5,24 +5,41 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repduel/core/providers/api_providers.dart';
 
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/score_events_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 
 class LeaderboardEntry {
-  final String username;
+  final String displayName;
   final double scoreValue;
 
   LeaderboardEntry({
-    required this.username,
+    required this.displayName,
     required this.scoreValue,
   });
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    final userNode = json['user'] as Map<String, dynamic>?;
+    final rawDisplayName = json['display_name'] ??
+        userNode?['display_name'] ??
+        userNode?['displayName'];
+    final rawUsername = json['username'] ?? userNode?['username'];
+
     return LeaderboardEntry(
-      username: json['user']?['username'] ?? 'Anonymous',
+      displayName: _resolveDisplayName(rawDisplayName, rawUsername),
       scoreValue: (json['score_value'] as num?)?.toDouble() ?? 0.0,
     );
   }
+}
+
+String _resolveDisplayName(dynamic rawDisplayName, dynamic fallbackName) {
+  final displayName = rawDisplayName is String ? rawDisplayName.trim() : '';
+  if (displayName.isNotEmpty) {
+    return displayName;
+  }
+
+  final username = fallbackName is String ? fallbackName.trim() : '';
+  return username.isNotEmpty ? username : 'Anonymous';
 }
 
 final leaderboardProvider = FutureProvider.autoDispose
@@ -65,6 +82,27 @@ class LeaderboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<int>(scoreEventsProvider, (previous, next) {
+      if (previous == null || previous == next) {
+        return;
+      }
+      ref.invalidate(leaderboardProvider(scenarioId));
+    });
+
+    ref.listen<AsyncValue<AuthState>>(authProvider, (previous, next) {
+      if (previous == null) {
+        return;
+      }
+      final previousUser = previous.valueOrNull?.user;
+      final nextUser = next.valueOrNull?.user;
+      final previousName = previousUser?.displayName ?? previousUser?.username;
+      final nextName = nextUser?.displayName ?? nextUser?.username;
+
+      if (previousName != nextName) {
+        ref.invalidate(leaderboardProvider(scenarioId));
+      }
+    });
+
     final leaderboardDataAsync = ref.watch(leaderboardProvider(scenarioId));
     final scenarioAsync = ref.watch(scenarioDetailsProvider(scenarioId));
     final authState =
@@ -181,9 +219,9 @@ class LeaderboardScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(width: 20),
-                              Expanded(
+                             Expanded(
                                 child: Text(
-                                  entry.username,
+                                  entry.displayName,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
