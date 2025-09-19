@@ -177,6 +177,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
       if (!mounted) return;
 
+      ref.read(bottomNavVisibilityProvider.notifier).state = true;
       context.go('/summary', extra: totalVolume);
     } catch (e) {
       if (mounted) {
@@ -583,6 +584,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                       if (!mounted || confirmed != true) return;
 
                       ref.read(routineSetProvider.notifier).clear();
+                      ref.read(bottomNavVisibilityProvider.notifier).state =
+                          true;
 
                       if (router.canPop()) {
                         router.pop(); // first pop

@@ -241,6 +241,7 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
     final user = ref.watch(authProvider).valueOrNull?.user;
     final isLbs = (user?.weightMultiplier ?? 1.0) > 1.5;
     final unitLabel = isLbs ? 'lbs' : 'kg';
+    final weightLabel = isLbs ? 'Lbs' : 'Kg';
     final isBodyweight = _isBodyweight == true;
     final bodyweightKg = _bodyweightWeightKg(user);
     final bodyweightDisplay = _toDisplayUnit(isLbs, bodyweightKg);
@@ -301,10 +302,12 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
                       )
                     else ...[
                       Expanded(
-                          flex: 3,
-                          child: _buildInputField(
-                              controller: _weightControllers[index],
-                              label: 'Weight ($unitLabel)')),
+                        flex: 3,
+                        child: _buildWeightField(
+                          controller: _weightControllers[index],
+                          unitLabel: weightLabel,
+                        ),
+                      ),
                       const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 12),
                           child: Text('x',
@@ -372,6 +375,28 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+      ),
+    );
+  }
+
+  Widget _buildWeightField(
+      {required TextEditingController controller, required String unitLabel}) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textAlign: TextAlign.center,
+      style: const TextStyle(color: Colors.white, fontSize: 18),
+      decoration: InputDecoration(
+        labelText: unitLabel,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        labelStyle: const TextStyle(color: Colors.white54),
+        filled: true,
+        fillColor: Colors.grey[900],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
         contentPadding: const EdgeInsets.symmetric(vertical: 16),
       ),
     );
