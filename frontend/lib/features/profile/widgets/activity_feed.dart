@@ -8,6 +8,8 @@ import '../../../core/providers/workout_history_provider.dart';
 import '../../../core/providers/score_events_provider.dart';
 import '../../../core/providers/user_by_id_provider.dart';
 import '../../../core/models/user.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../ranked/utils/rank_utils.dart';
 
 class ActivityFeed extends ConsumerWidget {
   final String userId;
@@ -102,6 +104,49 @@ class ActivityFeed extends ConsumerWidget {
 
           final durationLabel = _formatDuration(entry.duration);
 
+          // Personal bests inferred for this single entry (one per exercise)
+          final perEntryPBs = <_PersonalBestLine>[];
+          final Map<String, _PBValue> entryMaxByScenario = {};
+          for (final s in entry.scenarios) {
+            if (s.reps <= 0) continue; // ignore empty sets
+            final isBw = s.scenarioId.startsWith('bodyweight_');
+            final score = calcScoreValue(
+              isBodyweight: isBw,
+              weight: s.weight,
+              reps: s.reps,
+            );
+            final current = entryMaxByScenario[s.scenarioId];
+            if (current == null || score > current.score) {
+              entryMaxByScenario[s.scenarioId] = _PBValue(
+                score: score,
+                reps: s.reps,
+                weightKg: s.weight,
+                isBodyweight: isBw,
+              );
+            }
+          }
+
+          // After we know the best set per exercise for this entry,
+          // compare once with all‑time best and add at most one PB line.
+          entryMaxByScenario.forEach((scenarioId, val) {
+            final prevBest = bestByScenario[scenarioId];
+            if (prevBest == null || val.score > prevBest) {
+              bestByScenario[scenarioId] = val.score;
+              final exercise = scenarioTitle(scenarioId);
+              final repsLabel = val.reps == 1 ? 'rep' : 'reps';
+              final subtitle = val.isBodyweight
+                  ? '${val.reps} $repsLabel'
+                  : '${formatNum(toUserUnit(val.weightKg))} $unit × ${val.reps} $repsLabel';
+              perEntryPBs.add(
+                _PersonalBestLine(
+                  exerciseName: exercise,
+                  detail: subtitle,
+                ),
+              );
+            }
+          });
+
+          // Single combined feed event per workout entry, with PBs listed below
           feed.add(
             _FeedEvent(
               when: when,
@@ -112,42 +157,9 @@ class ActivityFeed extends ConsumerWidget {
               icon: Icons.fitness_center,
               accent: Colors.blueAccent,
               userId: entry.userId,
+              personalBests: perEntryPBs,
             ),
           );
-
-          // Personal best events inferred per scenario
-          for (final s in entry.scenarios) {
-            // Skip sets with no reps
-            if (s.reps <= 0) continue;
-
-            final isBw = s.scenarioId.startsWith('bodyweight_');
-            final score = calcScoreValue(
-              isBodyweight: isBw,
-              weight: s.weight,
-              reps: s.reps,
-            );
-            final prevBest = bestByScenario[s.scenarioId];
-            if (prevBest == null || score > prevBest) {
-              bestByScenario[s.scenarioId] = score;
-
-              final exercise = scenarioTitle(s.scenarioId);
-              final subtitle = isBw
-                  ? '${s.reps} ${s.reps == 1 ? 'rep' : 'reps'}'
-                  : '${formatNum(toUserUnit(s.weight))} $unit × ${s.reps} ${s.reps == 1 ? 'rep' : 'reps'}';
-
-              feed.add(
-                _FeedEvent(
-                  when: when,
-                  kind: _FeedKind.personalBest,
-                  title: 'set a personal best • $exercise',
-                  subtitle: subtitle,
-                  icon: Icons.emoji_events,
-                  accent: Colors.amberAccent,
-                  userId: entry.userId,
-                ),
-              );
-            }
-          }
         }
 
         // Newest first
@@ -199,7 +211,7 @@ class ActivityFeed extends ConsumerWidget {
   }
 }
 
-enum _FeedKind { workout, personalBest }
+enum _FeedKind { workout }
 
 class _FeedEvent {
   final DateTime when;
@@ -209,6 +221,7 @@ class _FeedEvent {
   final IconData icon;
   final Color accent;
   final String userId;
+  final List<_PersonalBestLine> personalBests;
 
   _FeedEvent({
     required this.when,
@@ -218,6 +231,26 @@ class _FeedEvent {
     required this.icon,
     required this.accent,
     required this.userId,
+    this.personalBests = const [],
+  });
+}
+
+class _PersonalBestLine {
+  final String exerciseName;
+  final String detail;
+  const _PersonalBestLine({required this.exerciseName, required this.detail});
+}
+
+class _PBValue {
+  final double score;
+  final int reps;
+  final double weightKg;
+  final bool isBodyweight;
+  const _PBValue({
+    required this.score,
+    required this.reps,
+    required this.weightKg,
+    required this.isBodyweight,
   });
 }
 
@@ -239,6 +272,7 @@ class _FeedTile extends ConsumerWidget {
         ),
         child: _rowWith(
           context,
+          user: me,
           username: _displayName(me),
           avatarUrl: me.avatarUrl,
         ),
@@ -256,11 +290,13 @@ class _FeedTile extends ConsumerWidget {
         loading: () => _rowSkeleton(),
         error: (e, s) => _rowWith(
           context,
+          user: null,
           username: 'Unknown',
           avatarUrl: null,
         ),
         data: (user) => _rowWith(
           context,
+          user: user,
           username: _displayName(user),
           avatarUrl: user.avatarUrl,
         ),
@@ -277,7 +313,7 @@ class _FeedTile extends ConsumerWidget {
   Widget _rowSkeleton() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
+      children: [
         _Shimmer(width: 36, height: 36),
         SizedBox(width: 12),
         Expanded(
@@ -287,11 +323,24 @@ class _FeedTile extends ConsumerWidget {
               // top line: display name
               _Shimmer(width: 140, height: 12),
               SizedBox(height: 8),
-              // header row with icon label
-              _Shimmer(width: 120, height: 12),
-              SizedBox(height: 6),
-              // title and subtitle
-              _Shimmer(width: 240, height: 12),
+              // title with leading icon
+              Row(
+                children: [
+                  // icon placeholder
+                  SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  _Shimmer(width: 240, height: 12),
+                ],
+              ),
               SizedBox(height: 4),
               _Shimmer(width: 200, height: 12),
             ],
@@ -301,7 +350,7 @@ class _FeedTile extends ConsumerWidget {
     );
   }
 
-  Widget _rowWith(BuildContext context, {required String username, String? avatarUrl}) {
+  Widget _rowWith(BuildContext context, {required User? user, required String username, String? avatarUrl}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -319,18 +368,22 @@ class _FeedTile extends ConsumerWidget {
                     child: Text(
                       username,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: _rankColor(user?.rank),
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
                     ),
                   ),
+                  if (user?.rank != null) ...[
+                    const SizedBox(width: 6),
+                    _rankBadge(user!.rank!),
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
-              // Original header row with icon + header name
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     width: 22,
@@ -342,30 +395,69 @@ class _FeedTile extends ConsumerWidget {
                     child: Icon(event.icon, size: 14, color: event.accent),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    _headerName(event),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                  Expanded(
+                    child: Text(
+                      _capitalize(event.title),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _capitalize(event.title),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
               ),
               const SizedBox(height: 2),
               Text(
                 event.subtitle,
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
+              if (event.personalBests.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: event.personalBests.map((pb) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.amberAccent.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.emoji_events, size: 12, color: Colors.amberAccent),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Personal best • ${pb.exerciseName}',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            pb.detail,
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 timeAgoText,
@@ -383,14 +475,7 @@ class _FeedTile extends ConsumerWidget {
     );
   }
 
-  String _headerName(_FeedEvent e) {
-    switch (e.kind) {
-      case _FeedKind.workout:
-        return 'Workout';
-      case _FeedKind.personalBest:
-        return 'Personal Best';
-    }
-  }
+  // header label removed from layout; using only leading icon next to title
 
   Widget _avatar(String? avatarUrl, {double size = 28}) {
     final borderRadius = BorderRadius.circular(size / 2);
@@ -467,4 +552,18 @@ class _Shimmer extends StatelessWidget {
       ),
     );
   }
+}
+
+Color _rankColor(String? rank) {
+  if (rank == null || rank.trim().isEmpty) return Colors.white;
+  return getRankColor(rank);
+}
+
+Widget _rankBadge(String rank) {
+  final path = 'assets/images/ranks/${rank.toLowerCase()}.svg';
+  return SvgPicture.asset(
+    path,
+    width: 16,
+    height: 16,
+  );
 }
