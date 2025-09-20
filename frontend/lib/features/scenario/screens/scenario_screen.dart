@@ -80,22 +80,22 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
       final client = ref.read(privateHttpClientProvider);
 
-      double previousBest = 0.0;
-      try {
-        final highscoreResponse = await client.get(
-            '/scores/user/${user.id}/scenario/${widget.scenarioId}/highscore');
-        previousBest =
-            (highscoreResponse.data['score_value'] as num?)?.toDouble() ?? 0.0;
-      } catch (_) {
-        previousBest = 0.0;
-      }
-
-      await client.post('/scores/scenario/${widget.scenarioId}/', data: {
+      final response = await client.post(
+          '/scores/scenario/${widget.scenarioId}/',
+          data: {
         'user_id': user.id,
         'weight_lifted': weightInKg,
         'reps': reps,
         'sets': 1,
       });
+
+      double previousBest = 0.0;
+      final responseData = response.data;
+      if (responseData is Map) {
+        final Map<String, dynamic> map = responseData.cast<String, dynamic>();
+        previousBest =
+            (map['previous_best_score_value'] as num?)?.toDouble() ?? 0.0;
+      }
 
       ref.read(scoreEventsProvider.notifier).state++;
 

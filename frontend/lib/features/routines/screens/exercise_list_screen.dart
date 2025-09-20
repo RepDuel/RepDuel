@@ -13,6 +13,8 @@ import '../../../core/providers/score_events_provider.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../providers/set_data_provider.dart';
+import '../models/summary_personal_best.dart';
+import '../models/summary_screen_args.dart';
 
 final routineDetailsProvider = FutureProvider.autoDispose
     .family<RoutineDetails, String>((ref, routineId) async {
@@ -125,6 +127,28 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final elapsedSeconds = DateTime.now().difference(_startTime).inSeconds;
       final durationMinutes = elapsedSeconds / 60.0;
 
+      RoutineDetails? routineDetails;
+      try {
+        routineDetails =
+            await ref.read(routineDetailsProvider(widget.routineId).future);
+      } catch (_) {
+        routineDetails = null;
+      }
+
+      final Map<String, String> scenarioNames = {};
+      if (routineDetails != null) {
+        for (final scenario in routineDetails.scenarios) {
+          scenarioNames[scenario.id] = scenario.name;
+        }
+      }
+      for (final local in _localAddedExercises) {
+        final scenarioId = local['scenario_id'] as String?;
+        final name = local['name'] as String?;
+        if (scenarioId != null && name != null) {
+          scenarioNames[scenarioId] = name;
+        }
+      }
+
       final scenariosPayload = allPerformedSets.map((set) {
         return {
           "scenario_id": set.scenarioId,
@@ -151,6 +175,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       for (final s in allPerformedSets) {
         groupedSetsForBestScores.putIfAbsent(s.scenarioId, () => []).add(s);
       }
+      final List<SummaryPersonalBest> personalBests = [];
       for (final entry in groupedSetsForBestScores.entries) {
         PerformedSet? bestSet;
         double best1RM = -1;
@@ -162,12 +187,43 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
           }
         }
         if (bestSet != null) {
-          await client.post('/scores/scenario/${entry.key}/', data: {
+          final response = await client.post('/scores/scenario/${entry.key}/',
+              data: {
             'user_id': user.id,
             'weight_lifted': bestSet.weight,
             'reps': bestSet.reps,
             'sets': 1
           });
+
+          final responseData = response.data;
+          Map<String, dynamic> responseMap = {};
+          if (responseData is Map) {
+            responseMap = responseData.cast<String, dynamic>();
+          }
+
+          final scoreJson = responseMap['score'];
+          Map<String, dynamic> scoreMap = {};
+          if (scoreJson is Map) {
+            scoreMap = scoreJson.cast<String, dynamic>();
+          }
+
+          final isPersonalBest = responseMap['is_personal_best'] == true;
+          if (isPersonalBest) {
+            final scenarioName =
+                scenarioNames[entry.key] ?? 'Personal Best';
+            final isBodyweight = scoreMap['is_bodyweight'] == true;
+            final scoreValue =
+                (scoreMap['score_value'] as num?)?.toDouble() ?? best1RM;
+
+            personalBests.add(SummaryPersonalBest(
+              scenarioId: entry.key,
+              exerciseName: scenarioName,
+              weightKg: bestSet.weight,
+              reps: bestSet.reps,
+              scoreValue: scoreValue,
+              isBodyweight: isBodyweight,
+            ));
+          }
         }
       }
 
@@ -181,7 +237,13 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
       _stopSessionTimer();
       _bottomNavController.state = true;
-      context.go('/summary', extra: totalVolume);
+      context.go(
+        '/summary',
+        extra: SummaryScreenArgs(
+          totalVolumeKg: totalVolume,
+          personalBests: personalBests,
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

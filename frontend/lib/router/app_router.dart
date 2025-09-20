@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:repduel/features/leaderboard/screens/energy_leaderboard_screen.dart';
+import 'package:repduel/features/routines/models/summary_screen_args.dart';
 import 'package:repduel/features/routines/screens/add_exercise_screen.dart';
 import 'package:repduel/features/routines/screens/exercise_play_screen.dart';
 import 'package:repduel/features/scenario/screens/scenario_screen.dart';
@@ -208,14 +209,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AddExerciseScreen(),
       ),
 
-      // Simple summary screen (arrives via `context.push('/summary', extra: <num>)`)
+      // Summary screen (prefers SummaryScreenArgs; num fallback for legacy callers)
       GoRoute(
         path: '/summary',
         name: 'summary',
         builder: (context, state) {
           final extra = state.extra;
-          final totalVolume = extra is num ? extra : 0;
-          return SummaryScreen(totalVolume: totalVolume);
+          if (extra is SummaryScreenArgs) {
+            return SummaryScreen(
+              totalVolumeKg: extra.totalVolumeKg,
+              personalBests: extra.personalBests,
+            );
+          }
+          final fallbackVolume =
+              extra is num ? extra.toDouble() : 0.0;
+          return SummaryScreen(totalVolumeKg: fallbackVolume);
         },
       ),
 

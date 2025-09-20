@@ -29,6 +29,16 @@ class ScoreOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ScoreCreateResponse(BaseModel):
+    score: ScoreOut
+    is_personal_best: bool
+    previous_best_score_value: float | None = None
+    previous_best_weight_lifted: float | None = None
+    previous_best_reps: int | None = None
+    previous_best_sets: int | None = None
+
+
+
 class ScoreReadWithUser(BaseModel):
     id: int
     weight_lifted: float
