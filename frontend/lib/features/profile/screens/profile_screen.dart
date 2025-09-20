@@ -86,13 +86,17 @@ class ProfileScreen extends ConsumerWidget {
                             style: TextStyle(color: Colors.white, fontSize: 18),
                           ),
                           Text(
-                            '$energy ',
+                            '$energy $rank',
                             style: TextStyle(
                               color: rankColor,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.visible,
                           ),
+                          const SizedBox(width: 8),
                           SvgPicture.asset(iconPath, height: 24, width: 24),
                           const Spacer(),
                           TextButton(
