@@ -35,6 +35,26 @@ class WorkoutHistoryList extends ConsumerWidget {
     String formatNum(num n) =>
         (n % 1 == 0) ? n.toInt().toString() : n.toStringAsFixed(1);
 
+    String formatDuration(double minutes) {
+      final totalSeconds = (minutes * 60).round();
+      final hours = totalSeconds ~/ 3600;
+      final minutesPart = (totalSeconds % 3600) ~/ 60;
+      final seconds = totalSeconds % 60;
+
+      if (hours > 0) {
+        final twoDigitMinutes = minutesPart.toString().padLeft(2, '0');
+        final twoDigitSeconds = seconds.toString().padLeft(2, '0');
+        return '$hours:$twoDigitMinutes:$twoDigitSeconds';
+      }
+
+      if (minutesPart > 0) {
+        final twoDigitSeconds = seconds.toString().padLeft(2, '0');
+        return '$minutesPart:$twoDigitSeconds';
+      }
+
+      return '${seconds}s';
+    }
+
     String scenarioTitle(String id) {
       return id
           .split('_')
@@ -70,6 +90,7 @@ class WorkoutHistoryList extends ConsumerWidget {
               0.0,
               (sum, s) => sum + toUserUnit(s.totalVolume),
             );
+            final formattedDuration = formatDuration(entry.duration);
 
             final Map<String, List<RoutineScenarioSubmission>> grouped = {};
             for (final s in entry.scenarios) {
@@ -103,7 +124,11 @@ class WorkoutHistoryList extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Time: ${formatNum(entry.duration)} minutes',
+                        'Total Volume: ${formatNum(totalVolumeUser)} $unit',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      Text(
+                        'Duration: $formattedDuration',
                         style: const TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 8),
@@ -178,10 +203,6 @@ class WorkoutHistoryList extends ConsumerWidget {
                           const SizedBox(height: 8),
                         ];
                       }),
-                      Text(
-                        'Total Volume: ${formatNum(totalVolumeUser)} $unit',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
                     ],
                   ),
                 ),
