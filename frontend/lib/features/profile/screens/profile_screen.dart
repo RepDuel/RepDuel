@@ -9,7 +9,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_history_provider.dart';
 import '../../ranked/utils/rank_utils.dart';
 import '../widgets/energy_graph.dart';
-import '../widgets/workout_history_list.dart';
+import '../widgets/activity_feed.dart';
 
 final showGraphProvider = StateProvider.autoDispose<bool>((ref) => false);
 
@@ -116,7 +116,7 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   const Text(
-                    'Workout History',
+                    'Activity',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -124,7 +124,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  WorkoutHistoryList(userId: user.id),
+                  ActivityFeed(userId: user.id),
                   const SizedBox(height: 16),
                 ],
               ),
