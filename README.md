@@ -90,6 +90,138 @@ repduel/
 
 ---
 
+### ⚡ Copy-Paste Bootstrap
+
+> One-shot setup for macOS/Linux and Windows (PowerShell). Requires Docker Desktop (or a local PostgreSQL instance), Flutter, and Python to already be installed.
+
+#### macOS / Linux
+
+```bash
+set -euo pipefail
+
+# 1) Python + dependencies
+python3 -m venv backend/.venv
+source backend/.venv/bin/activate
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+
+# 2) Local Postgres (skip if you already have one running)
+docker rm -f repduel-postgres 2>/dev/null || true
+docker run --name repduel-postgres -p 5432:5432 \
+  -e POSTGRES_USER=repduel \
+  -e POSTGRES_PASSWORD=repduel \
+  -e POSTGRES_DB=repduel \
+  -d postgres:15-alpine
+
+# 3) Backend env vars (edit the secrets before committing!)
+cat <<'ENV' > backend/.env
+APP_URL=http://localhost:5000
+BASE_URL=http://127.0.0.1:8000
+DATABASE_URL=postgresql+asyncpg://repduel:repduel@localhost:5432/repduel
+JWT_SECRET_KEY=change-this-access-secret
+REFRESH_JWT_SECRET_KEY=change-this-refresh-secret
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+REFRESH_TOKEN_EXPIRE_DAYS=30
+REVENUECAT_WEBHOOK_AUTH_TOKEN=replace-with-test-token
+STRIPE_SECRET_KEY=sk_test_replace_me
+STRIPE_WEBHOOK_SECRET=whsec_replace_me
+FRONTEND_ORIGINS=["http://localhost:3000","http://localhost:5000","http://localhost:5173"]
+COOKIE_SAMESITE=lax
+COOKIE_SECURE=false
+ENV
+
+# 4) Run migrations
+pushd backend >/dev/null
+alembic upgrade head
+popd >/dev/null
+
+# 5) Frontend env vars
+cat <<'ENV' > frontend/.env
+BACKEND_URL=http://127.0.0.1:8000
+MERCHANT_DISPLAY_NAME=RepDuel (Local)
+PUBLIC_BASE_URL=http://localhost:5000
+REVENUE_CAT_APPLE_KEY=replace-me
+STRIPE_CANCEL_URL=http://localhost:5000/payment-cancel
+STRIPE_PREMIUM_PLAN_ID=price_test
+STRIPE_PUBLISHABLE_KEY=pk_test_replace_me
+STRIPE_SUCCESS_URL=http://localhost:5000/payment-success
+ENV
+
+# 6) Sync Flutter deps
+pushd frontend >/dev/null
+flutter pub get
+popd >/dev/null
+
+echo "Backend → source backend/.venv/bin/activate && cd backend && uvicorn app.main:app --reload"
+echo "Frontend → cd frontend && flutter run -d chrome --web-port=5000"
+```
+
+#### Windows (PowerShell)
+
+```powershell
+$ErrorActionPreference = "Stop"
+
+# 1) Python + dependencies
+python -m venv backend\.venv
+backend\.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -r backend\requirements.txt
+
+# 2) Local Postgres (skip if you already have one running)
+docker rm -f repduel-postgres 2>$null
+docker run --name repduel-postgres -p 5432:5432 \`
+  -e POSTGRES_USER=repduel \`
+  -e POSTGRES_PASSWORD=repduel \`
+  -e POSTGRES_DB=repduel \`
+  -d postgres:15-alpine
+
+# 3) Backend env vars (edit the secrets before committing!)
+@'
+APP_URL=http://localhost:5000
+BASE_URL=http://127.0.0.1:8000
+DATABASE_URL=postgresql+asyncpg://repduel:repduel@localhost:5432/repduel
+JWT_SECRET_KEY=change-this-access-secret
+REFRESH_JWT_SECRET_KEY=change-this-refresh-secret
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+REFRESH_TOKEN_EXPIRE_DAYS=30
+REVENUECAT_WEBHOOK_AUTH_TOKEN=replace-with-test-token
+STRIPE_SECRET_KEY=sk_test_replace_me
+STRIPE_WEBHOOK_SECRET=whsec_replace_me
+FRONTEND_ORIGINS=["http://localhost:3000","http://localhost:5000","http://localhost:5173"]
+COOKIE_SAMESITE=lax
+COOKIE_SECURE=false
+'@ | Set-Content -Encoding UTF8 backend\.env
+
+# 4) Run migrations
+Push-Location backend
+alembic upgrade head
+Pop-Location
+
+# 5) Frontend env vars
+@'
+BACKEND_URL=http://127.0.0.1:8000
+MERCHANT_DISPLAY_NAME=RepDuel (Local)
+PUBLIC_BASE_URL=http://localhost:5000
+REVENUE_CAT_APPLE_KEY=replace-me
+STRIPE_CANCEL_URL=http://localhost:5000/payment-cancel
+STRIPE_PREMIUM_PLAN_ID=price_test
+STRIPE_PUBLISHABLE_KEY=pk_test_replace_me
+STRIPE_SUCCESS_URL=http://localhost:5000/payment-success
+'@ | Set-Content -Encoding UTF8 frontend\.env
+
+# 6) Sync Flutter deps
+Push-Location frontend
+flutter pub get
+Pop-Location
+
+Write-Host "Backend → backend\\.venv\\Scripts\\Activate.ps1; Set-Location backend; uvicorn app.main:app --reload"
+Write-Host "Frontend → Set-Location frontend; flutter run -d chrome --web-port=5000"
+```
+
+> 💡 If you prefer a different Postgres instance or already have secret keys, swap those values before running the script. The commands above overwrite any existing `.env` files.
+
+---
+
 ## 🔧 Backend Setup (FastAPI)
 
 ```bash
@@ -97,7 +229,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate      # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env           # Fill in DB creds, JWT secrets, Stripe keys
+# Create or edit .env (see bootstrap block for template)
 alembic upgrade head           # Run DB migrations
 uvicorn app.main:app --reload
 ```
@@ -111,7 +243,7 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 flutter pub get
-flutter run -d chrome --web-port=3000
+flutter run -d chrome --web-port=5000
 ```
 
 * Web: `http://localhost:5000`
