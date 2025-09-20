@@ -7,6 +7,7 @@ import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/score_events_provider.dart';
 import '../../../widgets/error_display.dart';
+import '../../../core/providers/personal_best_events_provider.dart';
 import '../../../widgets/loading_spinner.dart';
 
 final scenarioDetailsProvider = FutureProvider.autoDispose
@@ -90,11 +91,13 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       });
 
       double previousBest = 0.0;
+      bool isPersonalBest = false;
       final responseData = response.data;
       if (responseData is Map) {
         final Map<String, dynamic> map = responseData.cast<String, dynamic>();
         previousBest =
             (map['previous_best_score_value'] as num?)?.toDouble() ?? 0.0;
+        isPersonalBest = map['is_personal_best'] == true;
       }
 
       ref.read(scoreEventsProvider.notifier).state++;
@@ -102,6 +105,21 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       if (!mounted) return;
 
       setState(() => _isSubmitting = false);
+
+      // If this was a personal best, push a local feed event so it shows immediately.
+      if (isPersonalBest) {
+        ref.read(personalBestEventsProvider.notifier).add(
+              PersonalBestEvent(
+                userId: user.id,
+                scenarioId: widget.scenarioId,
+                isBodyweight: isBodyweight,
+                weightKg: weightInKg,
+                reps: reps,
+                createdAt: DateTime.now(),
+                exerciseName: widget.liftName,
+              ),
+            );
+      }
 
       final shouldRefresh = (await context.pushNamed<bool>(
             'results',

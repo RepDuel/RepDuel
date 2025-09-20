@@ -10,6 +10,7 @@ import '../../../core/providers/user_by_id_provider.dart';
 import '../../../core/models/user.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../ranked/utils/rank_utils.dart';
+import '../../../core/providers/personal_best_events_provider.dart';
 
 class ActivityFeed extends ConsumerWidget {
   final String userId;
@@ -162,7 +163,28 @@ class ActivityFeed extends ConsumerWidget {
           );
         }
 
-        // Newest first
+        // Also include local, immediate personal-best events posted from scenario screens.
+        final localPbEvents = ref.watch(personalBestEventsProvider);
+        for (final e in localPbEvents) {
+          final exercise = e.exerciseName ?? scenarioTitle(e.scenarioId);
+          final repsLabel = e.reps == 1 ? 'rep' : 'reps';
+          final subtitle = e.isBodyweight
+              ? '${e.reps} $repsLabel'
+              : '${formatNum(toUserUnit(e.weightKg))} $unit × ${e.reps} $repsLabel';
+          feed.add(
+            _FeedEvent(
+              when: e.createdAt,
+              kind: _FeedKind.workout,
+              title: 'set a personal best • $exercise',
+              subtitle: subtitle,
+              icon: Icons.emoji_events,
+              accent: Colors.amberAccent,
+              userId: e.userId,
+            ),
+          );
+        }
+
+        // Newest first (after merging local PB events)
         feed.sort((a, b) => b.when.compareTo(a.when));
 
         final screenWidth = MediaQuery.of(context).size.width;
