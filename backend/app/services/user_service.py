@@ -8,6 +8,7 @@ from sqlalchemy.future import select
 from app.core.security import hash_password, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+from app.services.level_service import ensure_user_xp
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
@@ -47,6 +48,7 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    await ensure_user_xp(db, user.id)
     return user
 
 
