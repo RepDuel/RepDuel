@@ -70,95 +70,109 @@ class _RoutinePlayScreenState extends ConsumerState<RoutinePlayScreen> {
   Widget build(BuildContext context) {
     final routine = widget.routine;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Play Routine'),
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) return;
+        if (mounted) {
+          _bottomNavController.state = true;
+        }
+      },
+      child: Scaffold(
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: scenarioIdToName.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  // Table headers
-                  const Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'Name',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          'Sets',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Scenario rows
-                  ...routine.scenarios.map(
-                    (scenario) {
-                      final name = scenarioIdToName[scenario.scenarioId] ??
-                          scenario.scenarioId;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                name,
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 16),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                '${scenario.sets}',
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 16),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-      ),
-
-      // START button
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton(
-          onPressed: () {
-            // ✅ Use named route with path parameters (Option A flow)
-            context.pushNamed(
-              'exerciseList',
-              pathParameters: {'routineId': routine.id},
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            textStyle: const TextStyle(fontSize: 16),
+        appBar: AppBar(
+          title: const Text('Play Routine'),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (mounted) {
+                _bottomNavController.state = true;
+              }
+              context.pop();
+            },
           ),
-          child: const Text('Start'),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: scenarioIdToName.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    // Table headers
+                    const Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'Name',
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Sets',
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Scenario rows
+                    ...routine.scenarios.map(
+                      (scenario) {
+                        final name = scenarioIdToName[scenario.scenarioId] ??
+                            scenario.scenarioId;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  name,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 16),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  '${scenario.sets}',
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+        ),
+        // START button
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: () {
+              // ✅ Use named route with path parameters (Option A flow)
+              context.pushNamed(
+                'exerciseList',
+                pathParameters: {'routineId': routine.id},
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              textStyle: const TextStyle(fontSize: 16),
+            ),
+            child: const Text('Start'),
+          ),
         ),
       ),
     );
