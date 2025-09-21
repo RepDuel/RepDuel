@@ -17,3 +17,4 @@ from app.models.hidden_routine import HiddenRoutine
 from app.models.bodyweight_calibration import BodyweightCalibration
 from app.models.xp_event import XPEvent
 from app.models.user_xp import UserXP
+from app.models.social import SocialEdge
