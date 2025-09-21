@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1.energy import router as energy_router
 from app.api.v1.guilds import router as guilds_router
+from app.api.v1.levels import router as levels_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.ranks import router as ranks_router
 from app.api.v1.routine_submission import router as routine_submission_router
@@ -27,3 +28,4 @@ api_router.include_router(energy_router)
 api_router.include_router(routine_submission_router)
 api_router.include_router(ranks_router)
 api_router.include_router(webhooks_router)
+api_router.include_router(levels_router)

@@ -85,6 +85,17 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    xp_events = relationship(
+        "XPEvent",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    xp_summary = relationship(
+        "UserXP",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
     __table_args__ = (
         CheckConstraint(

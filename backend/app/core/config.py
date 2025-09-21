@@ -47,6 +47,15 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("COOKIE_SECURE", "REFRESH_COOKIE_SECURE", "refresh_cookie_secure"),
     )
 
+    XP_MAX_LEVEL: int = Field(
+        default=100,
+        validation_alias=AliasChoices("XP_MAX_LEVEL", "xp_max_level"),
+    )
+    XP_CURVE_BASE: int = Field(
+        default=100,
+        validation_alias=AliasChoices("XP_CURVE_BASE", "xp_curve_base"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -79,6 +88,10 @@ class Settings(BaseSettings):
             self.REFRESH_JWT_SECRET_KEY = self.JWT_SECRET_KEY
         if self.COOKIE_SAMESITE:
             self.COOKIE_SAMESITE = self.COOKIE_SAMESITE.strip().lower()
+        if self.XP_MAX_LEVEL < 1:
+            self.XP_MAX_LEVEL = 1
+        if self.XP_CURVE_BASE < 1:
+            self.XP_CURVE_BASE = 1
         return self
 
 

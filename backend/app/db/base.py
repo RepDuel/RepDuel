@@ -15,3 +15,5 @@ from app.models.score import Score
 from app.models.user import User
 from app.models.hidden_routine import HiddenRoutine
 from app.models.bodyweight_calibration import BodyweightCalibration
+from app.models.xp_event import XPEvent
+from app.models.user_xp import UserXP
