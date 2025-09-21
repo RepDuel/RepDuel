@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,7 +75,9 @@ def level_for_xp(
 
     while level > 1 and sanitized_xp < xp_for_level(level, base=curve_base):
         level -= 1
-    while level < level_cap and sanitized_xp >= xp_for_level(level + 1, base=curve_base):
+    while level < level_cap and sanitized_xp >= xp_for_level(
+        level + 1, base=curve_base
+    ):
         level += 1
 
     return min(level, level_cap)
@@ -151,6 +153,26 @@ async def get_level_progress(db: AsyncSession, user_id: UUID) -> LevelStats:
     return stats
 
 
+async def xp_gained_since(db: AsyncSession, user_id: UUID, since: datetime) -> int:
+    """Return the total XP gained since the provided timestamp."""
+
+    result = await db.execute(
+        select(func.coalesce(func.sum(XPEvent.amount), 0)).where(
+            XPEvent.user_id == user_id, XPEvent.created_at >= since
+        )
+    )
+    total = result.scalar()
+    return int(total or 0)
+
+
+async def xp_gained_this_week(db: AsyncSession, user_id: UUID) -> int:
+    """Return the XP gained within the last seven days."""
+
+    now = datetime.now(timezone.utc)
+    week_start = now - timedelta(days=7)
+    return await xp_gained_since(db, user_id, week_start)
+
+
 def _normalize(value: str | None) -> str | None:
     if value is None:
         return None
@@ -188,7 +210,9 @@ async def award_xp(
         )
         existing = result.scalars().first()
         if existing:
-            return AwardOutcome(stats=current_stats, awarded=False, reason="idempotent_replay")
+            return AwardOutcome(
+                stats=current_stats, awarded=False, reason="idempotent_replay"
+            )
 
     if normalized_source_type and normalized_source_id:
         result = await db.execute(
@@ -200,7 +224,9 @@ async def award_xp(
         )
         natural_existing = result.scalars().first()
         if natural_existing:
-            return AwardOutcome(stats=current_stats, awarded=False, reason="idempotent_replay")
+            return AwardOutcome(
+                stats=current_stats, awarded=False, reason="idempotent_replay"
+            )
 
     now = datetime.now(timezone.utc)
     original_total = int(summary.total_xp or 0)

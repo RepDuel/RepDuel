@@ -10,6 +10,7 @@ class LevelProgress(BaseModel):
     xp: int = Field(..., ge=0)
     xp_to_next: int = Field(..., ge=0)
     progress_pct: float = Field(..., ge=0.0, le=1.0)
+    xp_gained_this_week: int = Field(..., ge=0)
 
 
 class AwardXPRequest(BaseModel):

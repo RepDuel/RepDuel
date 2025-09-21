@@ -1,5 +1,7 @@
 # backend/app/api/v1/levels.py
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,17 +9,26 @@ from app.api.v1.auth import get_current_user
 from app.api.v1.deps import get_db
 from app.models.user import User
 from app.schemas.level import AwardXPRequest, AwardXPResponse, LevelProgress
-from app.services.level_service import LevelStats, award_xp, get_level_progress
+from app.services.level_service import (
+    LevelStats,
+    award_xp,
+    get_level_progress,
+    xp_gained_this_week,
+)
 
 router = APIRouter(prefix="/levels", tags=["levels"])
 
 
-def _to_schema(stats: LevelStats) -> LevelProgress:
+async def _to_schema(
+    db: AsyncSession, user_id: UUID, stats: LevelStats
+) -> LevelProgress:
+    weekly_xp = await xp_gained_this_week(db, user_id)
     return LevelProgress(
         level=stats.level,
         xp=stats.total_xp,
         xp_to_next=stats.xp_to_next,
         progress_pct=stats.progress_pct,
+        xp_gained_this_week=weekly_xp,
     )
 
 
@@ -27,7 +38,7 @@ async def read_my_level(
     current_user: User = Depends(get_current_user),
 ) -> LevelProgress:
     stats = await get_level_progress(db, current_user.id)
-    return _to_schema(stats)
+    return await _to_schema(db, current_user.id, stats)
 
 
 @router.post(
@@ -37,9 +48,7 @@ async def read_my_level(
 )
 async def award_my_level_xp(
     payload: AwardXPRequest,
-    idempotency_key_header: str | None = Header(
-        default=None, alias="Idempotency-Key"
-    ),
+    idempotency_key_header: str | None = Header(default=None, alias="Idempotency-Key"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AwardXPResponse:
@@ -59,8 +68,9 @@ async def award_my_level_xp(
     except ValueError as exc:  # pragma: no cover - defensive guard
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
+    progress = await _to_schema(db, current_user.id, result.stats)
     return AwardXPResponse(
         awarded=result.awarded,
         reason=result.reason,
-        progress=_to_schema(result.stats),
+        progress=progress,
     )

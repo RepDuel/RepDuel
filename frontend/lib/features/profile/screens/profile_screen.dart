@@ -3,15 +3,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 import 'package:repduel/widgets/loading_spinner.dart';
 
+import '../../../core/models/level_progress.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_history_provider.dart';
 import '../../ranked/utils/rank_utils.dart';
+import '../providers/level_progress_provider.dart';
 import '../widgets/energy_graph.dart';
 import '../widgets/activity_feed.dart';
 
 final showGraphProvider = StateProvider.autoDispose<bool>((ref) => false);
+final showProgressProvider = StateProvider.autoDispose<bool>((ref) => false);
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -37,12 +41,20 @@ class ProfileScreen extends ConsumerWidget {
           final rankColor = getRankColor(rank);
           final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
           final showGraph = ref.watch(showGraphProvider);
+          final showProgress = ref.watch(showProgressProvider);
+          final levelProgressAsync = ref.watch(levelProgressProvider);
 
           Future<void> refresh() async {
             try {
               await ref.read(authProvider.notifier).refreshUserData();
             } catch (_) {}
+            ref.read(showGraphProvider.notifier).state = false;
+            ref.read(showProgressProvider.notifier).state = false;
             ref.invalidate(workoutHistoryProvider(user.id));
+            ref.invalidate(levelProgressProvider);
+            try {
+              await ref.read(levelProgressProvider.future);
+            } catch (_) {}
           }
 
           return RefreshIndicator(
@@ -76,6 +88,25 @@ class ProfileScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 32),
+                  levelProgressAsync.when(
+                    data: (progress) => _LevelProgressSection(
+                      progress: progress,
+                      showProgress: showProgress,
+                      primaryColor: primaryColor,
+                      onToggle: () => ref
+                          .read(showProgressProvider.notifier)
+                          .state = !showProgress,
+                    ),
+                    loading: () =>
+                        _LevelProgressLoading(primaryColor: primaryColor),
+                    error: (error, _) => _LevelProgressError(
+                      primaryColor: primaryColor,
+                      onRetry: () {
+                        ref.invalidate(levelProgressProvider);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -181,6 +212,233 @@ class ProfileScreen extends ConsumerWidget {
       width: size,
       height: size,
       fit: BoxFit.cover,
+    );
+  }
+}
+
+class _LevelProgressSection extends StatelessWidget {
+  final LevelProgress progress;
+  final bool showProgress;
+  final VoidCallback onToggle;
+  final Color primaryColor;
+
+  const _LevelProgressSection({
+    required this.progress,
+    required this.showProgress,
+    required this.onToggle,
+    required this.primaryColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Level: ',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            Text(
+              '${progress.level}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: onToggle,
+              child: Text(
+                showProgress ? 'Hide Progress' : 'View Progress',
+                style: TextStyle(color: primaryColor),
+              ),
+            ),
+          ],
+        ),
+        if (showProgress) const SizedBox(height: 8),
+        if (showProgress)
+          _LevelProgressDetails(
+            progress: progress,
+            primaryColor: primaryColor,
+          ),
+      ],
+    );
+  }
+}
+
+class _LevelProgressLoading extends StatelessWidget {
+  final Color primaryColor;
+
+  const _LevelProgressLoading({required this.primaryColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Text(
+          'Level: ',
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: primaryColor,
+          ),
+        ),
+        const Spacer(),
+        TextButton(
+          onPressed: null,
+          style: TextButton.styleFrom(
+            foregroundColor: primaryColor.withValues(alpha: 0.6),
+          ),
+          child: const Text('View Progress'),
+        ),
+      ],
+    );
+  }
+}
+
+class _LevelProgressError extends StatelessWidget {
+  final VoidCallback onRetry;
+  final Color primaryColor;
+
+  const _LevelProgressError({
+    required this.onRetry,
+    required this.primaryColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Level: ',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            const Text(
+              '--',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(
+                'Retry',
+                style: TextStyle(color: primaryColor),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Unable to load level progress. Tap retry to try again.',
+          style: TextStyle(color: Colors.redAccent, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _LevelProgressDetails extends StatelessWidget {
+  final LevelProgress progress;
+  final Color primaryColor;
+
+  const _LevelProgressDetails({
+    required this.progress,
+    required this.primaryColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final formatter = NumberFormat.decimalPattern();
+    final totalXp = formatter.format(progress.xp);
+    final xpWeek = formatter.format(progress.xpGainedThisWeek);
+    final xpToNext = formatter.format(progress.xpToNext);
+    final percent = ((progress.progressPct * 100).clamp(0, 100)).toDouble();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _LevelProgressDetailRow(label: 'Total XP', value: totalXp),
+          const SizedBox(height: 6),
+          _LevelProgressDetailRow(
+            label: 'XP gained this week',
+            value: xpWeek,
+          ),
+          const SizedBox(height: 6),
+          _LevelProgressDetailRow(
+            label: 'XP to next level',
+            value: xpToNext,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Progress to next level: ${percent.toStringAsFixed(1)}%',
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress.progressPct,
+              minHeight: 6,
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LevelProgressDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _LevelProgressDetailRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

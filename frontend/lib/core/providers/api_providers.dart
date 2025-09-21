@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/auth_api_service.dart';
 import '../api/energy_api_service.dart';
 import '../api/guild_api_service.dart';
+import '../api/level_api_service.dart';
 import '../config/env.dart';
 import '../http/adapter.dart';
 import '../models/guild.dart';
@@ -250,6 +251,11 @@ final guildApiProvider = Provider<GuildApiService>((ref) {
 final energyApiProvider = Provider<EnergyApiService>((ref) {
   final client = ref.read(privateHttpClientProvider);
   return EnergyApiService(client);
+});
+
+final levelApiProvider = Provider<LevelApiService>((ref) {
+  final client = ref.read(privateHttpClientProvider);
+  return LevelApiService(client);
 });
 
 final myGuildsProvider = FutureProvider<List<Guild>>((ref) async {
