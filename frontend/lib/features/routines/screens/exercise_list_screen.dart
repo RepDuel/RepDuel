@@ -24,8 +24,8 @@ final routineDetailsProvider = FutureProvider.autoDispose
 });
 
 class ExerciseListScreen extends ConsumerStatefulWidget {
-  final String routineId;
-  const ExerciseListScreen({super.key, required this.routineId});
+  final String? routineId;
+  const ExerciseListScreen({super.key, this.routineId});
   @override
   ConsumerState<ExerciseListScreen> createState() => _ExerciseListScreenState();
 }
@@ -128,10 +128,14 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final durationMinutes = elapsedSeconds / 60.0;
 
       RoutineDetails? routineDetails;
-      try {
-        routineDetails =
-            await ref.read(routineDetailsProvider(widget.routineId).future);
-      } catch (_) {
+      if (widget.routineId != null) {
+        try {
+          routineDetails = await ref
+              .read(routineDetailsProvider(widget.routineId!).future);
+        } catch (_) {
+          routineDetails = null;
+        }
+      } else {
         routineDetails = null;
       }
 
@@ -159,14 +163,17 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         };
       }).toList();
 
-      final submissionBody = {
-        'routine_id': widget.routineId,
+      final Map<String, dynamic> submissionBody = {
         'user_id': user.id,
         'duration': durationMinutes,
         'completion_timestamp': DateTime.now().toIso8601String(),
         'status': 'completed',
         'scenario_submissions': scenariosPayload,
       };
+
+      if (widget.routineId != null) {
+        submissionBody['routine_id'] = widget.routineId;
+      }
 
       await client.post('/routine_submission/', data: submissionBody);
 
@@ -413,8 +420,20 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final routineDetailsAsync =
-        ref.watch(routineDetailsProvider(widget.routineId));
+    final AsyncValue<RoutineDetails?> routineDetailsAsync;
+    if (widget.routineId == null) {
+      routineDetailsAsync = const AsyncValue<RoutineDetails?>.data(null);
+    } else {
+      routineDetailsAsync = ref
+          .watch(routineDetailsProvider(widget.routineId!))
+          .whenData((details) => details);
+    }
+    final routineDetails = routineDetailsAsync.valueOrNull;
+    final appBarTitle = routineDetailsAsync.when(
+      data: (details) => details?.name ?? 'Quick Workout',
+      loading: () => 'Loading...',
+      error: (_, __) => widget.routineId == null ? 'Quick Workout' : 'Routine',
+    );
     final isBottomNavVisible = ref.watch(bottomNavVisibilityProvider);
     final isLbs =
         (ref.watch(authProvider).valueOrNull?.user?.weightMultiplier ?? 1.0) >
@@ -435,11 +454,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
             _bottomNavController.state = !isBottomNavVisible;
           },
         ),
-        title: routineDetailsAsync.when(
-          data: (details) => Text(details.name),
-          loading: () => const Text('Loading...'),
-          error: (_, __) => const Text('Routine'),
-        ),
+        title: Text(appBarTitle),
         backgroundColor: Colors.black,
         elevation: 0,
         actions: [
@@ -466,217 +481,228 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         ],
       ),
       backgroundColor: Colors.black,
-      body: routineDetailsAsync.when(
-        loading: () => const Center(child: LoadingSpinner()),
-        error: (err, stack) => Center(
+      body: () {
+        if (routineDetailsAsync.isLoading) {
+          return const Center(child: LoadingSpinner());
+        }
+        if (routineDetailsAsync.hasError) {
+          final message =
+              routineDetailsAsync.error?.toString() ?? 'Failed to load routine.';
+          return Center(
             child: ErrorDisplay(
-                message: err.toString(),
-                onRetry: () =>
-                    ref.refresh(routineDetailsProvider(widget.routineId)))),
-        data: (details) {
-          final apiExercises = details.scenarios;
-          final localExercises =
-              _localAddedExercises.map((e) => Scenario.fromJson(e)).toList();
-          final allExercises = [...apiExercises, ...localExercises]
-              .map(_applyOverrides)
-              .toList();
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Total Volume: ${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                        ),
+              message: message,
+              onRetry: widget.routineId == null
+                  ? null
+                  : () => ref.refresh(
+                        routineDetailsProvider(widget.routineId!),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Session Time: $sessionTimerText',
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(color: Colors.white24),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: allExercises.length,
-                    itemBuilder: (context, index) {
-                      final exercise = allExercises[index];
-                      final isLocal = _localAddedExercises
-                          .any((m) => m['scenario_id'] == exercise.id);
-
-                      final completedSetsCount = ref.watch(
-                        routineSetProvider.select((sets) => sets
-                            .where((s) => s.scenarioId == exercise.id)
-                            .length),
-                      );
-
-                      final isCompleted = completedSetsCount >= exercise.sets;
-
-                      return Card(
-                        color: isCompleted
-                            ? Colors.green.withAlpha(51)
-                            : Colors.white12,
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        child: ListTile(
-                          title: Text(exercise.name,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 18)),
-                          subtitle: Text(
-                              'Sets: ${exercise.sets} | Reps: ${exercise.reps}',
-                              style: const TextStyle(color: Colors.white70)),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                tooltip: 'Start',
-                                icon: const Icon(Icons.play_arrow,
-                                    color: Colors.greenAccent, size: 28),
-                                onPressed: () async {
-                                  final setData = await context
-                                      .push<List<Map<String, dynamic>>>(
-                                    '/exercise-play',
-                                    extra: exercise,
-                                  );
-                                  if (!mounted) return;
-                                  if (setData != null) {
-                                    _updateVolume(setData);
-                                  }
-                                },
-                              ),
-                              PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert,
-                                    color: Colors.white70),
-                                onSelected: (value) async {
-                                  if (value == 'edit') {
-                                    await _openEditSheet(
-                                      scenario: exercise,
-                                      isLocalAdded: isLocal,
-                                    );
-                                  } else if (value == 'remove' && isLocal) {
-                                    _maybeRemoveLocalExercise(exercise.id);
-                                  }
-                                },
-                                itemBuilder: (context) =>
-                                    <PopupMenuEntry<String>>[
-                                  const PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text('Edit sets/reps'),
-                                  ),
-                                  if (isLocal)
-                                    const PopupMenuItem(
-                                      value: 'remove',
-                                      child: Text('Remove'),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          onTap: () async {
-                            final setData =
-                                await context.push<List<Map<String, dynamic>>>(
-                              '/exercise-play',
-                              extra: exercise,
-                            );
-                            if (!mounted) return;
-                            if (setData != null) {
-                              _updateVolume(setData);
-                            }
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _navigateToAddExercise,
-                    child: const Text('Add Exercise'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () async {
-                      // Capture context and router before any async operations
-                      final currentContext = context;
-                      final router = GoRouter.of(currentContext);
-
-                      final confirmed = await showDialog<bool>(
-                        context: currentContext,
-                        builder: (dialogCtx) => AlertDialog(
-                          backgroundColor: Colors.grey[900],
-                          title: const Text(
-                            'Quit Routine?',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          content: const Text(
-                            'Are you sure you want to quit? Your progress will not be saved.',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(dialogCtx, false),
-                              child: const Text('Cancel',
-                                  style: TextStyle(color: Colors.white70)),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(dialogCtx, true),
-                              child: const Text('Quit',
-                                  style: TextStyle(color: Colors.red)),
-                            ),
-                          ],
-                        ),
-                      );
-
-                      // ✅ Check mounted right after await
-                      if (!mounted || confirmed != true) return;
-
-                      ref.read(routineSetProvider.notifier).clear();
-                      _stopSessionTimer();
-                      _bottomNavController.state = true;
-
-                      if (router.canPop()) {
-                        router.pop(); // first pop
-
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          // Use the captured router instead of getting a new one from context
-                          if (router.canPop()) {
-                            router.pop(); // second pop
-                          } else {
-                            router.go('/routines');
-                          }
-                        });
-                      } else {
-                        router.go('/routines');
-                      }
-                    },
-                    child: const Text('Quit Routine',
-                        style: TextStyle(color: Colors.red)),
-                  ),
-                ),
-                SizedBox(height: 16),
-                SizedBox(height: MediaQuery.of(context).padding.bottom),
-              ],
             ),
           );
-        },
-      ),
+        }
+
+        final apiExercises = routineDetails?.scenarios ?? <Scenario>[];
+        final localExercises =
+            _localAddedExercises.map((e) => Scenario.fromJson(e)).toList();
+        final allExercises = [...apiExercises, ...localExercises]
+            .map(_applyOverrides)
+            .toList();
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Volume: ${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Session Time: $sessionTimerText',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white24),
+              Expanded(
+                child: allExercises.isEmpty
+                    ? _EmptyExercisesPlaceholder(
+                        onAddExercise: _navigateToAddExercise,
+                      )
+                    : ListView.builder(
+                        itemCount: allExercises.length,
+                        itemBuilder: (context, index) {
+                          final exercise = allExercises[index];
+                          final isLocal = _localAddedExercises
+                              .any((m) => m['scenario_id'] == exercise.id);
+
+                          final completedSetsCount = ref.watch(
+                            routineSetProvider.select((sets) => sets
+                                .where((s) => s.scenarioId == exercise.id)
+                                .length),
+                          );
+
+                          final isCompleted = completedSetsCount >= exercise.sets;
+
+                          return Card(
+                            color: isCompleted
+                                ? Colors.green.withAlpha(51)
+                                : Colors.white12,
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            child: ListTile(
+                              title: Text(exercise.name,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 18)),
+                              subtitle: Text(
+                                  'Sets: ${exercise.sets} | Reps: ${exercise.reps}',
+                                  style: const TextStyle(color: Colors.white70)),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Start',
+                                    icon: const Icon(Icons.play_arrow,
+                                        color: Colors.greenAccent, size: 28),
+                                    onPressed: () async {
+                                      final setData = await context
+                                          .push<List<Map<String, dynamic>>>(
+                                        '/exercise-play',
+                                        extra: exercise,
+                                      );
+                                      if (!mounted) return;
+                                      if (setData != null) {
+                                        _updateVolume(setData);
+                                      }
+                                    },
+                                  ),
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert,
+                                        color: Colors.white70),
+                                    onSelected: (value) async {
+                                      if (value == 'edit') {
+                                        await _openEditSheet(
+                                          scenario: exercise,
+                                          isLocalAdded: isLocal,
+                                        );
+                                      } else if (value == 'remove' && isLocal) {
+                                        _maybeRemoveLocalExercise(exercise.id);
+                                      }
+                                    },
+                                    itemBuilder: (context) =>
+                                        <PopupMenuEntry<String>>[
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Text('Edit sets/reps'),
+                                      ),
+                                      if (isLocal)
+                                        const PopupMenuItem(
+                                          value: 'remove',
+                                          child: Text('Remove'),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              onTap: () async {
+                                final setData =
+                                    await context.push<List<Map<String, dynamic>>>(
+                                  '/exercise-play',
+                                  extra: exercise,
+                                );
+                                if (!mounted) return;
+                                if (setData != null) {
+                                  _updateVolume(setData);
+                                }
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _navigateToAddExercise,
+                  child: const Text('Add Exercise'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () async {
+                    final currentContext = context;
+                    final router = GoRouter.of(currentContext);
+
+                    final confirmed = await showDialog<bool>(
+                      context: currentContext,
+                      builder: (dialogCtx) => AlertDialog(
+                        backgroundColor: Colors.grey[900],
+                        title: const Text(
+                          'Quit Routine?',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        content: const Text(
+                          'Are you sure you want to quit? Your progress will not be saved.',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogCtx, false),
+                            child: const Text('Cancel',
+                                style: TextStyle(color: Colors.white70)),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogCtx, true),
+                            child: const Text('Quit',
+                                style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (!mounted || confirmed != true) return;
+
+                    ref.read(routineSetProvider.notifier).clear();
+                    _stopSessionTimer();
+                    _bottomNavController.state = true;
+
+                    if (router.canPop()) {
+                      router.pop();
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (router.canPop()) {
+                          router.pop();
+                        } else {
+                          router.go('/routines');
+                        }
+                      });
+                    } else {
+                      router.go('/routines');
+                    }
+                  },
+                  child: const Text('Quit Routine',
+                      style: TextStyle(color: Colors.red)),
+                ),
+              ),
+              SizedBox(height: 16),
+              SizedBox(height: MediaQuery.of(context).padding.bottom),
+            ],
+          ),
+        );
+      }(),
     );
   }
 
@@ -703,6 +729,43 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       return '${hours.toString().padLeft(2, '0')}:$minutes:$seconds';
     }
     return '$minutes:$seconds';
+  }
+}
+
+class _EmptyExercisesPlaceholder extends StatelessWidget {
+  final Future<void> Function() onAddExercise;
+
+  const _EmptyExercisesPlaceholder({
+    required this.onAddExercise,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.fitness_center, color: Colors.white24, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'No exercises logged yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                onAddExercise();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add your first exercise'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

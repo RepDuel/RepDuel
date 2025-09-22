@@ -48,24 +48,32 @@ async def create_routine_submission(
     routine_submission_data: RoutineSubmissionCreate,
     current_user: User,
 ) -> RoutineSubmission:
-    # Check if the routine exists
-    routine_result = await db.execute(
-        select(Routine).where(Routine.id == routine_submission_data.routine_id)
-    )
-    routine = routine_result.scalar_one_or_none()
-    if not routine:
-        raise ValueError("Routine not found.")
+    routine = None
+    if routine_submission_data.routine_id:
+        routine_result = await db.execute(
+            select(Routine).where(Routine.id == routine_submission_data.routine_id)
+        )
+        routine = routine_result.scalar_one_or_none()
+        if not routine:
+            raise ValueError("Routine not found.")
 
-    title = generate_strava_title(
-        routine_submission_data.scenarios,
-        routine_submission_data.completion_timestamp or datetime.utcnow(),
+    completion_ts = (
+        routine_submission_data.completion_timestamp or datetime.utcnow()
     )
+
+    if routine is not None and getattr(routine, "name", None):
+        title = routine.name
+    else:
+        title = generate_strava_title(
+            routine_submission_data.scenarios,
+            completion_ts,
+        )
 
     routine_submission = RoutineSubmission(
         routine_id=routine_submission_data.routine_id,
         user_id=current_user.id,
         duration=routine_submission_data.duration,
-        completion_timestamp=routine_submission_data.completion_timestamp,
+        completion_timestamp=completion_ts,
         status=routine_submission_data.status,
         title=title,
     )
@@ -87,6 +95,6 @@ async def create_routine_submission(
         db,
         current_user.id,
         duration_minutes=routine_submission_data.duration,
-        completed_at=routine_submission_data.completion_timestamp,
+        completed_at=completion_ts,
     )
     return routine_submission

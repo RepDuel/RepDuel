@@ -14,6 +14,7 @@ import '../../../core/services/share_service.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../widgets/add_routine_card.dart';
+import '../widgets/quick_workout_card.dart';
 import '../widgets/routine_card.dart';
 
 final routinesProvider = FutureProvider.autoDispose<List<Routine>>((ref) async {
@@ -147,6 +148,10 @@ class RoutinesScreen extends ConsumerWidget {
         ref.invalidate(routinesProvider);
       }
     }
+  }
+
+  void _startQuickWorkout(BuildContext context) {
+    context.pushNamed('freeWorkout');
   }
 
   Future<Routine?> _prepareRoutineForEditing(
@@ -320,9 +325,19 @@ class RoutinesScreen extends ConsumerWidget {
                         const SizedBox(height: 20),
                         SizedBox(
                           width: 220,
-                          child: AddRoutineCard(
-                              onPressed: () =>
-                                  _onAddRoutinePressed(context, ref, routines)),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              QuickWorkoutCard(
+                                onPressed: () => _startQuickWorkout(context),
+                              ),
+                              const SizedBox(height: 12),
+                              AddRoutineCard(
+                                onPressed: () =>
+                                    _onAddRoutinePressed(context, ref, routines),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -332,7 +347,7 @@ class RoutinesScreen extends ConsumerWidget {
             }
             return GridView.builder(
               padding: const EdgeInsets.all(12),
-              itemCount: visibleRoutines.length + 1,
+              itemCount: visibleRoutines.length + 2,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount:
                     (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6),
@@ -342,11 +357,16 @@ class RoutinesScreen extends ConsumerWidget {
               ),
               itemBuilder: (context, index) {
                 if (index == 0) {
+                  return QuickWorkoutCard(
+                    onPressed: () => _startQuickWorkout(context),
+                  );
+                }
+                if (index == 1) {
                   return AddRoutineCard(
                       onPressed: () =>
                           _onAddRoutinePressed(context, ref, routines));
                 }
-                final routine = visibleRoutines[index - 1];
+                final routine = visibleRoutines[index - 2];
                 final canEdit =
                     routine.userId == null || routine.userId == currentUserId;
                 final canDelete =

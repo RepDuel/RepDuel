@@ -27,7 +27,7 @@ class RoutineScenarioSubmission {
 }
 
 class RoutineSubmissionRead {
-  final String routineId;
+  final String? routineId;
   final String userId;
   final double duration;
   final String completionTimestamp;
@@ -36,7 +36,7 @@ class RoutineSubmissionRead {
   final List<RoutineScenarioSubmission> scenarios;
 
   RoutineSubmissionRead({
-    required this.routineId,
+    this.routineId,
     required this.userId,
     required this.duration,
     required this.completionTimestamp,
@@ -47,7 +47,7 @@ class RoutineSubmissionRead {
 
   factory RoutineSubmissionRead.fromJson(Map<String, dynamic> json) {
     return RoutineSubmissionRead(
-      routineId: json['routine_id'],
+      routineId: json['routine_id'] as String?,
       userId: json['user_id'],
       duration: (json['duration'] as num).toDouble(),
       completionTimestamp: json['completion_timestamp'],

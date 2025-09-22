@@ -184,16 +184,29 @@ class ActivityFeed extends ConsumerWidget {
         }
       });
 
+      final hasRoutineCard = entry.routineId != null;
+      final trimmedTitle = entry.title.trim();
+      final quickLabel = trimmedTitle.isEmpty ? 'quick workout' : trimmedTitle;
+      final feedTitle = hasRoutineCard
+          ? (trimmedTitle.isEmpty
+              ? 'completed a workout'
+              : 'completed $trimmedTitle')
+          : 'completed a quick workout';
+      final workoutDetails =
+          'Volume ${formatNum(totalVolumeUser)} $unit • Duration $durationLabel';
+      final subtitle = (!hasRoutineCard && trimmedTitle.isNotEmpty)
+          ? '$quickLabel • $workoutDetails'
+          : workoutDetails;
+
       // Single combined feed event per workout entry, with PBs listed below
       feed.add(
         _FeedEvent(
           when: when,
           kind: _FeedKind.workout,
-          title: 'completed ${entry.title}',
-          subtitle:
-              'Volume ${formatNum(totalVolumeUser)} $unit • Duration $durationLabel',
-          icon: Icons.fitness_center,
-          accent: Colors.blueAccent,
+          title: feedTitle,
+          subtitle: subtitle,
+          icon: hasRoutineCard ? Icons.fitness_center : Icons.flash_on,
+          accent: hasRoutineCard ? Colors.blueAccent : Colors.greenAccent,
           userId: entry.userId,
           personalBests: perEntryPBs,
         ),

@@ -38,7 +38,7 @@ class RoutineSubmission(Base):
     __tablename__ = "routine_submission"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), nullable=False)
+    routine_id = Column(UUID(as_uuid=True), ForeignKey("routines.id"), nullable=True)
 
     user_id = Column(
         UUID(as_uuid=True),

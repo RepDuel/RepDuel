@@ -121,10 +121,15 @@ final routerProvider = Provider<GoRouter>((ref) {
 
                 // ----------------- Option B: Play by routineId param -----------------
                 GoRoute(
+                  path: 'free-workout',
+                  name: 'freeWorkout',
+                  builder: (context, state) => const ExerciseListScreen(),
+                ),
+                GoRoute(
                   path: 'exercise-list/:routineId',
                   name: 'exerciseList',
                   builder: (context, state) => ExerciseListScreen(
-                    routineId: state.pathParameters['routineId']!,
+                    routineId: state.pathParameters['routineId'],
                   ),
                 ),
               ],

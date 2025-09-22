@@ -1,7 +1,7 @@
 # backend/app/schemas/routine_submission.py
 
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -18,7 +18,7 @@ class RoutineScenarioSubmission(BaseModel):
 
 
 class RoutineSubmissionCreate(BaseModel):
-    routine_id: UUID
+    routine_id: Optional[UUID] = None
     user_id: UUID
     duration: float
     completion_timestamp: datetime
@@ -29,7 +29,7 @@ class RoutineSubmissionCreate(BaseModel):
 
 
 class RoutineSubmissionRead(BaseModel):
-    routine_id: UUID
+    routine_id: Optional[UUID] = None
     user_id: UUID
     duration: float
     completion_timestamp: datetime
