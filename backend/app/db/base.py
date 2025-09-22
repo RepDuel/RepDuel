@@ -13,6 +13,7 @@ from app.models.routine_submission import (RoutineScenarioSubmission,
 from app.models.scenario import Scenario
 from app.models.score import Score
 from app.models.user import User
+from app.models.quest import QuestTemplate, UserQuest
 from app.models.hidden_routine import HiddenRoutine
 from app.models.bodyweight_calibration import BodyweightCalibration
 from app.models.xp_event import XPEvent

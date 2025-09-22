@@ -15,6 +15,7 @@ from app.api.v1.social import router as social_router
 from app.api.v1.standards import router as standards_router
 from app.api.v1.users import router as users_router
 from app.api.v1.webhooks import router as webhooks_router
+from app.api.v1.quests import router as quests_router
 
 api_router = APIRouter()
 
@@ -31,3 +32,4 @@ api_router.include_router(ranks_router)
 api_router.include_router(webhooks_router)
 api_router.include_router(levels_router)
 api_router.include_router(social_router)
+api_router.include_router(quests_router)

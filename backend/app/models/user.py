@@ -75,6 +75,11 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    quests = relationship(
+        "UserQuest",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     guilds = relationship(
         "Guild",
         back_populates="owner",
