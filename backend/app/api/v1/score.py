@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import get_db
 from app.models.score import Score
+from app.models.personal_best_event import PersonalBestEvent
 from app.models.scenario import Scenario
 from app.models.user import User
 from app.schemas.score import (
@@ -80,7 +81,24 @@ async def create_score_for_scenario(
         is_bodyweight=is_bodyweight,
     )
 
+    is_personal_best = (
+        previous_best is None or score_value > previous_best.score_value
+    )
+
     db.add(db_score)
+
+    if is_personal_best:
+        db.add(
+            PersonalBestEvent(
+                user_id=score.user_id,
+                scenario_id=scenario_id,
+                score_value=score_value,
+                weight_lifted=score.weight_lifted,
+                reps=score.reps,
+                is_bodyweight=is_bodyweight,
+            )
+        )
+
     await db.commit()
     await db.refresh(db_score)
 
@@ -89,10 +107,6 @@ async def create_score_for_scenario(
         user_id=score.user_id,
         scenario_id=scenario_id,
         new_score=score_value,
-    )
-
-    is_personal_best = (
-        previous_best is None or score_value > previous_best.score_value
     )
 
     return ScoreCreateResponse(

@@ -90,6 +90,11 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    personal_best_events = relationship(
+        "PersonalBestEvent",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     xp_events = relationship(
         "XPEvent",
         back_populates="user",

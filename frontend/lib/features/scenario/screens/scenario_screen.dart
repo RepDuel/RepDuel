@@ -106,19 +106,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
       setState(() => _isSubmitting = false);
 
-      // If this was a personal best, push a local feed event so it shows immediately.
+      // If this was a personal best, refresh the persisted feed events so the
+      // profile activity list reflects it immediately when returning.
       if (isPersonalBest) {
-        ref.read(personalBestEventsProvider.notifier).add(
-              PersonalBestEvent(
-                userId: user.id,
-                scenarioId: widget.scenarioId,
-                isBodyweight: isBodyweight,
-                weightKg: weightInKg,
-                reps: reps,
-                createdAt: DateTime.now(),
-                exerciseName: widget.liftName,
-              ),
-            );
+        ref.invalidate(personalBestEventsProvider(user.id));
       }
 
       final shouldRefresh = (await context.pushNamed<bool>(

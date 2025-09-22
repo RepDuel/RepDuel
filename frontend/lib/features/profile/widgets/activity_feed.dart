@@ -8,6 +8,7 @@ import '../../../core/providers/workout_history_provider.dart';
 import '../../../core/providers/score_events_provider.dart';
 import '../../../core/providers/user_by_id_provider.dart';
 import '../../../core/models/user.dart';
+import '../../../core/models/routine_submission_read.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../ranked/utils/rank_utils.dart';
 import '../../../core/providers/personal_best_events_provider.dart';
@@ -23,9 +24,11 @@ class ActivityFeed extends ConsumerWidget {
     // invalidate the history so this feed stays fresh.
     ref.listen<int>(scoreEventsProvider, (prev, next) {
       ref.invalidate(workoutHistoryProvider(userId));
+      ref.invalidate(personalBestEventsProvider(userId));
     });
 
     final historyAsync = ref.watch(workoutHistoryProvider(userId));
+    final personalBestsAsync = ref.watch(personalBestEventsProvider(userId));
     final authAsync = ref.watch(authProvider);
 
     final userMultiplier = authAsync.valueOrNull?.user?.weightMultiplier ?? 1.0;
@@ -70,159 +73,177 @@ class ActivityFeed extends ConsumerWidget {
       return weight * (1 + reps / 30.0);
     }
 
-    return historyAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, s) {
-        final message = e.toString();
-        final isAuthError = message.contains('Authentication token not available');
-        final display = isAuthError
-            ? 'Log in to view workout history.'
-            : 'Error: $message';
-        return Center(
-          child: Text(
-            display,
-            style: TextStyle(
-              color: isAuthError ? Colors.white54 : Colors.red,
-              fontSize: 16,
+    if (historyAsync.hasError) {
+      final message = historyAsync.error.toString();
+      final isAuthError =
+          message.contains('Authentication token not available');
+      final display =
+          isAuthError ? 'Log in to view workout history.' : 'Error: $message';
+      return Center(
+        child: Text(
+          display,
+          style: TextStyle(
+            color: isAuthError ? Colors.white54 : Colors.red,
+            fontSize: 16,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    if (personalBestsAsync.hasError) {
+      return Center(
+        child: Text(
+          'Error: ${personalBestsAsync.error}',
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    final isLoading =
+        (historyAsync.isLoading && historyAsync.valueOrNull == null) ||
+            (personalBestsAsync.isLoading &&
+                personalBestsAsync.valueOrNull == null);
+
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final entries = historyAsync.valueOrNull ?? const <RoutineSubmissionRead>[];
+    final personalBestEvents =
+        personalBestsAsync.valueOrNull ?? const <PersonalBestEvent>[];
+
+    if (entries.isEmpty && personalBestEvents.isEmpty) {
+      return const Center(
+        child: Text(
+          'No activity yet.',
+          style: TextStyle(color: Colors.white54, fontSize: 16),
+        ),
+      );
+    }
+
+    // Build a combined list of compact feed events (workouts + inferred PBs),
+    // then render in reverse chronological order.
+    final asc = [...entries]..sort((a, b) =>
+        DateTime.parse(a.completionTimestamp)
+            .compareTo(DateTime.parse(b.completionTimestamp)));
+
+    final bestByScenario = <String, double>{};
+    final feed = <_FeedEvent>[];
+
+    for (final entry in asc) {
+      final when = DateTime.parse(entry.completionTimestamp).toLocal();
+
+      // Workout summary event
+      final totalVolumeUser = entry.scenarios.fold<double>(
+        0.0,
+        (sum, s) => sum + toUserUnit(s.totalVolume),
+      );
+
+      final durationLabel = _formatDuration(entry.duration);
+
+      // Personal bests inferred for this single entry (one per exercise)
+      final perEntryPBs = <_PersonalBestLine>[];
+      final entryMaxByScenario = <String, _PBValue>{};
+      for (final s in entry.scenarios) {
+        if (s.reps <= 0) continue; // ignore empty sets
+        final isBw = s.scenarioId.startsWith('bodyweight_');
+        final score = calcScoreValue(
+          isBodyweight: isBw,
+          weight: s.weight,
+          reps: s.reps,
+        );
+        final current = entryMaxByScenario[s.scenarioId];
+        if (current == null || score > current.score) {
+          entryMaxByScenario[s.scenarioId] = _PBValue(
+            score: score,
+            reps: s.reps,
+            weightKg: s.weight,
+            isBodyweight: isBw,
+          );
+        }
+      }
+
+      // After we know the best set per exercise for this entry,
+      // compare once with all‑time best and add at most one PB line.
+      entryMaxByScenario.forEach((scenarioId, val) {
+        final prevBest = bestByScenario[scenarioId];
+        if (prevBest == null || val.score > prevBest) {
+          bestByScenario[scenarioId] = val.score;
+          final exercise = scenarioTitle(scenarioId);
+          final repsLabel = val.reps == 1 ? 'rep' : 'reps';
+          final subtitle = val.isBodyweight
+              ? '${val.reps} $repsLabel'
+              : '${formatNum(toUserUnit(val.weightKg))} $unit × ${val.reps} $repsLabel';
+          perEntryPBs.add(
+            _PersonalBestLine(
+              exerciseName: exercise,
+              detail: subtitle,
             ),
-            textAlign: TextAlign.center,
+          );
+        }
+      });
+
+      // Single combined feed event per workout entry, with PBs listed below
+      feed.add(
+        _FeedEvent(
+          when: when,
+          kind: _FeedKind.workout,
+          title: 'completed ${entry.title}',
+          subtitle:
+              'Volume ${formatNum(totalVolumeUser)} $unit • Duration $durationLabel',
+          icon: Icons.fitness_center,
+          accent: Colors.blueAccent,
+          userId: entry.userId,
+          personalBests: perEntryPBs,
+        ),
+      );
+    }
+
+    for (final e in personalBestEvents) {
+      final exercise = e.exerciseName ?? scenarioTitle(e.scenarioId);
+      final reps = e.reps ?? 0;
+      final repsLabel = reps == 1 ? 'rep' : 'reps';
+      final repsText = reps > 0 ? '$reps $repsLabel' : repsLabel;
+      final subtitle = e.isBodyweight
+          ? repsText
+          : '${formatNum(toUserUnit(e.weightKg))} $unit × $repsText';
+      feed.add(
+        _FeedEvent(
+          when: e.createdAt,
+          kind: _FeedKind.workout,
+          title: 'set a personal best • $exercise',
+          subtitle: subtitle,
+          icon: Icons.emoji_events,
+          accent: Colors.amberAccent,
+          userId: e.userId,
+        ),
+      );
+    }
+
+    // Newest first (after merging personal best events)
+    feed.sort((a, b) => b.when.compareTo(a.when));
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth > 700;
+    const minWidth = 300.0;
+    const maxWidth = 600.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: feed.map((e) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: isWide ? minWidth : double.infinity,
+              maxWidth: isWide ? maxWidth : double.infinity,
+            ),
+            child: _FeedTile(event: e, timeAgoText: timeAgo(e.when)),
           ),
         );
-      },
-      data: (entries) {
-        if (entries.isEmpty) {
-          return const Center(
-            child: Text(
-              'No activity yet.',
-              style: TextStyle(color: Colors.white54, fontSize: 16),
-            ),
-          );
-        }
-
-        // Build a combined list of compact feed events (workouts + inferred PBs),
-        // then render in reverse chronological order.
-        final asc = [...entries]
-          ..sort((a, b) => DateTime.parse(a.completionTimestamp)
-              .compareTo(DateTime.parse(b.completionTimestamp)));
-
-        final bestByScenario = <String, double>{};
-        final feed = <_FeedEvent>[];
-
-        for (final entry in asc) {
-          final when = DateTime.parse(entry.completionTimestamp).toLocal();
-
-          // Workout summary event
-          final totalVolumeUser = entry.scenarios.fold<double>(
-            0.0,
-            (sum, s) => sum + toUserUnit(s.totalVolume),
-          );
-
-          final durationLabel = _formatDuration(entry.duration);
-
-          // Personal bests inferred for this single entry (one per exercise)
-          final perEntryPBs = <_PersonalBestLine>[];
-          final Map<String, _PBValue> entryMaxByScenario = {};
-          for (final s in entry.scenarios) {
-            if (s.reps <= 0) continue; // ignore empty sets
-            final isBw = s.scenarioId.startsWith('bodyweight_');
-            final score = calcScoreValue(
-              isBodyweight: isBw,
-              weight: s.weight,
-              reps: s.reps,
-            );
-            final current = entryMaxByScenario[s.scenarioId];
-            if (current == null || score > current.score) {
-              entryMaxByScenario[s.scenarioId] = _PBValue(
-                score: score,
-                reps: s.reps,
-                weightKg: s.weight,
-                isBodyweight: isBw,
-              );
-            }
-          }
-
-          // After we know the best set per exercise for this entry,
-          // compare once with all‑time best and add at most one PB line.
-          entryMaxByScenario.forEach((scenarioId, val) {
-            final prevBest = bestByScenario[scenarioId];
-            if (prevBest == null || val.score > prevBest) {
-              bestByScenario[scenarioId] = val.score;
-              final exercise = scenarioTitle(scenarioId);
-              final repsLabel = val.reps == 1 ? 'rep' : 'reps';
-              final subtitle = val.isBodyweight
-                  ? '${val.reps} $repsLabel'
-                  : '${formatNum(toUserUnit(val.weightKg))} $unit × ${val.reps} $repsLabel';
-              perEntryPBs.add(
-                _PersonalBestLine(
-                  exerciseName: exercise,
-                  detail: subtitle,
-                ),
-              );
-            }
-          });
-
-          // Single combined feed event per workout entry, with PBs listed below
-          feed.add(
-            _FeedEvent(
-              when: when,
-              kind: _FeedKind.workout,
-              title: 'completed ${entry.title}',
-              subtitle:
-                  'Volume ${formatNum(totalVolumeUser)} $unit • Duration $durationLabel',
-              icon: Icons.fitness_center,
-              accent: Colors.blueAccent,
-              userId: entry.userId,
-              personalBests: perEntryPBs,
-            ),
-          );
-        }
-
-        // Also include local, immediate personal-best events posted from scenario screens.
-        final localPbEvents = ref.watch(personalBestEventsProvider);
-        for (final e in localPbEvents) {
-          final exercise = e.exerciseName ?? scenarioTitle(e.scenarioId);
-          final repsLabel = e.reps == 1 ? 'rep' : 'reps';
-          final subtitle = e.isBodyweight
-              ? '${e.reps} $repsLabel'
-              : '${formatNum(toUserUnit(e.weightKg))} $unit × ${e.reps} $repsLabel';
-          feed.add(
-            _FeedEvent(
-              when: e.createdAt,
-              kind: _FeedKind.workout,
-              title: 'set a personal best • $exercise',
-              subtitle: subtitle,
-              icon: Icons.emoji_events,
-              accent: Colors.amberAccent,
-              userId: e.userId,
-            ),
-          );
-        }
-
-        // Newest first (after merging local PB events)
-        feed.sort((a, b) => b.when.compareTo(a.when));
-
-        final screenWidth = MediaQuery.of(context).size.width;
-        final isWide = screenWidth > 700;
-        const minWidth = 300.0;
-        const maxWidth = 600.0;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: feed.map((e) {
-            return Container(
-              alignment: Alignment.centerLeft,
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minWidth: isWide ? minWidth : double.infinity,
-                  maxWidth: isWide ? maxWidth : double.infinity,
-                ),
-                child: _FeedTile(event: e, timeAgoText: timeAgo(e.when)),
-              ),
-            );
-          }).toList(),
-        );
-      },
+      }).toList(),
     );
   }
 
@@ -386,7 +407,8 @@ class _FeedTile extends ConsumerWidget {
     );
   }
 
-  Widget _rowWith(BuildContext context, {required User? user, required String username, String? avatarUrl}) {
+  Widget _rowWith(BuildContext context,
+      {required User? user, required String username, String? avatarUrl}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -465,10 +487,12 @@ class _FeedTile extends ConsumerWidget {
                                 width: 20,
                                 height: 20,
                                 decoration: BoxDecoration(
-                                  color: Colors.amberAccent.withValues(alpha: 0.2),
+                                  color:
+                                      Colors.amberAccent.withValues(alpha: 0.2),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.emoji_events, size: 12, color: Colors.amberAccent),
+                                child: const Icon(Icons.emoji_events,
+                                    size: 12, color: Colors.amberAccent),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -486,7 +510,8 @@ class _FeedTile extends ConsumerWidget {
                           const SizedBox(height: 2),
                           Text(
                             pb.detail,
-                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 13),
                           ),
                         ],
                       ),
@@ -527,7 +552,9 @@ class _FeedTile extends ConsumerWidget {
         ),
       );
     }
-    if (avatarUrl != null && avatarUrl.isNotEmpty && avatarUrl.startsWith('assets/')) {
+    if (avatarUrl != null &&
+        avatarUrl.isNotEmpty &&
+        avatarUrl.startsWith('assets/')) {
       return ClipRRect(
         borderRadius: borderRadius,
         child: Image.asset(

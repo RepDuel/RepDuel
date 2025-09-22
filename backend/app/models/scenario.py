@@ -44,6 +44,9 @@ class Scenario(Base):
     )
 
     scores = relationship("Score", back_populates="scenario")
+    personal_best_events = relationship(
+        "PersonalBestEvent", back_populates="scenario", cascade="all, delete-orphan"
+    )
     
     calibration = relationship(
         "BodyweightCalibration",
