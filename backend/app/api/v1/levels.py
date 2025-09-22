@@ -15,6 +15,7 @@ from app.services.level_service import (
     get_level_progress,
     xp_gained_this_week,
 )
+from app.services.user_service import get_user_by_id
 
 router = APIRouter(prefix="/levels", tags=["levels"])
 
@@ -39,6 +40,19 @@ async def read_my_level(
 ) -> LevelProgress:
     stats = await get_level_progress(db, current_user.id)
     return await _to_schema(db, current_user.id, stats)
+
+
+@router.get("/user/{user_id}", response_model=LevelProgress)
+async def read_user_level(user_id: UUID, db: AsyncSession = Depends(get_db)) -> LevelProgress:
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    stats = await get_level_progress(db, user.id)
+    return await _to_schema(db, user.id, stats)
 
 
 @router.post(

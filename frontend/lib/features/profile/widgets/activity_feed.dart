@@ -72,9 +72,23 @@ class ActivityFeed extends ConsumerWidget {
 
     return historyAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, s) => Center(
-        child: Text('Error: $e', style: const TextStyle(color: Colors.red)),
-      ),
+      error: (e, s) {
+        final message = e.toString();
+        final isAuthError = message.contains('Authentication token not available');
+        final display = isAuthError
+            ? 'Log in to view workout history.'
+            : 'Error: $message';
+        return Center(
+          child: Text(
+            display,
+            style: TextStyle(
+              color: isAuthError ? Colors.white54 : Colors.red,
+              fontSize: 16,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        );
+      },
       data: (entries) {
         if (entries.isEmpty) {
           return const Center(

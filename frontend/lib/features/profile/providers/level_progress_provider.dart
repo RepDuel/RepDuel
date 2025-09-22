@@ -9,3 +9,9 @@ final levelProgressProvider = FutureProvider.autoDispose<LevelProgress>((ref) as
   final api = ref.watch(levelApiProvider);
   return api.getMyLevelProgress();
 });
+
+final levelProgressByUserProvider =
+    FutureProvider.autoDispose.family<LevelProgress, String>((ref, userId) async {
+  final api = ref.watch(levelApiProvider);
+  return api.getLevelProgressForUser(userId);
+});

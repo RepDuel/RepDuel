@@ -22,6 +22,7 @@ import '../features/premium/screens/payment_cancel_screen.dart';
 import '../features/premium/screens/payment_success_screen.dart';
 import '../features/premium/screens/subscription_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/profile/screens/public_profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/profile/screens/theme_selector_screen.dart';
 import '../features/onboarding/screens/onboarding_profile_screen.dart';
@@ -184,6 +185,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/payment-cancel',
         name: 'paymentCancel',
         builder: (context, state) => const PaymentCancelScreen(),
+      ),
+      GoRoute(
+        path: '/profile/:username',
+        name: 'publicProfile',
+        builder: (context, state) {
+          final username = state.pathParameters['username']!;
+          return PublicProfileScreen(username: username);
+        },
       ),
 
       // Leaderboards
