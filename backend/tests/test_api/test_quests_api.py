@@ -28,6 +28,7 @@ from app.models.quest import (  # noqa: E402
     QuestTemplate,
     UserQuest,
 )
+from app.models.daily_workout_aggregate import DailyWorkoutAggregate  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.models.user_xp import UserXP  # noqa: E402
 from app.models.xp_event import XPEvent  # noqa: E402
@@ -92,6 +93,7 @@ async def _setup_test_app() -> tuple[SessionFactory, Engine]:
     UserXP.__table__.create(bind=engine)
     QuestTemplate.__table__.create(bind=engine)
     UserQuest.__table__.create(bind=engine)
+    DailyWorkoutAggregate.__table__.create(bind=engine)
 
     sync_maker = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
@@ -168,11 +170,11 @@ def test_daily_quest_completion_awards_xp() -> None:
             user = await _create_user(session_maker, "alice")
             await _create_template(
                 session_maker,
-                code="daily_workout",
+                code="daily_30_min_workout",
                 cadence=QuestCadence.DAILY,
-                metric=QuestMetric.WORKOUTS_COMPLETED,
-                target_value=1,
-                reward_xp=40,
+                metric=QuestMetric.ACTIVE_MINUTES,
+                target_value=30,
+                reward_xp=100,
                 auto_claim=True,
                 available_from=now - timedelta(days=1),
             )
@@ -191,13 +193,192 @@ def test_daily_quest_completion_awards_xp() -> None:
                 quests = await get_user_quests(session, user.id, now=now)
                 quest = quests[0]
                 assert quest.status == QuestStatus.CLAIMED.value
-                assert quest.progress_value == quest.required_value == 1
+                assert quest.progress_value == quest.required_value == 30
                 result = await session.execute(
                     select(UserXP).where(UserXP.user_id == user.id)
                 )
                 summary = result.scalars().first()
                 assert summary is not None
-                assert summary.total_xp == 40
+                assert summary.total_xp == 100
+        finally:
+            await _teardown(engine)
+
+    asyncio.run(run_test())
+
+
+def test_daily_quest_requires_single_session() -> None:
+    async def run_test() -> None:
+        session_maker, engine = await _setup_test_app()
+        now = datetime(2025, 2, 1, 8, tzinfo=timezone.utc)
+        try:
+            user = await _create_user(session_maker, "casey")
+            await _create_template(
+                session_maker,
+                code="daily_30_min_workout",
+                cadence=QuestCadence.DAILY,
+                metric=QuestMetric.ACTIVE_MINUTES,
+                target_value=30,
+                reward_xp=100,
+                auto_claim=True,
+                available_from=now - timedelta(days=1),
+            )
+            async with session_maker() as session:
+                quests = await get_user_quests(session, user.id, now=now)
+                quest = quests[0]
+                assert quest.status == QuestStatus.ACTIVE.value
+                assert quest.progress_value == 0
+
+                await record_workout_completion(
+                    session,
+                    user.id,
+                    duration_minutes=20,
+                    completed_at=now,
+                    now=now,
+                )
+                quests = await get_user_quests(session, user.id, now=now)
+                quest = quests[0]
+                assert quest.status == QuestStatus.ACTIVE.value
+                assert quest.progress_value == 20
+
+                later_same_day = now + timedelta(hours=3)
+                await record_workout_completion(
+                    session,
+                    user.id,
+                    duration_minutes=12,
+                    completed_at=later_same_day,
+                    now=later_same_day,
+                )
+                quests = await get_user_quests(session, user.id, now=later_same_day)
+                quest = quests[0]
+                assert quest.status == QuestStatus.ACTIVE.value
+                # Progress should still reflect the single longest session (20 minutes).
+                assert quest.progress_value == 20
+
+                evening = now + timedelta(hours=10)
+                await record_workout_completion(
+                    session,
+                    user.id,
+                    duration_minutes=35,
+                    completed_at=evening,
+                    now=evening,
+                )
+                quests = await get_user_quests(session, user.id, now=evening)
+                quest = quests[0]
+                assert quest.status == QuestStatus.CLAIMED.value
+                assert quest.progress_value == 30
+                result = await session.execute(
+                    select(UserXP).where(UserXP.user_id == user.id)
+                )
+                summary = result.scalars().first()
+                assert summary is not None
+                assert summary.total_xp == 100
+        finally:
+            await _teardown(engine)
+
+    asyncio.run(run_test())
+
+
+def test_weekly_quest_requires_three_distinct_days() -> None:
+    async def run_test() -> None:
+        session_maker, engine = await _setup_test_app()
+        monday = datetime(2025, 3, 3, 6, tzinfo=timezone.utc)
+        try:
+            user = await _create_user(session_maker, "devon")
+            await _create_template(
+                session_maker,
+                code="weekly_30_min_workout_three_days",
+                cadence=QuestCadence.WEEKLY,
+                metric=QuestMetric.WORKOUTS_COMPLETED,
+                target_value=3,
+                reward_xp=300,
+                auto_claim=False,
+                available_from=monday - timedelta(days=7),
+            )
+            async with session_maker() as session:
+                quests = await get_user_quests(session, user.id, now=monday)
+                quest = quests[0]
+                assert quest.status == QuestStatus.ACTIVE.value
+                assert quest.progress_value == 0
+
+                # First qualifying day (Monday).
+                first_day_time = monday + timedelta(hours=1)
+                await record_workout_completion(
+                    session,
+                    user.id,
+                    duration_minutes=35,
+                    completed_at=first_day_time,
+                    now=first_day_time,
+                )
+                quests = await get_user_quests(session, user.id, now=first_day_time)
+                quest = quests[0]
+                assert quest.progress_value == 1
+                assert quest.status == QuestStatus.ACTIVE.value
+
+                # Additional workout the same day should not increase the day count.
+                second_same_day = monday + timedelta(hours=5)
+                await record_workout_completion(
+                    session,
+                    user.id,
+                    duration_minutes=40,
+                    completed_at=second_same_day,
+                    now=second_same_day,
+                )
+                quests = await get_user_quests(session, user.id, now=second_same_day)
+                quest = quests[0]
+                assert quest.progress_value == 1
+
+                # Second qualifying day (Tuesday) with an initial short session that shouldn't count.
+                tuesday = monday + timedelta(days=1)
+                short_session = tuesday + timedelta(hours=2)
+                await record_workout_completion(
+                    session,
+                    user.id,
+                    duration_minutes=25,
+                    completed_at=short_session,
+                    now=short_session,
+                )
+                quests = await get_user_quests(session, user.id, now=short_session)
+                quest = quests[0]
+                assert quest.progress_value == 1
+
+                qualifying_tuesday = tuesday + timedelta(hours=4)
+                await record_workout_completion(
+                    session,
+                    user.id,
+                    duration_minutes=33,
+                    completed_at=qualifying_tuesday,
+                    now=qualifying_tuesday,
+                )
+                quests = await get_user_quests(session, user.id, now=qualifying_tuesday)
+                quest = quests[0]
+                assert quest.progress_value == 2
+
+                # Third qualifying day (Thursday).
+                thursday = monday + timedelta(days=3)
+                qualifying_thursday = thursday + timedelta(hours=3)
+                await record_workout_completion(
+                    session,
+                    user.id,
+                    duration_minutes=31,
+                    completed_at=qualifying_thursday,
+                    now=qualifying_thursday,
+                )
+                quests = await get_user_quests(session, user.id, now=qualifying_thursday)
+                quest = quests[0]
+                assert quest.progress_value == 3
+                assert quest.required_value == 3
+                assert quest.status == QuestStatus.COMPLETED.value
+
+                await claim_user_quest(session, user.id, quest.id, now=qualifying_thursday)
+                quests = await get_user_quests(session, user.id, now=qualifying_thursday)
+                quest = quests[0]
+                assert quest.status == QuestStatus.CLAIMED.value
+                result = await session.execute(
+                    select(UserXP).where(UserXP.user_id == user.id)
+                )
+                summary = result.scalars().first()
+                assert summary is not None
+                assert summary.total_xp == 300
         finally:
             await _teardown(engine)
 

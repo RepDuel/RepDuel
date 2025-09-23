@@ -20,9 +20,18 @@ from app.models.quest import (
     QuestTemplate,
     UserQuest,
 )
+from app.models.daily_workout_aggregate import DailyWorkoutAggregate
 from app.services.level_service import award_xp
 
 UTC = timezone.utc
+
+DAILY_WORKOUT_QUEST_CODE = "daily_30_min_workout"
+WEEKLY_WORKOUT_QUEST_CODE = "weekly_30_min_workout_three_days"
+WORKOUT_SINGLE_SESSION_CODES = {
+    DAILY_WORKOUT_QUEST_CODE,
+    WEEKLY_WORKOUT_QUEST_CODE,
+}
+QUALIFYING_MINUTES = 30
 
 
 def _utc_now() -> datetime:
@@ -267,6 +276,9 @@ async def add_progress(
         expires_at = _as_utc(quest.expires_at)
         if expires_at and timestamp >= expires_at:
             continue
+        template = quest.template
+        if template and template.code in WORKOUT_SINGLE_SESSION_CODES:
+            continue
         required = max(0, quest.required_value)
         new_value = quest.progress_value + amount
         if required > 0:
@@ -310,6 +322,136 @@ async def record_workout_completion(
         minutes,
         now=timestamp,
     )
+    await _update_workout_quests_from_session(
+        db,
+        user_id,
+        minutes=minutes,
+        completed_at=timestamp,
+    )
+
+
+async def _get_daily_aggregate(
+    db: AsyncSession, user_id: UUID, day_start: datetime
+) -> DailyWorkoutAggregate | None:
+    result = await db.execute(
+        select(DailyWorkoutAggregate).where(
+            and_(
+                DailyWorkoutAggregate.user_id == user_id,
+                DailyWorkoutAggregate.day == day_start,
+            )
+        )
+    )
+    return result.scalars().first()
+
+
+async def _upsert_daily_aggregate(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    day_start: datetime,
+    minutes: int,
+    timestamp: datetime,
+) -> DailyWorkoutAggregate:
+    aggregate = await _get_daily_aggregate(db, user_id, day_start)
+    if aggregate is None:
+        aggregate = DailyWorkoutAggregate(
+            user_id=user_id,
+            day=day_start,
+            longest_session_minutes=minutes,
+            qualified_30=minutes >= QUALIFYING_MINUTES,
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        db.add(aggregate)
+        await db.flush()
+        return aggregate
+
+    changed = False
+    if minutes > aggregate.longest_session_minutes:
+        aggregate.longest_session_minutes = minutes
+        changed = True
+    if minutes >= QUALIFYING_MINUTES and not aggregate.qualified_30:
+        aggregate.qualified_30 = True
+        changed = True
+    if changed:
+        aggregate.updated_at = timestamp
+        await db.flush()
+    return aggregate
+
+
+async def _update_workout_quests_from_session(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    minutes: int,
+    completed_at: datetime,
+) -> None:
+    day_start = _start_of_day(completed_at)
+    aggregate = await _upsert_daily_aggregate(
+        db,
+        user_id,
+        day_start=day_start,
+        minutes=minutes,
+        timestamp=completed_at,
+    )
+
+    await _ensure_user_quests(db, user_id, completed_at)
+    result = await db.execute(
+        select(UserQuest)
+        .join(UserQuest.template)
+        .options(selectinload(UserQuest.template))
+        .where(
+            and_(
+                UserQuest.user_id == user_id,
+                QuestTemplate.code.in_(WORKOUT_SINGLE_SESSION_CODES),
+            )
+        )
+    )
+    quests = list(result.scalars().all())
+    if not quests:
+        return
+
+    week_start = _start_of_week(completed_at)
+    week_end = week_start + timedelta(days=7)
+    result = await db.execute(
+        select(DailyWorkoutAggregate).where(
+            and_(
+                DailyWorkoutAggregate.user_id == user_id,
+                DailyWorkoutAggregate.day >= week_start,
+                DailyWorkoutAggregate.day < week_end,
+            )
+        )
+    )
+    weekly_rows = list(result.scalars().all())
+    qualified_days = sum(1 for row in weekly_rows if row.qualified_30)
+
+    changed = False
+    for quest in quests:
+        template = quest.template
+        if template is None:
+            await db.refresh(quest, attribute_names=["template"])
+            template = quest.template
+        if template is None:
+            continue
+
+        if template.code == DAILY_WORKOUT_QUEST_CODE:
+            required = max(1, template.target_value)
+            progress = min(required, aggregate.longest_session_minutes)
+        elif template.code == WEEKLY_WORKOUT_QUEST_CODE:
+            required = max(1, template.target_value)
+            progress = min(required, qualified_days)
+        else:
+            continue
+
+        if quest.progress_value != progress:
+            quest.progress_value = progress
+            quest.last_progress_at = completed_at
+            quest.updated_at = completed_at
+            changed = True
+
+    if changed:
+        await db.flush()
+    await _sync_quests(db, quests, completed_at)
 
 
 async def claim_user_quest(
