@@ -30,6 +30,7 @@ import '../features/ranked/screens/ranked_screen.dart';
 import '../features/ranked/screens/result_screen.dart';
 import '../features/routines/screens/custom_routine_screen.dart';
 import '../features/routines/screens/exercise_list_screen.dart';
+import '../features/routines/screens/free_workout_intro_screen.dart';
 import '../features/routines/screens/routines_screen.dart';
 import '../features/routines/screens/routine_play_screen.dart'; // Option A route
 import '../features/routines/screens/routine_import_screen.dart';
@@ -123,6 +124,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                   path: 'free-workout',
                   name: 'freeWorkout',
+                  builder: (context, state) => const FreeWorkoutIntroScreen(),
+                ),
+                GoRoute(
+                  path: 'free-workout/session',
+                  name: 'freeWorkoutSession',
                   builder: (context, state) => const ExerciseListScreen(),
                 ),
                 GoRoute(
