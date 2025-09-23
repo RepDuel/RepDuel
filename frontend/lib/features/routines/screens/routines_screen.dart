@@ -58,11 +58,14 @@ class HiddenRoutinesNotifier extends StateNotifier<Set<String>> {
     try {
       final client = ref.read(privateHttpClientProvider);
       final res = await client.get('/users/me/hidden-routines');
+      if (!mounted) return;
       if (res.statusCode == 200) {
         final List data = res.data as List;
+        if (!mounted) return;
         state = data.map((e) => e.toString()).toSet();
         // mirror to local prefs as offline cache
         final prefs = await SharedPreferences.getInstance();
+        if (!mounted) return;
         await prefs.setStringList(_prefsKeyFor(userId), state.toList());
         return;
       }
@@ -70,35 +73,42 @@ class HiddenRoutinesNotifier extends StateNotifier<Set<String>> {
       // fall through to local cache
     }
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final list = prefs.getStringList(_prefsKeyFor(userId)) ?? <String>[];
+    if (!mounted) return;
     state = list.toSet();
   }
 
   Future<void> _persist() async {
     final userId = ref.read(authProvider).valueOrNull?.user?.id.toString();
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     await prefs.setStringList(_prefsKeyFor(userId), state.toList());
   }
 
   Future<void> hide(String id) async {
     if (state.contains(id)) return;
+    if (!mounted) return;
     // Optimistic update
     state = {...state, id};
     try {
       final client = ref.read(privateHttpClientProvider);
       await client.post('/users/me/hidden-routines/$id');
     } catch (_) {}
+    if (!mounted) return;
     await _persist();
   }
 
   Future<void> unhide(String id) async {
     if (!state.contains(id)) return;
+    if (!mounted) return;
     final next = {...state}..remove(id);
     state = next;
     try {
       final client = ref.read(privateHttpClientProvider);
       await client.delete('/users/me/hidden-routines/$id');
     } catch (_) {}
+    if (!mounted) return;
     await _persist();
   }
 

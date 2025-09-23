@@ -1,6 +1,6 @@
 # backend/app/models/routine_submission.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
@@ -47,7 +47,11 @@ class RoutineSubmission(Base):
     )
 
     duration = Column(Float, nullable=False)
-    completion_timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    completion_timestamp = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
     status = Column(String, nullable=False)
     title = Column(String, nullable=False)
 

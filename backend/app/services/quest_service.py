@@ -22,6 +22,7 @@ from app.models.quest import (
 )
 from app.models.daily_workout_aggregate import DailyWorkoutAggregate
 from app.services.level_service import award_xp
+from app.utils.datetime import ensure_optional_aware_utc
 
 UTC = timezone.utc
 
@@ -39,11 +40,7 @@ def _utc_now() -> datetime:
 
 
 def _as_utc(dt: datetime | None) -> datetime | None:
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt.astimezone(UTC)
+    return ensure_optional_aware_utc(dt, field_name="timestamp", allow_naive=True)
 
 
 def _start_of_day(ts: datetime) -> datetime:
@@ -56,7 +53,9 @@ def _start_of_week(ts: datetime) -> datetime:
     return day_start - timedelta(days=day_start.weekday())
 
 
-def _cycle_window(template: QuestTemplate, now: datetime) -> tuple[datetime, datetime | None] | None:
+def _cycle_window(
+    template: QuestTemplate, now: datetime
+) -> tuple[datetime, datetime | None] | None:
     cadence = QuestCadence(template.cadence)
     if cadence is QuestCadence.DAILY:
         start = _start_of_day(now)
@@ -73,7 +72,9 @@ def _cycle_window(template: QuestTemplate, now: datetime) -> tuple[datetime, dat
     return available_from, _as_utc(template.expires_at)
 
 
-async def _fetch_available_templates(db: AsyncSession, now: datetime) -> list[QuestTemplate]:
+async def _fetch_available_templates(
+    db: AsyncSession, now: datetime
+) -> list[QuestTemplate]:
     result = await db.execute(
         select(QuestTemplate).where(QuestTemplate.is_active.is_(True))
     )

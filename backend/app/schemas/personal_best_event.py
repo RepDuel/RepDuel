@@ -3,7 +3,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.utils.datetime import ensure_aware_utc
 
 
 class PersonalBestEventRead(BaseModel):
@@ -17,3 +19,7 @@ class PersonalBestEventRead(BaseModel):
     reps: int | None = None
 
     model_config = {"from_attributes": True}
+
+    @field_validator("created_at", mode="after")
+    def _validate_created_at(cls, value: datetime) -> datetime:
+        return ensure_aware_utc(value, field_name="created_at", allow_naive=True)

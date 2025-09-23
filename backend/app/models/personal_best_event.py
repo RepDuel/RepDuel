@@ -1,6 +1,6 @@
 # backend/app/models/personal_best_event.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -27,7 +27,11 @@ class PersonalBestEvent(Base):
     weight_lifted = Column(Float, nullable=False)
     reps = Column(Integer, nullable=True)
     is_bodyweight = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
     user = relationship("User", back_populates="personal_best_events")
     scenario = relationship("Scenario", back_populates="personal_best_events")

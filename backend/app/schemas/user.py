@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Optional, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ValidationInfo, field_validator
+
+from app.utils.datetime import ensure_aware_utc
 
 
 class UserBase(BaseModel):
@@ -37,6 +39,10 @@ class UserRead(UserBase):
     preferred_unit: Literal["kg", "lbs"] = "kg"
 
     model_config = {"from_attributes": True}
+
+    @field_validator("created_at", "updated_at", mode="after")
+    def _validate_timestamps(cls, value: datetime, info: ValidationInfo) -> datetime:
+        return ensure_aware_utc(value, field_name=info.field_name, allow_naive=True)
 
 
 class UserUpdate(BaseModel):

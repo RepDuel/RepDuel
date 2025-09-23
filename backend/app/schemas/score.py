@@ -3,9 +3,10 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.schemas.user import UserRead
+from app.utils.datetime import ensure_aware_utc
 
 
 class ScoreCreate(BaseModel):
@@ -28,6 +29,10 @@ class ScoreOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("created_at", mode="after")
+    def _validate_created_at(cls, value: datetime) -> datetime:
+        return ensure_aware_utc(value, field_name="created_at", allow_naive=True)
+
 
 class ScoreCreateResponse(BaseModel):
     score: ScoreOut
@@ -36,7 +41,6 @@ class ScoreCreateResponse(BaseModel):
     previous_best_weight_lifted: float | None = None
     previous_best_reps: int | None = None
     previous_best_sets: int | None = None
-
 
 
 class ScoreReadWithUser(BaseModel):
@@ -48,3 +52,7 @@ class ScoreReadWithUser(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator("created_at", mode="after")
+    def _validate_user_score_created_at(cls, value: datetime) -> datetime:
+        return ensure_aware_utc(value, field_name="created_at", allow_naive=True)

@@ -1,13 +1,16 @@
 # backend/app/models/routine.py
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, text
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 
+
 class Routine(Base):
     __tablename__ = "routines"
-    
+
     id = Column(
         UUID(as_uuid=True),
         primary_key=True,
@@ -21,9 +24,14 @@ class Routine(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
     )
-    
-    created_at = Column(DateTime, server_default=text("now()"))
-    
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
     scenarios = relationship(
         "RoutineScenario", back_populates="routine", cascade="all, delete-orphan"
     )

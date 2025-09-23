@@ -7,9 +7,10 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationInfo, field_validator
 
 from app.models.quest import QuestCadence, QuestMetric, QuestStatus, UserQuest
+from app.utils.datetime import ensure_aware_utc, ensure_optional_aware_utc
 
 
 class QuestTemplateSummary(BaseModel):
@@ -28,6 +29,14 @@ class QuestTemplateSummary(BaseModel):
     model_config = {
         "use_enum_values": True,
     }
+
+    @field_validator("available_from", "expires_at", mode="after")
+    def _validate_template_window(
+        cls, value: datetime | None, info: ValidationInfo
+    ) -> datetime | None:
+        return ensure_optional_aware_utc(
+            value, field_name=info.field_name, allow_naive=True
+        )
 
     @classmethod
     def from_model(cls, quest: UserQuest) -> "QuestTemplateSummary":
@@ -69,6 +78,23 @@ class QuestInstance(BaseModel):
         "use_enum_values": True,
     }
 
+    @field_validator(
+        "available_from",
+        "expires_at",
+        "cycle_start",
+        "cycle_end",
+        "completed_at",
+        "reward_claimed_at",
+        "last_progress_at",
+        mode="after",
+    )
+    def _validate_instance_datetimes(
+        cls, value: datetime | None, info: ValidationInfo
+    ) -> datetime | None:
+        return ensure_optional_aware_utc(
+            value, field_name=info.field_name, allow_naive=True
+        )
+
     @classmethod
     def from_model(cls, quest: UserQuest) -> "QuestInstance":
         if quest.template is None:
@@ -99,3 +125,6 @@ class QuestListResponse(BaseModel):
     generated_at: datetime
     quests: list[QuestInstance]
 
+    @field_validator("generated_at", mode="after")
+    def _validate_generated_at(cls, value: datetime) -> datetime:
+        return ensure_aware_utc(value, field_name="generated_at", allow_naive=True)

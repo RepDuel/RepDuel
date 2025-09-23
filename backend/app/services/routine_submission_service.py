@@ -1,6 +1,6 @@
 # backend/app/services/routine_submission_service.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import HTTPException, status
@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.routine import Routine
-from app.models.routine_submission import (RoutineScenarioSubmission,
-                                           RoutineSubmission)
+from app.models.routine_submission import RoutineScenarioSubmission, RoutineSubmission
 from app.models.user import User
 from app.schemas.routine_submission import RoutineSubmissionCreate
 from app.services.quest_service import record_workout_completion
+from app.utils.datetime import ensure_aware_utc
 
 
 async def get_user_submissions(
@@ -57,8 +57,11 @@ async def create_routine_submission(
         if not routine:
             raise ValueError("Routine not found.")
 
+    raw_completion = routine_submission_data.completion_timestamp
     completion_ts = (
-        routine_submission_data.completion_timestamp or datetime.utcnow()
+        ensure_aware_utc(raw_completion, field_name="completion_timestamp")
+        if raw_completion is not None
+        else datetime.now(timezone.utc)
     )
 
     if routine is not None and getattr(routine, "name", None):

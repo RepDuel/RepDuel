@@ -1,7 +1,7 @@
 # backend/app/models/energy_history.py
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
@@ -21,6 +21,10 @@ class EnergyHistory(Base):
         index=True,
     )
     energy = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
 
     user = relationship("User", back_populates="energy_history")

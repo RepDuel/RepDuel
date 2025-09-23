@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.utils.datetime import ensure_aware_utc
 
 
 class RoutineScenarioSubmission(BaseModel):
@@ -23,9 +25,15 @@ class RoutineSubmissionCreate(BaseModel):
     duration: float
     completion_timestamp: datetime
     status: str
-    scenarios: List[RoutineScenarioSubmission] = Field(..., alias="scenario_submissions")
+    scenarios: List[RoutineScenarioSubmission] = Field(
+        ..., alias="scenario_submissions"
+    )
 
     model_config = {"from_attributes": True, "populate_by_name": True}
+
+    @field_validator("completion_timestamp", mode="after")
+    def _validate_completion_timestamp(cls, value: datetime) -> datetime:
+        return ensure_aware_utc(value, field_name="completion_timestamp")
 
 
 class RoutineSubmissionRead(BaseModel):
@@ -35,6 +43,14 @@ class RoutineSubmissionRead(BaseModel):
     completion_timestamp: datetime
     status: str
     title: str
-    scenarios: List[RoutineScenarioSubmission] = Field(..., alias="scenario_submissions")
+    scenarios: List[RoutineScenarioSubmission] = Field(
+        ..., alias="scenario_submissions"
+    )
 
     model_config = {"from_attributes": True, "populate_by_name": True}
+
+    @field_validator("completion_timestamp", mode="after")
+    def _validate_read_timestamp(cls, value: datetime) -> datetime:
+        return ensure_aware_utc(
+            value, field_name="completion_timestamp", allow_naive=True
+        )
