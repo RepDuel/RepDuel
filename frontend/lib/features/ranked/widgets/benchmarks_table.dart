@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../utils/rank_utils.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -25,7 +26,7 @@ class BenchmarksTable extends ConsumerWidget {
     final authStateAsyncValue = ref.watch(authProvider);
 
     return authStateAsyncValue.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: LoadingSpinner()),
       error: (error, stackTrace) => Center(
           child: Text('Auth Error: $error',
               style: const TextStyle(color: Colors.red))),

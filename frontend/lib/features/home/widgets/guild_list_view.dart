@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../../../core/models/guild.dart';
 import '../providers/guild_providers.dart';
@@ -24,7 +25,7 @@ class GuildListView extends ConsumerWidget {
       width: 72,
       color: Theme.of(context).colorScheme.surface,
       child: guildsAsyncValue.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: LoadingSpinner()),
         error: (err, stack) => const Center(child: Icon(Icons.error_outline)),
         data: (guilds) {
           return ListView.separated(

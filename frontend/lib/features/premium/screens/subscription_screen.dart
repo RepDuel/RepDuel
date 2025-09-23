@@ -9,6 +9,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:repduel/core/providers/iap_provider.dart';
 import 'package:repduel/core/providers/stripe_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -190,8 +191,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   ? const SizedBox(
                       height: 24,
                       width: 24,
-                      child: CircularProgressIndicator(
-                          color: Colors.black, strokeWidth: 3),
+                      child: LoadingSpinner(size: 24),
                     )
                   : Text(
                       kIsWeb

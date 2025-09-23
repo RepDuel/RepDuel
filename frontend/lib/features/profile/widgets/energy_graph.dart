@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../../../core/config/env.dart';
 
@@ -49,7 +50,7 @@ class EnergyGraph extends ConsumerWidget {
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return energyData.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: LoadingSpinner()),
       error: (err, _) => const Text(
         'Error loading data',
         style: TextStyle(color: Colors.red),

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import 'profile_screen.dart';
 import '../../auth/screens/register_screen.dart';
@@ -19,7 +20,7 @@ class ProfileWrapper extends ConsumerWidget {
         final isAuthenticated = authState.token != null;
         return isAuthenticated ? const ProfileScreen() : const RegisterScreen();
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: LoadingSpinner()),
       error: (error, stack) => Center(child: Text('Error: $error')),
     );
   }

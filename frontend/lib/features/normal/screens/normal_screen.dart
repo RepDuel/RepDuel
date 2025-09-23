@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -277,7 +278,7 @@ class _NormalScreenState extends ConsumerState<NormalScreen> {
     final isFemale = (user?.gender?.toLowerCase() == 'female');
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: LoadingSpinner());
     }
 
     if (_error != null) {

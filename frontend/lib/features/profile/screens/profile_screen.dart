@@ -414,7 +414,7 @@ class _RecurringQuestsSection extends StatelessWidget {
       },
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: LoadingSpinner(size: 36)),
       ),
       error: (error, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -732,13 +732,10 @@ class _LevelProgressLoading extends StatelessWidget {
           'Level: ',
           style: TextStyle(color: Colors.white, fontSize: 18),
         ),
-        SizedBox(
+        const SizedBox(
           width: 24,
           height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: primaryColor,
-          ),
+          child: LoadingSpinner(size: 24),
         ),
         const Spacer(),
         TextButton(

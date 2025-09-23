@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../providers/score_history_provider.dart';
 
@@ -22,7 +23,7 @@ class ScoreHistoryChart extends ConsumerWidget {
     final historyAsync = ref.watch(scoreHistoryProvider(scenarioId));
     final primaryColor = Theme.of(context).colorScheme.primary;
     return historyAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: LoadingSpinner()),
       error: (e, s) => Center(child: Text(e.toString().replaceFirst("Exception: ", ""), style: const TextStyle(color: Colors.red, fontSize: 14))),
       data: (history) {
         if (history.length < 2) return const Center(child: Text("Log at least two workouts to see a graph.", style: TextStyle(color: Colors.white70)));

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../../../core/models/routine.dart';
 import '../../../core/providers/api_providers.dart';
@@ -347,8 +348,7 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
                       ? const SizedBox(
                           height: 18,
                           width: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                          child: LoadingSpinner(size: 18))
                       : Text(isEdit ? 'Save Changes' : 'Save Routine'),
                 ),
               ),

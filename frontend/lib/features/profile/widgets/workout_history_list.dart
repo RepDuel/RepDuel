@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../../../core/models/routine_submission_read.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -139,7 +140,7 @@ class WorkoutHistoryList extends ConsumerWidget {
     }
 
     return historyAsyncValue.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: LoadingSpinner()),
       error: (e, s) => Center(
         child: Text('Error: $e', style: const TextStyle(color: Colors.red)),
       ),

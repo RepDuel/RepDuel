@@ -98,6 +98,111 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     Color withOpacity(Color color, double opacity) =>
         color.withAlpha((opacity * 255).round());
 
+    final formContent = Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _usernameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: withOpacity(Colors.white, 0.5)),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: Colors.tealAccent, width: 2.0),
+                  ),
+                ),
+                validator: (value) =>
+                    value!.isEmpty ? 'Please enter a username' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                style: const TextStyle(color: Colors.white),
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: withOpacity(Colors.white, 0.5)),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: Colors.tealAccent, width: 2.0),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null ||
+                      value.isEmpty ||
+                      !value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: withOpacity(Colors.white, 0.5)),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: Colors.tealAccent, width: 2.0),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Password cannot be empty';
+                  }
+                  return null;
+                },
+                onFieldSubmitted: (_) => isLoading ? null : _submit(),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: isLoading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.tealAccent[400],
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0)),
+                ),
+                child: isLoading
+                    ? const LoadingSpinner(size: 24)
+                    : const Text('Sign Up'),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => context.go('/login'),
+                child: Text(
+                  'Already have an account? Log in',
+                  style: TextStyle(color: withOpacity(Colors.white, 0.7)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -106,109 +211,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _usernameController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Username',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: withOpacity(Colors.white, 0.5)),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: Colors.tealAccent, width: 2.0),
-                    ),
-                  ),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Please enter a username' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _emailController,
-                  style: const TextStyle(color: Colors.white),
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: withOpacity(Colors.white, 0.5)),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: Colors.tealAccent, width: 2.0),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null ||
-                        value.isEmpty ||
-                        !value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: withOpacity(Colors.white, 0.5)),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: Colors.tealAccent, width: 2.0),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Password cannot be empty';
-                    }
-                    return null;
-                  },
-                  onFieldSubmitted: (_) => isLoading ? null : _submit(),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.tealAccent[400],
-                    foregroundColor: Colors.black,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0)),
-                  ),
-                  child: isLoading
-                      ? const LoadingSpinner(size: 24)
-                      : const Text('Sign Up'),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.go('/login'),
-                  child: Text(
-                    'Already have an account? Log in',
-                    style: TextStyle(color: withOpacity(Colors.white, 0.7)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 150),
+        child: isLoading
+            ? const Center(
+                key: ValueKey('register-loading'),
+                child: LoadingSpinner(),
+              )
+            : KeyedSubtree(
+                key: const ValueKey('register-form'),
+                child: formContent,
+              ),
       ),
     );
   }

@@ -144,49 +144,46 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                 1.5
             ? 'lbs'
             : 'kg';
-    return Scaffold(
-      appBar: AppBar(
-          title: Text(_capitalize(widget.liftName)),
-          backgroundColor: Colors.black,
-          elevation: 0),
-      backgroundColor: Colors.black,
-      body: scenarioDetailsAsync.when(
-        loading: () => const Center(child: LoadingSpinner()),
-        error: (err, stack) => Center(
-            child: ErrorDisplay(
-                message: err.toString(),
-                onRetry: () =>
-                    ref.refresh(scenarioDetailsProvider(widget.scenarioId)))),
-        data: (details) {
-          final isBodyweight = details['is_bodyweight'] as bool? ?? false;
-          final description = details['description'] as String?;
-          return GestureDetector(
-            onTap: () => FocusScope.of(context).unfocus(),
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (description != null)
-                      Text(description,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 16),
-                          textAlign: TextAlign.center),
-                    const SizedBox(height: 32),
-                    isBodyweight
-                        ? _buildRepsOnlyInput()
-                        : _buildWeightAndRepsInput(unitLabel),
-                  ],
-                ),
+    final bodyContent = scenarioDetailsAsync.when(
+      loading: () => const Center(child: LoadingSpinner()),
+      error: (err, stack) => Center(
+          child: ErrorDisplay(
+              message: err.toString(),
+              onRetry: () =>
+                  ref.refresh(scenarioDetailsProvider(widget.scenarioId)))),
+      data: (details) {
+        final isBodyweight = details['is_bodyweight'] as bool? ?? false;
+        final description = details['description'] as String?;
+        return GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (description != null)
+                    Text(description,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 16),
+                        textAlign: TextAlign.center),
+                  const SizedBox(height: 32),
+                  isBodyweight
+                      ? _buildRepsOnlyInput()
+                      : _buildWeightAndRepsInput(unitLabel),
+                ],
               ),
             ),
-          );
-        },
-      ),
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.fromLTRB(
-            16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
+          ),
+        );
+      },
+    );
+
+    final bottomBar = Padding(
+      padding: EdgeInsets.fromLTRB(
+          16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
+      child: SizedBox(
+        width: double.infinity,
         child: ElevatedButton.icon(
           onPressed: _isSubmitting
               ? null
@@ -201,6 +198,35 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14)),
         ),
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+          title: Text(_capitalize(widget.liftName)),
+          backgroundColor: Colors.black,
+          elevation: 0),
+      backgroundColor: Colors.black,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 150),
+        child: _isSubmitting
+            ? const Center(
+                key: ValueKey('scenario-submitting'),
+                child: LoadingSpinner(),
+              )
+            : KeyedSubtree(
+                key: const ValueKey('scenario-content'),
+                child: bodyContent,
+              ),
+      ),
+      bottomNavigationBar: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 150),
+        child: _isSubmitting
+            ? const SizedBox.shrink(key: ValueKey('scenario-bottom-hidden'))
+            : KeyedSubtree(
+                key: const ValueKey('scenario-bottom-button'),
+                child: bottomBar,
+              ),
       ),
     );
   }

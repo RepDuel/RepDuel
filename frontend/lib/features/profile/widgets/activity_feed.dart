@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_history_provider.dart';
@@ -106,7 +107,7 @@ class ActivityFeed extends ConsumerWidget {
                 personalBestsAsync.valueOrNull == null);
 
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: LoadingSpinner());
     }
 
     final entries = historyAsync.valueOrNull ?? const <RoutineSubmissionRead>[];

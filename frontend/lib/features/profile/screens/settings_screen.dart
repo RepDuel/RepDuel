@@ -509,7 +509,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ? const SizedBox(
                           width: 24,
                           height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 3))
+                          child: LoadingSpinner(size: 24))
                       : const Icon(Icons.launch, size: 18),
                   onTap: _manageSubscription,
                 ),
@@ -582,7 +582,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ? const SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 3),
+                        child: LoadingSpinner(size: 24),
                       )
                     : const Icon(Icons.delete_forever, color: Colors.red),
                 onTap: () async {
@@ -649,7 +649,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ? const SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 3),
+                        child: LoadingSpinner(size: 24),
                       )
                     : const Icon(Icons.person_off, color: Colors.red),
                 onTap: _deleteAccount,

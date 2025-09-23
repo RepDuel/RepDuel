@@ -70,6 +70,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     Color withOpacity(Color color, double opacity) =>
         color.withAlpha((opacity * 255).round());
 
+    final formContent = Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _emailController,
+                style: TextStyle(color: theme.primary),
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  labelStyle: TextStyle(color: theme.primary),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: withOpacity(theme.primary, 0.5)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: theme.accent, width: 2.0),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null ||
+                      value.isEmpty ||
+                      !value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                style: TextStyle(color: theme.primary),
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  labelStyle: TextStyle(color: theme.primary),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: withOpacity(theme.primary, 0.5)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: theme.accent, width: 2.0),
+                  ),
+                ),
+                validator: (value) =>
+                    value!.isEmpty ? 'Please enter your password' : null,
+                onFieldSubmitted: (_) => isLoading ? null : _submit(),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: isLoading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.accent,
+                  foregroundColor: theme.background,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0)),
+                ),
+                child: isLoading
+                    ? const LoadingSpinner(size: 24)
+                    : const Text('Login'),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => context.go('/register'),
+                child: Text(
+                  'Don\'t have an account? Sign up',
+                  style: TextStyle(color: withOpacity(theme.primary, 0.7)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
     return Scaffold(
       backgroundColor: theme.background,
       appBar: AppBar(
@@ -78,85 +159,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _emailController,
-                  style: TextStyle(color: theme.primary),
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: TextStyle(color: theme.primary),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: withOpacity(theme.primary, 0.5)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: theme.accent, width: 2.0),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null ||
-                        value.isEmpty ||
-                        !value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  style: TextStyle(color: theme.primary),
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    labelStyle: TextStyle(color: theme.primary),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: withOpacity(theme.primary, 0.5)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: theme.accent, width: 2.0),
-                    ),
-                  ),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Please enter your password' : null,
-                  onFieldSubmitted: (_) => isLoading ? null : _submit(),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.accent,
-                    foregroundColor: theme.background,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0)),
-                  ),
-                  child: isLoading
-                      ? const LoadingSpinner(size: 24)
-                      : const Text('Login'),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.go('/register'),
-                  child: Text(
-                    'Don\'t have an account? Sign up',
-                    style: TextStyle(color: withOpacity(theme.primary, 0.7)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 150),
+        child: isLoading
+            ? const Center(
+                key: ValueKey('login-loading'),
+                child: LoadingSpinner(),
+              )
+            : KeyedSubtree(
+                key: const ValueKey('login-form'),
+                child: formContent,
+              ),
       ),
     );
   }
