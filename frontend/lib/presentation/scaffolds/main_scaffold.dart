@@ -30,7 +30,9 @@ class MainScaffold extends ConsumerWidget {
     final String path = uri.path;
 
     final bool hideTitleBar = path.startsWith('/routines/play') ||
-        path.startsWith('/routines/exercise-list');
+        path.startsWith('/routines/exercise-list') ||
+        path.startsWith('/routines/free-workout') ||
+        path.startsWith('/routines/custom');
 
     final showBottomNav = ref.watch(bottomNavVisibilityProvider);
 
