@@ -9,8 +9,10 @@ import 'package:repduel/widgets/loading_spinner.dart';
 import '../../../core/models/level_progress.dart';
 import '../../../core/models/quest.dart';
 import '../../../core/models/user.dart';
+import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/quests_provider.dart';
+import '../../../core/providers/score_events_provider.dart';
 import '../../../core/providers/workout_history_provider.dart';
 import '../../ranked/utils/rank_utils.dart';
 import '../providers/level_progress_provider.dart';
@@ -19,6 +21,8 @@ import '../widgets/activity_feed.dart';
 
 final showGraphProvider = StateProvider.autoDispose<bool>((ref) => false);
 final showProgressProvider = StateProvider.autoDispose<bool>((ref) => false);
+final _claimingQuestIdsProvider =
+    StateProvider.autoDispose<Set<String>>((ref) => <String>{});
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -90,6 +94,51 @@ class ProfileContent extends ConsumerWidget {
     final showGraph = ref.watch(showGraphProvider);
     final showProgress = ref.watch(showProgressProvider);
     final questsAsync = ref.watch(questsProvider);
+
+    ref.listen<int>(scoreEventsProvider, (previous, next) {
+      if (previous != null && previous != next) {
+        ref.invalidate(questsProvider);
+      }
+    });
+
+    ref.listen<AsyncValue<List<QuestInstance>>>(questsProvider,
+        (previous, next) {
+      next.whenData((quests) {
+        final claimingIds = ref.read(_claimingQuestIdsProvider);
+        for (final quest in quests) {
+          if (quest.status != QuestStatus.completed ||
+              claimingIds.contains(quest.id)) {
+            continue;
+          }
+
+          ref
+              .read(_claimingQuestIdsProvider.notifier)
+              .update((state) => {...state, quest.id});
+
+          Future.microtask(() async {
+            try {
+              final client = ref.read(privateHttpClientProvider);
+              final claimed = await claimQuest(client, quest.id);
+              ref.invalidate(questsProvider);
+              if (!context.mounted) {
+                return;
+              }
+              _showQuestClaimedSnackBar(context, claimed);
+            } catch (error) {
+              if (context.mounted) {
+                _showQuestClaimFailedSnackBar(context);
+              }
+            } finally {
+              ref.read(_claimingQuestIdsProvider.notifier).update((state) {
+                final updated = {...state};
+                updated.remove(quest.id);
+                return updated;
+              });
+            }
+          });
+        }
+      });
+    });
 
     Future<void> refresh() async {
       ref.read(showGraphProvider.notifier).state = false;
@@ -205,6 +254,62 @@ class ProfileContent extends ConsumerWidget {
       ),
     );
   }
+}
+
+void _showQuestClaimedSnackBar(BuildContext context, QuestInstance quest) {
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.hideCurrentSnackBar(reason: SnackBarClosedReason.hide);
+  final theme = Theme.of(context);
+  final rewardXp = quest.rewardXp;
+  final questTitle = quest.template.title.isNotEmpty
+      ? quest.template.title
+      : 'Quest';
+  messenger.showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      backgroundColor: Colors.green.shade600,
+      content: Row(
+        children: [
+          const Icon(Icons.check_circle_outline, color: Colors.white),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '$questTitle complete! Reward claimed (+$rewardXp XP).',
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+
+void _showQuestClaimFailedSnackBar(BuildContext context) {
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.hideCurrentSnackBar(reason: SnackBarClosedReason.hide);
+  final theme = Theme.of(context);
+  messenger.showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      backgroundColor: theme.colorScheme.error,
+      content: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.white),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Unable to claim quest reward. Please try again.',
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+      duration: const Duration(seconds: 4),
+    ),
+  );
 }
 
 class _RecurringQuestDefinition {

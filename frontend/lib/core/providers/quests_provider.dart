@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/quest.dart';
+import '../utils/http_client.dart';
 import 'api_providers.dart';
 import 'auth_provider.dart';
 
@@ -47,3 +48,21 @@ final questsProvider =
         Exception('Failed to load quests: $error'), stack);
   }
 });
+
+Future<QuestInstance> claimQuest(HttpClient client, String questId) async {
+  final response = await client.post('/quests/me/$questId/claim');
+
+  if (response.statusCode != 200) {
+    throw Exception(
+      'Failed to claim quest: HTTP ${response.statusCode} ${response.statusMessage ?? ''}'
+          .trim(),
+    );
+  }
+
+  final data = response.data;
+  if (data is! Map) {
+    throw Exception('Unexpected quest claim response format.');
+  }
+
+  return QuestInstance.fromJson(Map<String, dynamic>.from(data));
+}
