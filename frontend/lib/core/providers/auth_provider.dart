@@ -114,12 +114,117 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
         state = AsyncValue.error(
             'Registration failed. Please try again.', StackTrace.current);
       }
-    } catch (e) {
-      state =
-          AsyncValue.error('Error during registration: $e', StackTrace.current);
-      debugPrint("[AuthNotifier] Registration error: $e");
+    } catch (error, stackTrace) {
+      final friendlyMessage = _describeRegistrationFailure(error);
+      if (friendlyMessage != null && friendlyMessage.trim().isNotEmpty) {
+        debugPrint('[AuthNotifier] Registration error detail: $friendlyMessage');
+        state = AsyncValue.error(friendlyMessage.trim(), stackTrace);
+      } else {
+        state = AsyncValue.error(error, stackTrace);
+      }
+      debugPrint("[AuthNotifier] Registration error: $error");
     }
     return false;
+  }
+
+  String? _describeRegistrationFailure(Object error) {
+    final extracted = _extractRegistrationErrorMessage(error);
+    final candidate = (extracted != null && extracted.trim().isNotEmpty)
+        ? extracted.trim()
+        : error.toString();
+
+    if (candidate.isEmpty) {
+      return null;
+    }
+
+    final normalized = candidate.toLowerCase();
+
+    bool mentionsUsername(String value) =>
+        value.contains('username') ||
+        value.contains('user name') ||
+        value.contains('handle');
+
+    bool mentionsEmail(String value) =>
+        value.contains('email') || value.contains('e-mail') || value.contains('mail');
+
+    bool impliesTaken(String value) {
+      if (!value.contains('already') && !value.contains('duplicate')) {
+        return value.contains('unique constraint') ||
+            value.contains('unique violation') ||
+            value.contains('23505') ||
+            value.contains('conflict');
+      }
+
+      return value.contains('already taken') ||
+          value.contains('already exists') ||
+          value.contains('already registered') ||
+          value.contains('already in use') ||
+          value.contains('already used') ||
+          value.contains('already associated') ||
+          value.contains('already linked') ||
+          value.contains('duplicate');
+    }
+
+    if (mentionsUsername(normalized) && impliesTaken(normalized)) {
+      return 'That username is already taken. Try a different one.';
+    }
+
+    if (mentionsEmail(normalized) && impliesTaken(normalized)) {
+      return 'That email is already in use. Try a different email or log in.';
+    }
+
+    return (extracted != null && extracted.trim().isNotEmpty)
+        ? extracted.trim()
+        : candidate;
+  }
+
+  String? _extractRegistrationErrorMessage(Object error) {
+    if (error is DioException) {
+      final response = error.response;
+      if (response != null) {
+        final message = _parseServerMessage(response.data);
+        if (message != null && message.isNotEmpty) {
+          return message;
+        }
+        final statusMessage = response.statusMessage;
+        if (statusMessage != null && statusMessage.trim().isNotEmpty) {
+          return statusMessage.trim();
+        }
+      }
+      final dioMessage = error.message;
+      if (dioMessage != null && dioMessage.trim().isNotEmpty) {
+        return dioMessage.trim();
+      }
+    }
+
+    final raw = error.toString();
+    return raw.isNotEmpty ? raw : null;
+  }
+
+  String? _parseServerMessage(dynamic data) {
+    if (data is Map) {
+      final detail = data['detail'];
+      if (detail is String && detail.trim().isNotEmpty) {
+        return detail.trim();
+      }
+      if (detail is Map) {
+        final msg = detail['msg'];
+        if (msg is String && msg.trim().isNotEmpty) {
+          return msg.trim();
+        }
+      }
+      final message = data['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+      final error = data['error'];
+      if (error is String && error.trim().isNotEmpty) {
+        return error.trim();
+      }
+    } else if (data is String && data.trim().isNotEmpty) {
+      return data.trim();
+    }
+    return null;
   }
 
   Future<void> logout() async {

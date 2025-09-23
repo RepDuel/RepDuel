@@ -40,10 +40,17 @@ class AuthApiService {
       data: {'username': username, 'email': email, 'password': password},
     );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
+    final statusCode = response.statusCode ?? 0;
+    if (statusCode == 200 || statusCode == 201) {
       return User.fromJson(response.data);
     }
-    return null;
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      type: DioExceptionType.badResponse,
+      error: response.data,
+    );
   }
 
   Future<User?> getMe({String? token}) async {
