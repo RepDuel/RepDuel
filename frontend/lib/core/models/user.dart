@@ -106,19 +106,12 @@ class User {
   static String _defaultAvatarForGender(String id, String? gender) {
     final normalized = gender?.trim().toLowerCase();
 
-    String pickFemaleVariant() {
-      final hash = id.hashCode & 0x7fffffff;
-      return hash % 3 == 0
-          ? 'assets/images/rare_female.png'
-          : 'assets/images/default_female.png';
-    }
-
     if (normalized == 'male' || normalized == 'm') {
       return 'assets/images/default_male.png';
     }
 
     if (normalized == 'female' || normalized == 'f') {
-      return pickFemaleVariant();
+      return 'assets/images/default_female.png';
     }
 
     if (normalized == 'non-binary' ||
@@ -128,7 +121,7 @@ class User {
     }
 
     if (normalized == 'woman') {
-      return pickFemaleVariant();
+      return 'assets/images/default_female.png';
     }
 
     if (normalized == 'man') {
