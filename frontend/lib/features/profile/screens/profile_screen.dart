@@ -492,11 +492,10 @@ class _RecurringQuestCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF121212),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -577,14 +576,17 @@ class _RecurringQuestCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: progressValue,
-                minHeight: 6,
-                backgroundColor: Colors.white12,
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+            SizedBox(
+              height: 6,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progressValue,
+                  backgroundColor: Colors.grey[800],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    theme.colorScheme.primary,
+                  ),
+                ),
               ),
             ),
           ],
