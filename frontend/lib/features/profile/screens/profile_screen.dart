@@ -20,7 +20,6 @@ import '../widgets/energy_graph.dart';
 import '../widgets/activity_feed.dart';
 
 final showGraphProvider = StateProvider.autoDispose<bool>((ref) => false);
-final showProgressProvider = StateProvider.autoDispose<bool>((ref) => false);
 final _claimingQuestIdsProvider =
     StateProvider.autoDispose<Set<String>>((ref) => <String>{});
 
@@ -92,7 +91,6 @@ class ProfileContent extends ConsumerWidget {
     final rankColor = getRankColor(rank);
     final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
     final showGraph = ref.watch(showGraphProvider);
-    final showProgress = ref.watch(showProgressProvider);
     final questsAsync = ref.watch(questsProvider);
 
     ref.listen<int>(scoreEventsProvider, (previous, next) {
@@ -142,7 +140,6 @@ class ProfileContent extends ConsumerWidget {
 
     Future<void> refresh() async {
       ref.read(showGraphProvider.notifier).state = false;
-      ref.read(showProgressProvider.notifier).state = false;
       ref.invalidate(questsProvider);
       await onRefresh();
     }
@@ -177,22 +174,15 @@ class ProfileContent extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
             levelProgressAsync.when(
-              data: (progress) => _LevelProgressSection(
-                progress: progress,
-                showProgress: showProgress,
-                primaryColor: primaryColor,
-                onToggle: () => ref.read(showProgressProvider.notifier).state =
-                    !showProgress,
-              ),
-              loading: () => _LevelProgressLoading(primaryColor: primaryColor),
+              data: (progress) => _LevelProgressSection(progress: progress),
+              loading: () => const _LevelProgressLoading(),
               error: (error, _) => _LevelProgressError(
-                primaryColor: primaryColor,
                 onRetry: onRetryLevelProgress,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -670,144 +660,8 @@ Widget _buildDefaultAvatar(double size) {
 
 class _LevelProgressSection extends StatelessWidget {
   final LevelProgress progress;
-  final bool showProgress;
-  final VoidCallback onToggle;
-  final Color primaryColor;
 
-  const _LevelProgressSection({
-    required this.progress,
-    required this.showProgress,
-    required this.onToggle,
-    required this.primaryColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              'Level: ',
-              style: TextStyle(color: Colors.white, fontSize: 18),
-            ),
-            Text(
-              '${progress.level}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: onToggle,
-              child: Text(
-                showProgress ? 'Hide Progress' : 'View Progress',
-                style: TextStyle(color: primaryColor),
-              ),
-            ),
-          ],
-        ),
-        if (showProgress) const SizedBox(height: 8),
-        if (showProgress)
-          _LevelProgressDetails(
-            progress: progress,
-            primaryColor: primaryColor,
-          ),
-      ],
-    );
-  }
-}
-
-class _LevelProgressLoading extends StatelessWidget {
-  final Color primaryColor;
-
-  const _LevelProgressLoading({required this.primaryColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Text(
-          'Level: ',
-          style: TextStyle(color: Colors.white, fontSize: 18),
-        ),
-        const SizedBox(
-          width: 24,
-          height: 24,
-          child: LoadingSpinner(size: 24),
-        ),
-        const Spacer(),
-        TextButton(
-          onPressed: null,
-          style: TextButton.styleFrom(
-            foregroundColor: primaryColor.withValues(alpha: 0.6),
-          ),
-          child: const Text('View Progress'),
-        ),
-      ],
-    );
-  }
-}
-
-class _LevelProgressError extends StatelessWidget {
-  final VoidCallback onRetry;
-  final Color primaryColor;
-
-  const _LevelProgressError({
-    required this.onRetry,
-    required this.primaryColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              'Level: ',
-              style: TextStyle(color: Colors.white, fontSize: 18),
-            ),
-            const Text(
-              '--',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: onRetry,
-              child: Text(
-                'Retry',
-                style: TextStyle(color: primaryColor),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Unable to load level progress. Tap retry to try again.',
-          style: TextStyle(color: Colors.redAccent, fontSize: 12),
-        ),
-      ],
-    );
-  }
-}
-
-class _LevelProgressDetails extends StatelessWidget {
-  final LevelProgress progress;
-  final Color primaryColor;
-
-  const _LevelProgressDetails({
-    required this.progress,
-    required this.primaryColor,
-  });
+  const _LevelProgressSection({required this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -815,43 +669,142 @@ class _LevelProgressDetails extends StatelessWidget {
     final totalXp = formatter.format(progress.xp);
     final xpWeek = formatter.format(progress.xpGainedThisWeek);
     final xpToNext = formatter.format(progress.xpToNext);
-    final percent = ((progress.progressPct * 100).clamp(0, 100)).toDouble();
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Level ${progress.level}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _LevelStatTile(
+                label: 'Total XP',
+                value: totalXp,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _LevelStatTile(
+                label: 'This Week',
+                value: xpWeek,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _LevelStatTile(
+                label: 'Next Level',
+                value: xpToNext,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _LevelProgressLoading extends StatelessWidget {
+  const _LevelProgressLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Text(
+          'Level --',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(height: 12),
+        _LevelStatsSkeleton(),
+      ],
+    );
+  }
+}
+
+class _LevelProgressError extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _LevelProgressError({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Level --',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.primary,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const _LevelStatsSkeleton(),
+      ],
+    );
+  }
+}
+
+class _LevelStatTile extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _LevelStatTile({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _LevelProgressDetailRow(label: 'Total XP', value: totalXp),
-          const SizedBox(height: 6),
-          _LevelProgressDetailRow(
-            label: 'XP gained this week',
-            value: xpWeek,
-          ),
-          const SizedBox(height: 6),
-          _LevelProgressDetailRow(
-            label: 'XP to next level',
-            value: xpToNext,
-          ),
-          const SizedBox(height: 12),
           Text(
-            'Progress to next level: ${percent.toStringAsFixed(1)}%',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress.progressPct,
-              minHeight: 6,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -860,31 +813,31 @@ class _LevelProgressDetails extends StatelessWidget {
   }
 }
 
-class _LevelProgressDetailRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _LevelProgressDetailRow({
-    required this.label,
-    required this.value,
-  });
+class _LevelStatsSkeleton extends StatelessWidget {
+  const _LevelStatsSkeleton();
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          child: _LevelStatTile(
+            label: 'Total XP',
+            value: '--',
           ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+        const SizedBox(width: 12),
+        Expanded(
+          child: _LevelStatTile(
+            label: 'This Week',
+            value: '--',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _LevelStatTile(
+            label: 'Next Level',
+            value: '--',
           ),
         ),
       ],
