@@ -141,6 +141,9 @@ class ResultScreen extends ConsumerStatefulWidget {
 }
 
 class _ResultScreenState extends ConsumerState<ResultScreen> {
+  static const double _adjacentBadgeSize = 56.0;
+  static const double _adjacentBadgeSpacing = 16.0;
+
   final _screenshotController = ScreenshotController();
   bool _isSharing = false;
 
@@ -149,6 +152,24 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   double _round5(double v) => (v / 5).round() * 5.0;
   double _round1(double v) => v.roundToDouble();
+
+  Widget _buildAdjacentBadge(String assetName, Alignment alignment) {
+    return SizedBox(
+      width: _adjacentBadgeSize,
+      height: _adjacentBadgeSize,
+      child: Align(
+        alignment: alignment,
+        child: Opacity(
+          opacity: 0.5,
+          child: SvgPicture.asset(
+            'assets/images/ranks/$assetName.svg',
+            height: _adjacentBadgeSize,
+            width: _adjacentBadgeSize,
+          ),
+        ),
+      ),
+    );
+  }
 
   Map<String, dynamic> _packToDisplay(
     Map<String, dynamic> standardsKg,
@@ -384,6 +405,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             );
 
             final rankColor = getRankColor(lp.matchedRank);
+            final currentRankIndex = kRankOrder
+                .indexWhere((rank) => rank.toLowerCase() == lp.matchedRank.toLowerCase());
+            final String? previousRank;
+            final String? nextRank;
+
+            if (currentRankIndex == -1) {
+              previousRank = null;
+              nextRank = kRankOrder.isNotEmpty ? kRankOrder.first : null;
+            } else {
+              previousRank =
+                  currentRankIndex > 0 ? kRankOrder[currentRankIndex - 1] : null;
+              nextRank = currentRankIndex < kRankOrder.length - 1
+                  ? kRankOrder[currentRankIndex + 1]
+                  : null;
+            }
+            final previousRankAssetName = previousRank?.toLowerCase();
+            final nextRankAssetName = nextRank?.toLowerCase();
 
             return _wrapWithPopGuard(
               _buildScaffold(
@@ -424,9 +462,41 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                         style: TextStyle(color: Colors.white70, fontSize: 18),
                       ),
                       const SizedBox(height: 16),
-                      SvgPicture.asset(
-                        'assets/images/ranks/${lp.matchedRank.toLowerCase()}.svg',
-                        height: 72,
+                      SizedBox(
+                        width: double.infinity,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (previousRankAssetName != null)
+                              _buildAdjacentBadge(
+                                previousRankAssetName,
+                                Alignment.centerRight,
+                              )
+                            else if (nextRankAssetName != null)
+                              SizedBox(
+                                width:
+                                    _adjacentBadgeSize + _adjacentBadgeSpacing,
+                              ),
+                            if (previousRankAssetName != null)
+                              const SizedBox(width: _adjacentBadgeSpacing),
+                            SvgPicture.asset(
+                              'assets/images/ranks/${lp.matchedRank.toLowerCase()}.svg',
+                              height: 72,
+                            ),
+                            if (nextRankAssetName != null)
+                              const SizedBox(width: _adjacentBadgeSpacing)
+                            else if (previousRankAssetName != null)
+                              SizedBox(
+                                width:
+                                    _adjacentBadgeSize + _adjacentBadgeSpacing,
+                              ),
+                            if (nextRankAssetName != null)
+                              _buildAdjacentBadge(
+                                nextRankAssetName,
+                                Alignment.centerLeft,
+                              ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(
