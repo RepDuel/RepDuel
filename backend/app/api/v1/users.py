@@ -3,7 +3,7 @@
 import os
 import shutil
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import stripe
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
@@ -213,7 +213,7 @@ async def update_unit_preference(
 
 
 @router.get("/{user_id}", response_model=schemas.UserRead)
-async def read_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
+async def read_user_by_id(user_id: UUID, db: AsyncSession = Depends(get_db)):
     user = await get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with ID {user_id} not found")

@@ -58,8 +58,10 @@ async def _ensure_user(db: AsyncSession, user_id: UUID) -> User:
     return user
 
 
-def _build_list_response(users: list[User], offset: int, total: int) -> SocialListResponse:
-    items = [SocialUser.model_validate(user) for user in users]
+def _build_list_response(
+    entries: list[dict[str, object]], offset: int, total: int
+) -> SocialListResponse:
+    items = [SocialUser.model_validate(entry) for entry in entries]
     count = len(items)
     next_offset = offset + count if (count and offset + count < total) else None
     return SocialListResponse(
@@ -106,11 +108,13 @@ async def list_followers(
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> SocialListResponse:
     await _ensure_user(db, user_id)
-    users, total = await social_service.get_followers(db, user_id, offset, limit)
-    return _build_list_response(list(users), offset, total)
+    entries, total = await social_service.get_followers(
+        db, user_id, current_user.id, offset, limit
+    )
+    return _build_list_response(entries, offset, total)
 
 
 @router.get("/{user_id}/following", response_model=SocialListResponse)
@@ -119,11 +123,13 @@ async def list_following(
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> SocialListResponse:
     await _ensure_user(db, user_id)
-    users, total = await social_service.get_following(db, user_id, offset, limit)
-    return _build_list_response(list(users), offset, total)
+    entries, total = await social_service.get_following(
+        db, user_id, current_user.id, offset, limit
+    )
+    return _build_list_response(entries, offset, total)
 
 
 @router.get("/{user_id}/friends", response_model=SocialListResponse)
@@ -132,8 +138,27 @@ async def list_mutuals(
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> SocialListResponse:
     await _ensure_user(db, user_id)
-    users, total = await social_service.get_mutuals(db, user_id, offset, limit)
-    return _build_list_response(list(users), offset, total)
+    entries, total = await social_service.get_mutuals(
+        db, user_id, current_user.id, offset, limit
+    )
+    return _build_list_response(entries, offset, total)
+
+
+@router.get("/lookup", response_model=SocialListResponse)
+async def search_users(
+    q: str = Query(..., min_length=1, max_length=64),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SocialListResponse:
+    query = q.strip()
+    if not query:
+        return _build_list_response([], offset, 0)
+    entries, total = await social_service.search_users(
+        db, current_user.id, query, offset, limit
+    )
+    return _build_list_response(entries, offset, total)

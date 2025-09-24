@@ -48,6 +48,12 @@ class MainScaffold extends ConsumerWidget {
               elevation: 0,
               actions: [
                 if (currentIndex == 3 &&
+                    !location.contains('/profile/find'))
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () => context.go('/profile/find'),
+                  ),
+                if (currentIndex == 3 &&
                     !location.contains('/profile/settings'))
                   IconButton(
                     icon: const Icon(Icons.settings),

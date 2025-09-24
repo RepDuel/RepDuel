@@ -85,13 +85,16 @@ async def _setup_test_app() -> tuple[SessionFactory, Engine]:
     return factory, engine
 
 
-async def _create_user(session_maker: SessionFactory, username: str) -> AuthUser:
+async def _create_user(
+    session_maker: SessionFactory, username: str, display_name: str | None = None
+) -> AuthUser:
     async with session_maker() as session:
         user = User(
             id=uuid4(),
             username=username,
             email=f"{username}@example.com",
             hashed_password="hashed",
+            display_name=display_name,
         )
         session.add(user)
         await session.commit()
@@ -205,7 +208,13 @@ def test_followers_pagination() -> None:
             assert data["offset"] == 0
             assert data["next_offset"] == 2
             assert data["items"][0]["id"] == str(followers[-1].id)
+            assert data["items"][0]["is_following"] is False
+            assert data["items"][0]["is_followed_by"] is True
+            assert data["items"][0]["is_self"] is False
             assert data["items"][1]["id"] == str(followers[-2].id)
+            assert data["items"][1]["is_following"] is False
+            assert data["items"][1]["is_followed_by"] is True
+            assert data["items"][1]["is_self"] is False
 
             assert second_page.status_code == 200
             second_data = second_page.json()
@@ -214,6 +223,9 @@ def test_followers_pagination() -> None:
             assert second_data["offset"] == 4
             assert second_data["next_offset"] is None
             assert second_data["items"][0]["id"] == str(followers[0].id)
+            assert second_data["items"][0]["is_following"] is False
+            assert second_data["items"][0]["is_followed_by"] is True
+            assert second_data["items"][0]["is_self"] is False
         finally:
             await _teardown(engine)
 
@@ -244,6 +256,71 @@ def test_mutuals_compute_correctly() -> None:
             assert data["offset"] == 0
             assert data["next_offset"] is None
             assert [item["id"] for item in data["items"]] == [str(user_b.id)]
+            assert data["items"][0]["is_following"] is True
+            assert data["items"][0]["is_followed_by"] is True
+            assert data["items"][0]["is_self"] is False
+        finally:
+            await _teardown(engine)
+
+    asyncio.run(run_test())
+
+
+def test_search_users_returns_relationship_flags() -> None:
+    async def run_test() -> None:
+        session_maker, engine = await _setup_test_app()
+        try:
+            viewer = await _create_user(session_maker, "viewer")
+            friend = await _create_user(
+                session_maker, "friend", display_name="Friendly"
+            )
+            fan = await _create_user(session_maker, "fan", display_name="Fan Girl")
+            await _create_user(session_maker, "other")
+
+            await _set_current_user(viewer)
+            now = datetime.now(timezone.utc)
+            await _add_edge(session_maker, viewer.id, friend.id, now)
+            await _add_edge(session_maker, fan.id, viewer.id, now + timedelta(seconds=1))
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+                first_page = await client.get(
+                    "/api/v1/users/lookup", params={"q": "f", "limit": 1}
+                )
+                second_page = await client.get(
+                    "/api/v1/users/lookup", params={"q": "f", "offset": 1, "limit": 1}
+                )
+                self_page = await client.get(
+                    "/api/v1/users/lookup", params={"q": "viewer"}
+                )
+
+            assert first_page.status_code == 200
+            data = first_page.json()
+            assert data["count"] == 1
+            assert data["total"] == 2
+            assert data["offset"] == 0
+            assert data["next_offset"] == 1
+            assert data["items"][0]["id"] == str(fan.id)
+            assert data["items"][0]["display_name"] == "Fan Girl"
+            assert data["items"][0]["is_following"] is False
+            assert data["items"][0]["is_followed_by"] is True
+            assert data["items"][0]["is_self"] is False
+
+            assert second_page.status_code == 200
+            second = second_page.json()
+            assert second["count"] == 1
+            assert second["total"] == 2
+            assert second["offset"] == 1
+            assert second["next_offset"] is None
+            assert second["items"][0]["id"] == str(friend.id)
+            assert second["items"][0]["display_name"] == "Friendly"
+            assert second["items"][0]["is_following"] is True
+            assert second["items"][0]["is_followed_by"] is False
+            assert second["items"][0]["is_self"] is False
+
+            assert self_page.status_code == 200
+            self_data = self_page.json()
+            assert self_data["total"] == 0
+            assert self_data["items"] == []
         finally:
             await _teardown(engine)
 

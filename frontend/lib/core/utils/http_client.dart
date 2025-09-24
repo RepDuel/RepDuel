@@ -9,8 +9,16 @@ class HttpClient {
 
   Dio get dio => _dio;
 
-  Future<Response> get(String path, {Options? options}) {
-    return _dio.get(path, options: options);
+  Future<Response> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) {
+    return _dio.get(
+      path,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
   Future<Response> post(String path, {Object? data, Options? options}) {

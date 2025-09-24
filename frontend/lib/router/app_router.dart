@@ -24,6 +24,7 @@ import '../features/premium/screens/subscription_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/public_profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
+import '../features/profile/screens/social_search_screen.dart';
 import '../features/profile/screens/theme_selector_screen.dart';
 import '../features/onboarding/screens/onboarding_profile_screen.dart';
 import '../features/ranked/screens/ranked_screen.dart';
@@ -148,6 +149,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               name: 'profile',
               builder: (context, state) => const ProfileScreen(),
               routes: [
+                GoRoute(
+                  path: 'find',
+                  name: 'socialSearch',
+                  builder: (context, state) => const SocialSearchScreen(),
+                ),
                 GoRoute(
                   path: 'settings',
                   name: 'settings',
