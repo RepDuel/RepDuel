@@ -384,32 +384,56 @@ class _RecurringQuestsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth > 700;
+    const minWidth = 300.0;
+    const maxWidth = 600.0;
+    final boxConstraints = BoxConstraints(
+      minWidth: isWide ? minWidth : double.infinity,
+      maxWidth: isWide ? maxWidth : double.infinity,
+    );
+
+    Widget wrapWithWidth(Widget child, {bool addBottomMargin = false}) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        margin: addBottomMargin
+            ? const EdgeInsets.only(bottom: 12)
+            : EdgeInsets.zero,
+        child: ConstrainedBox(
+          constraints: boxConstraints,
+          child: child,
+        ),
+      );
+    }
+
     final content = questsAsync.when<Widget>(
       data: (quests) {
         final children = <Widget>[];
         for (var i = 0; i < _recurringQuestDefinitions.length; i++) {
           final definition = _recurringQuestDefinitions[i];
-          children.add(
+          children.add(wrapWithWidth(
             _RecurringQuestCard(
               definition: definition,
               instance: _findQuest(quests, definition.code),
             ),
-          );
-          if (i < _recurringQuestDefinitions.length - 1) {
-            children.add(const SizedBox(height: 12));
-          }
+            addBottomMargin: true,
+          ));
         }
         return Column(children: children);
       },
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: LoadingSpinner(size: 36)),
+      loading: () => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: wrapWithWidth(
+          const Center(child: LoadingSpinner(size: 36)),
+        ),
       ),
       error: (error, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text(
-          'Unable to load quests: $error',
-          style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+        child: wrapWithWidth(
+          Text(
+            'Unable to load quests: $error',
+            style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+          ),
         ),
       ),
     );
