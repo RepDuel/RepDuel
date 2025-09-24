@@ -12,6 +12,7 @@ class SocialUser(BaseModel):
     avatar_url: str | None = None
     is_following: bool
     is_followed_by: bool
+    is_friend: bool
     is_self: bool
 
     model_config = {"from_attributes": True}

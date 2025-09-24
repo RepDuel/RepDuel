@@ -210,10 +210,12 @@ def test_followers_pagination() -> None:
             assert data["items"][0]["id"] == str(followers[-1].id)
             assert data["items"][0]["is_following"] is False
             assert data["items"][0]["is_followed_by"] is True
+            assert data["items"][0]["is_friend"] is False
             assert data["items"][0]["is_self"] is False
             assert data["items"][1]["id"] == str(followers[-2].id)
             assert data["items"][1]["is_following"] is False
             assert data["items"][1]["is_followed_by"] is True
+            assert data["items"][1]["is_friend"] is False
             assert data["items"][1]["is_self"] is False
 
             assert second_page.status_code == 200
@@ -225,6 +227,7 @@ def test_followers_pagination() -> None:
             assert second_data["items"][0]["id"] == str(followers[0].id)
             assert second_data["items"][0]["is_following"] is False
             assert second_data["items"][0]["is_followed_by"] is True
+            assert second_data["items"][0]["is_friend"] is False
             assert second_data["items"][0]["is_self"] is False
         finally:
             await _teardown(engine)
@@ -258,6 +261,7 @@ def test_mutuals_compute_correctly() -> None:
             assert [item["id"] for item in data["items"]] == [str(user_b.id)]
             assert data["items"][0]["is_following"] is True
             assert data["items"][0]["is_followed_by"] is True
+            assert data["items"][0]["is_friend"] is True
             assert data["items"][0]["is_self"] is False
         finally:
             await _teardown(engine)
@@ -303,6 +307,7 @@ def test_search_users_returns_relationship_flags() -> None:
             assert data["items"][0]["display_name"] == "Fan Girl"
             assert data["items"][0]["is_following"] is False
             assert data["items"][0]["is_followed_by"] is True
+            assert data["items"][0]["is_friend"] is False
             assert data["items"][0]["is_self"] is False
 
             assert second_page.status_code == 200
@@ -315,6 +320,7 @@ def test_search_users_returns_relationship_flags() -> None:
             assert second["items"][0]["display_name"] == "Friendly"
             assert second["items"][0]["is_following"] is True
             assert second["items"][0]["is_followed_by"] is False
+            assert second["items"][0]["is_friend"] is False
             assert second["items"][0]["is_self"] is False
 
             assert self_page.status_code == 200

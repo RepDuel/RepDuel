@@ -7,6 +7,7 @@ class SocialUserSummary {
   final String? avatarUrl;
   final bool isFollowing;
   final bool isFollowedBy;
+  final bool isFriend;
   final bool isSelf;
 
   const SocialUserSummary({
@@ -16,6 +17,7 @@ class SocialUserSummary {
     required this.avatarUrl,
     required this.isFollowing,
     required this.isFollowedBy,
+    required this.isFriend,
     required this.isSelf,
   });
 
@@ -45,6 +47,7 @@ class SocialUserSummary {
       avatarUrl: json['avatar_url'] as String?,
       isFollowing: json['is_following'] as bool? ?? false,
       isFollowedBy: json['is_followed_by'] as bool? ?? false,
+      isFriend: json['is_friend'] as bool? ?? false,
       isSelf: json['is_self'] as bool? ?? false,
     );
   }

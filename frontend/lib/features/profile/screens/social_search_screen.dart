@@ -185,7 +185,9 @@ class _SearchResultTile extends StatelessWidget {
     final showFollow = !user.isSelf;
 
     String buttonLabel;
-    if (user.isFollowing) {
+    if (user.isFriend) {
+      buttonLabel = 'Friends';
+    } else if (user.isFollowing) {
       buttonLabel = 'Following';
     } else if (user.isFollowedBy) {
       buttonLabel = 'Follow Back';

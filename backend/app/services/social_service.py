@@ -61,6 +61,7 @@ async def _with_relationship_flags(
             "avatar_url": user.avatar_url,
             "is_following": user.id in following_ids,
             "is_followed_by": user.id in followed_by_ids,
+            "is_friend": user.id in following_ids and user.id in followed_by_ids,
             "is_self": bool(viewer_id and user.id == viewer_id),
         }
         for user in users
