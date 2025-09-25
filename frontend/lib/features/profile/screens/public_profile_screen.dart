@@ -75,6 +75,7 @@ class PublicProfileScreen extends ConsumerWidget {
             onRetryLevelProgress: () {
               ref.invalidate(levelProgressByUserProvider(user.id));
             },
+            showPersonalQuests: false,
           );
         },
       ),

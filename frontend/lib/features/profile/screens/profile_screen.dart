@@ -75,6 +75,7 @@ class ProfileContent extends ConsumerWidget {
   final AsyncValue<LevelProgress> levelProgressAsync;
   final Future<void> Function() onRefresh;
   final VoidCallback onRetryLevelProgress;
+  final bool showPersonalQuests;
 
   const ProfileContent({
     super.key,
@@ -82,6 +83,7 @@ class ProfileContent extends ConsumerWidget {
     required this.levelProgressAsync,
     required this.onRefresh,
     required this.onRetryLevelProgress,
+    this.showPersonalQuests = true,
   });
 
   @override
@@ -93,7 +95,7 @@ class ProfileContent extends ConsumerWidget {
     final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
     final showGraph = ref.watch(showGraphProvider);
     final showProgress = ref.watch(showProgressProvider);
-    final questsAsync = ref.watch(questsProvider);
+    final questsAsync = showPersonalQuests ? ref.watch(questsProvider) : null;
 
     final screenWidth = MediaQuery.of(context).size.width;
     final isWide = screenWidth > 700;
@@ -114,55 +116,61 @@ class ProfileContent extends ConsumerWidget {
       );
     }
 
-    ref.listen<int>(scoreEventsProvider, (previous, next) {
-      if (previous != null && previous != next) {
-        ref.invalidate(questsProvider);
-      }
-    });
-
-    ref.listen<AsyncValue<List<QuestInstance>>>(questsProvider,
-        (previous, next) {
-      next.whenData((quests) {
-        final claimingIds = ref.read(_claimingQuestIdsProvider);
-        for (final quest in quests) {
-          if (quest.status != QuestStatus.completed ||
-              claimingIds.contains(quest.id)) {
-            continue;
-          }
-
-          ref
-              .read(_claimingQuestIdsProvider.notifier)
-              .update((state) => {...state, quest.id});
-
-          Future.microtask(() async {
-            try {
-              final client = ref.read(privateHttpClientProvider);
-              final claimed = await claimQuest(client, quest.id);
-              ref.invalidate(questsProvider);
-              if (!context.mounted) {
-                return;
-              }
-              _showQuestClaimedSnackBar(context, claimed);
-            } catch (error) {
-              if (context.mounted) {
-                _showQuestClaimFailedSnackBar(context);
-              }
-            } finally {
-              ref.read(_claimingQuestIdsProvider.notifier).update((state) {
-                final updated = {...state};
-                updated.remove(quest.id);
-                return updated;
-              });
-            }
-          });
+    if (showPersonalQuests) {
+      ref.listen<int>(scoreEventsProvider, (previous, next) {
+        if (previous != null && previous != next) {
+          ref.invalidate(questsProvider);
         }
       });
-    });
+
+      ref.listen<AsyncValue<List<QuestInstance>>>(questsProvider,
+          (previous, next) {
+        next.whenData((quests) {
+          final claimingIds = ref.read(_claimingQuestIdsProvider);
+          for (final quest in quests) {
+            if (quest.status != QuestStatus.completed ||
+                claimingIds.contains(quest.id)) {
+              continue;
+            }
+
+            ref
+                .read(_claimingQuestIdsProvider.notifier)
+                .update((state) => {...state, quest.id});
+
+            Future.microtask(() async {
+              try {
+                final client = ref.read(privateHttpClientProvider);
+                final claimed = await claimQuest(client, quest.id);
+                ref.invalidate(questsProvider);
+                if (!context.mounted) {
+                  return;
+                }
+                _showQuestClaimedSnackBar(context, claimed);
+              } catch (error) {
+                if (context.mounted) {
+                  _showQuestClaimFailedSnackBar(context);
+                }
+              } finally {
+                ref
+                    .read(_claimingQuestIdsProvider.notifier)
+                    .update((state) {
+                  final updated = {...state};
+                  updated.remove(quest.id);
+                  return updated;
+                });
+              }
+            });
+          }
+        });
+      });
+    }
 
     Future<void> refresh() async {
       ref.read(showGraphProvider.notifier).state = false;
       ref.read(showProgressProvider.notifier).state = false;
-      ref.invalidate(questsProvider);
+      if (showPersonalQuests) {
+        ref.invalidate(questsProvider);
+      }
       await onRefresh();
     }
 
@@ -263,7 +271,15 @@ class ProfileContent extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 32),
-            _RecurringQuestsSection(questsAsync: questsAsync),
+            if (showPersonalQuests)
+              _RecurringQuestsSection(questsAsync: questsAsync!)
+            else
+              wrapSection(
+                const Text(
+                  'Quest progress is private.',
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+              ),
             const SizedBox(height: 32),
             const Text(
               'Activity',
