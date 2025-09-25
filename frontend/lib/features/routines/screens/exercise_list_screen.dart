@@ -64,12 +64,13 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
     super.dispose();
   }
 
-  void _updateVolume(List<Map<String, dynamic>> setData) {
-    double newVolume = 0;
-    for (final set in setData) {
-      newVolume += (set['weight'] as num? ?? 0) * (set['reps'] as num? ?? 0);
-    }
-    setState(() => _totalVolumeKg += newVolume);
+  void _updateVolume() {
+    final allPerformedSets = ref.read(routineSetProvider);
+    final updatedVolume = allPerformedSets.fold<double>(
+      0,
+      (sum, set) => sum + (set.weight * set.reps),
+    );
+    setState(() => _totalVolumeKg = updatedVolume);
   }
 
   double _calc1RM(double weightKg, int reps) {
@@ -583,7 +584,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                                       );
                                       if (!mounted) return;
                                       if (setData != null) {
-                                        _updateVolume(setData);
+                                        _updateVolume();
                                       }
                                     },
                                   ),
@@ -623,7 +624,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                                 );
                                 if (!mounted) return;
                                 if (setData != null) {
-                                  _updateVolume(setData);
+                                  _updateVolume();
                                 }
                               },
                             ),
