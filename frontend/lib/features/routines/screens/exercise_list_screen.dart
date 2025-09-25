@@ -166,7 +166,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final Map<String, dynamic> submissionBody = {
         'user_id': user.id,
         'duration': durationMinutes,
-        'completion_timestamp': DateTime.now().toIso8601String(),
+        'completion_timestamp':
+            DateTime.now().toUtc().toIso8601String(),
         'status': 'completed',
         'scenario_submissions': scenariosPayload,
       };
