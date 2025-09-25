@@ -156,50 +156,51 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
             final liftKeyToScenario = {
               for (final l in defaultLifts) l.key: l.scenarioId
             };
+            if (_showBenchmarks) {
+              return BenchmarksTable(
+                standards: data.liftStandards,
+                onViewRankings: () => setState(() => _showBenchmarks = false),
+              );
+            }
+
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              child: _showBenchmarks
-                  ? BenchmarksTable(
-                      standards: data.liftStandards,
-                      onViewRankings: () =>
-                          setState(() => _showBenchmarks = false),
-                    )
-                  : RankingTable(
-                      liftStandards: data.liftStandards,
-                      lifts: defaultLifts,
-                      userHighScores: data.userHighScores,
-                      onViewBenchmarks: () =>
-                          setState(() => _showBenchmarks = true),
-                      onLiftTapped: (liftKey) async {
-                        final scenarioId = liftKeyToScenario[liftKey];
-                        if (scenarioId == null) return;
-                        final shouldRefresh = await context.push<bool>(
-                            '/scenario/$scenarioId',
-                            extra: liftKey);
-                        if (shouldRefresh == true && mounted) {
-                          // option A: nuke the joined provider
-                          ref.invalidate(rankedScreenDataProvider);
-                          // also bump the global version in case other screens rely on it
-                          ref.read(scoreEventsProvider.notifier).state++;
-                          // pull user again (energy, etc.)
-                          await ref
-                              .read(authProvider.notifier)
-                              .refreshUserData();
-                        }
-                      },
-                      onLeaderboardTapped: (scenarioId) {
-                        final liftName = defaultLifts
-                            .firstWhere((l) => l.scenarioId == scenarioId,
-                                orElse: () =>
-                                    const LiftSpec(key: 'lift', scenarioId: ''))
-                            .name;
-                        context.push(
-                            '/leaderboard/$scenarioId?liftName=${liftName ?? ''}');
-                      },
-                      onEnergyLeaderboardTapped: () =>
-                          context.pushNamed('energyLeaderboard'),
-                    ),
+              child: RankingTable(
+                liftStandards: data.liftStandards,
+                lifts: defaultLifts,
+                userHighScores: data.userHighScores,
+                onViewBenchmarks: () =>
+                    setState(() => _showBenchmarks = true),
+                onLiftTapped: (liftKey) async {
+                  final scenarioId = liftKeyToScenario[liftKey];
+                  if (scenarioId == null) return;
+                  final shouldRefresh = await context.push<bool>(
+                      '/scenario/$scenarioId',
+                      extra: liftKey);
+                  if (shouldRefresh == true && mounted) {
+                    // option A: nuke the joined provider
+                    ref.invalidate(rankedScreenDataProvider);
+                    // also bump the global version in case other screens rely on it
+                    ref.read(scoreEventsProvider.notifier).state++;
+                    // pull user again (energy, etc.)
+                    await ref
+                        .read(authProvider.notifier)
+                        .refreshUserData();
+                  }
+                },
+                onLeaderboardTapped: (scenarioId) {
+                  final liftName = defaultLifts
+                      .firstWhere((l) => l.scenarioId == scenarioId,
+                          orElse: () =>
+                              const LiftSpec(key: 'lift', scenarioId: ''))
+                      .name;
+                  context.push(
+                      '/leaderboard/$scenarioId?liftName=${liftName ?? ''}');
+                },
+                onEnergyLeaderboardTapped: () =>
+                    context.pushNamed('energyLeaderboard'),
+              ),
             );
           },
         ),

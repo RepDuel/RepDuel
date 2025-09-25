@@ -35,46 +35,126 @@ class BenchmarksTable extends ConsumerWidget {
           ..sort((a, b) => (standards[a]['total'] as num)
               .compareTo(standards[b]['total'] as num));
 
-        return Column(
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                  onPressed: () {
-                    final router = GoRouter.of(context);
-                    if (router.canPop()) {
-                      router.pop();
-                    } else {
-                      onViewRankings();
-                    }
-                  },
+        return CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                      onPressed: () {
+                        final router = GoRouter.of(context);
+                        if (router.canPop()) {
+                          router.pop();
+                        } else {
+                          onViewRankings();
+                        }
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _BenchmarksTableHeader(showLifts: showLifts),
-            const SizedBox(height: 8),
-            ...sortedRanks.map((rank) => _BenchmarkRow(
-                  rank: rank,
-                  lifts: showLifts ? standards[rank]['lifts'] : null,
-                  metadata: standards[rank]['metadata'],
-                )),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: onViewRankings,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               ),
-              child: const Text('View My Rankings'),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: const SizedBox(height: 16),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverPersistentHeader(
+                pinned: true,
+                delegate: _BenchmarksTableHeaderDelegate(
+                  showLifts: showLifts,
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: const SizedBox(height: 8),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final rank = sortedRanks[index];
+                    return _BenchmarkRow(
+                      rank: rank,
+                      lifts: showLifts ? standards[rank]['lifts'] : null,
+                      metadata: standards[rank]['metadata'],
+                    );
+                  },
+                  childCount: sortedRanks.length,
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: const SizedBox(height: 20),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: ElevatedButton(
+                    onPressed: onViewRankings,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 12),
+                    ),
+                    child: const Text('View My Rankings'),
+                  ),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              sliver: SliverToBoxAdapter(
+                child: const SizedBox(height: 16),
+              ),
             ),
           ],
         );
       },
     );
+  }
+}
+
+class _BenchmarksTableHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final bool showLifts;
+
+  _BenchmarksTableHeaderDelegate({required this.showLifts});
+
+  @override
+  double get minExtent => 48;
+
+  @override
+  double get maxExtent => 48;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      alignment: Alignment.centerLeft,
+      child: _BenchmarksTableHeader(showLifts: showLifts),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _BenchmarksTableHeaderDelegate oldDelegate) {
+    return oldDelegate.showLifts != showLifts;
   }
 }
 
