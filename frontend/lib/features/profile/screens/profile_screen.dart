@@ -95,6 +95,25 @@ class ProfileContent extends ConsumerWidget {
     final showProgress = ref.watch(showProgressProvider);
     final questsAsync = ref.watch(questsProvider);
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth > 700;
+    const minSectionWidth = 300.0;
+    const maxSectionWidth = 600.0;
+    final sectionConstraints = BoxConstraints(
+      minWidth: isWide ? minSectionWidth : double.infinity,
+      maxWidth: isWide ? maxSectionWidth : double.infinity,
+    );
+
+    Widget wrapSection(Widget child) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: sectionConstraints,
+          child: child,
+        ),
+      );
+    }
+
     ref.listen<int>(scoreEventsProvider, (previous, next) {
       if (previous != null && previous != next) {
         ref.invalidate(questsProvider);
@@ -179,61 +198,69 @@ class ProfileContent extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
             levelProgressAsync.when(
-              data: (progress) => _LevelProgressSection(
-                progress: progress,
-                showProgress: showProgress,
-                primaryColor: primaryColor,
-                onToggle: () => ref.read(showProgressProvider.notifier).state =
-                    !showProgress,
+              data: (progress) => wrapSection(
+                _LevelProgressSection(
+                  progress: progress,
+                  showProgress: showProgress,
+                  primaryColor: primaryColor,
+                  onToggle: () =>
+                      ref.read(showProgressProvider.notifier).state =
+                          !showProgress,
+                ),
               ),
-              loading: () => _LevelProgressLoading(primaryColor: primaryColor),
-              error: (error, _) => _LevelProgressError(
-                primaryColor: primaryColor,
-                onRetry: onRetryLevelProgress,
+              loading: () =>
+                  wrapSection(_LevelProgressLoading(primaryColor: primaryColor)),
+              error: (error, _) => wrapSection(
+                _LevelProgressError(
+                  primaryColor: primaryColor,
+                  onRetry: onRetryLevelProgress,
+                ),
               ),
             ),
             const SizedBox(height: 24),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Energy: ',
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    ),
-                    Text(
-                      '$energy $rank',
-                      style: TextStyle(
-                        color: rankColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+            wrapSection(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Energy: ',
+                        style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.visible,
-                    ),
-                    const SizedBox(width: 8),
-                    SvgPicture.asset(iconPath, height: 24, width: 24),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => ref
-                          .read(showGraphProvider.notifier)
-                          .state = !showGraph,
-                      child: Text(
-                        showGraph ? 'Hide Graph' : 'View Graph',
-                        style: TextStyle(color: primaryColor),
+                      Text(
+                        '$energy $rank',
+                        style: TextStyle(
+                          color: rankColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.visible,
                       ),
-                    ),
-                  ],
-                ),
-                if (showGraph) const SizedBox(height: 8),
-                if (showGraph)
-                  SizedBox(
-                    height: 200,
-                    child: EnergyGraph(userId: user.id),
+                      const SizedBox(width: 8),
+                      SvgPicture.asset(iconPath, height: 24, width: 24),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => ref
+                            .read(showGraphProvider.notifier)
+                            .state = !showGraph,
+                        child: Text(
+                          showGraph ? 'Hide Graph' : 'View Graph',
+                          style: TextStyle(color: primaryColor),
+                        ),
+                      ),
+                    ],
                   ),
-              ],
+                  if (showGraph) const SizedBox(height: 8),
+                  if (showGraph)
+                    SizedBox(
+                      height: 200,
+                      child: EnergyGraph(userId: user.id),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 32),
             _RecurringQuestsSection(questsAsync: questsAsync),
