@@ -44,7 +44,8 @@ class BenchmarksTable extends ConsumerWidget {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                      icon:
+                          const Icon(Icons.arrow_back_ios, color: Colors.white),
                       onPressed: () {
                         final router = GoRouter.of(context);
                         if (router.canPop()) {
@@ -168,7 +169,10 @@ class _BenchmarksTableHeader extends StatelessWidget {
       children: [
         const Expanded(
           flex: 5,
-          child: _HeaderText('Rank'),
+          child: Padding(
+            padding: EdgeInsets.only(left: 36), // adjust as needed
+            child: _HeaderText('Rank'),
+          ),
         ),
         if (showLifts) ...[
           const Expanded(
