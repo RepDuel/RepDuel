@@ -4,11 +4,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/models/user.dart';
 import '../../../core/providers/api_providers.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../providers/set_data_provider.dart';
+import '../../ranked/screens/ranked_screen.dart' show liftStandardsProvider;
+import '../../ranked/utils/bodyweight_benchmarks.dart';
+import '../../ranked/utils/rank_utils.dart';
 
 class ExercisePlayScreen extends ConsumerStatefulWidget {
   final String exerciseId;
@@ -247,6 +251,19 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
     final bodyweightDisplay = _toDisplayUnit(isLbs, bodyweightKg);
     final hasBodyweight = isBodyweight && bodyweightKg > 0;
     final timerText = _formatDuration(_elapsed);
+    final liftStandards = ref
+        .watch(liftStandardsProvider)
+        .maybeWhen(data: (value) => value, orElse: () => null);
+    final scenarioDetails = _scenarioDetailsCache[widget.exerciseId];
+    final scenarioName =
+        (scenarioDetails?['name'] as String?) ?? widget.exerciseName;
+    final isBodyweightScenario =
+        scenarioDetails?['is_bodyweight'] as bool? ?? isBodyweight;
+    final thresholds = _buildScenarioThresholds(
+      details: scenarioDetails,
+      user: user,
+      liftStandards: liftStandards,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -264,6 +281,17 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
         backgroundColor: Colors.black,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.table_chart_outlined),
+            tooltip: 'View benchmarks',
+            onPressed: thresholds == null || thresholds.isEmpty
+                ? null
+                : () => _showThresholdsSheet(
+                      scenarioName: scenarioName,
+                      thresholds: thresholds,
+                      isBodyweight: isBodyweightScenario,
+                    ),
+          ),
           IconButton(
             tooltip: 'Exercise info',
             icon: const Icon(Icons.info_outline),
@@ -445,5 +473,232 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
     final weightKg = user?.weight ?? 0;
     if (weightKg <= 0) return 0;
     return weightKg * _volumeMultiplier;
+  }
+
+  Map<String, double>? _buildScenarioThresholds({
+    Map<String, dynamic>? details,
+    User? user,
+    Map<String, dynamic>? liftStandards,
+  }) {
+    if (details == null || user == null) return null;
+
+    final isBodyweight = details['is_bodyweight'] as bool? ?? false;
+
+    if (isBodyweight) {
+      final calibrationRaw = details['calibration'];
+      if (calibrationRaw is! Map<String, dynamic>) return null;
+      final weightKg = (user.weight ?? 90.7).toDouble();
+      if (weightKg <= 0) return null;
+      try {
+        final thresholds = generateBodyweightBenchmarks(
+          calibrationRaw,
+          weightKg,
+          isFemale: user.gender?.toLowerCase() == 'female',
+        );
+        if (thresholds.isEmpty) return null;
+        return {
+          for (final entry in thresholds.entries)
+            entry.key: _round1(entry.value),
+        };
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final multiplier = (details['multiplier'] as num?)?.toDouble();
+    if (multiplier == null || multiplier <= 0) return null;
+    if (liftStandards == null || liftStandards.isEmpty) return null;
+
+    final thresholds = <String, double>{};
+    liftStandards.forEach((rank, raw) {
+      if (raw is Map<String, dynamic>) {
+        final total = (raw['total'] as num?)?.toDouble();
+        if (total != null) {
+          thresholds[rank] = _round5(total * multiplier);
+        }
+      }
+    });
+
+    return thresholds.isEmpty ? null : thresholds;
+  }
+
+  double _round5(double value) => (value / 5).round() * 5.0;
+
+  double _round1(double value) => value.roundToDouble();
+
+  Future<void> _showThresholdsSheet({
+    required String scenarioName,
+    required Map<String, double> thresholds,
+    required bool isBodyweight,
+  }) async {
+    final sorted = thresholds.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[700],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Rank thresholds',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _ThresholdHeader(scenarioName: scenarioName),
+                  const SizedBox(height: 12),
+                  for (final entry in sorted)
+                    _ThresholdRow(
+                      rank: entry.key,
+                      value: entry.value,
+                      isBodyweight: isBodyweight,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ThresholdHeader extends StatelessWidget {
+  final String scenarioName;
+  const _ThresholdHeader({required this.scenarioName});
+
+  @override
+  Widget build(BuildContext context) {
+    const headerStyle = TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.bold,
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Rank',
+              style: headerStyle,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              scenarioName,
+              textAlign: TextAlign.right,
+              style: headerStyle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThresholdRow extends StatelessWidget {
+  final String rank;
+  final double value;
+  final bool isBodyweight;
+
+  const _ThresholdRow({
+    required this.rank,
+    required this.value,
+    required this.isBodyweight,
+  });
+
+  String _formatThreshold(double v) {
+    if (isBodyweight) {
+      if ((v - v.roundToDouble()).abs() < 1e-6) {
+        return v.round().toString();
+      }
+      return v.toStringAsFixed(1);
+    }
+    return v.toStringAsFixed(0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = getRankColor(rank);
+    final iconPath = 'assets/images/ranks/${rank.toLowerCase()}.svg';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  iconPath,
+                  height: 20,
+                  width: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  rank,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              _formatThreshold(value),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
