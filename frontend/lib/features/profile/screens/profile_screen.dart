@@ -76,6 +76,7 @@ class ProfileContent extends ConsumerWidget {
   final Future<void> Function() onRefresh;
   final VoidCallback onRetryLevelProgress;
   final bool showPersonalQuests;
+  final Widget? headerAction;
 
   const ProfileContent({
     super.key,
@@ -84,6 +85,7 @@ class ProfileContent extends ConsumerWidget {
     required this.onRefresh,
     required this.onRetryLevelProgress,
     this.showPersonalQuests = true,
+    this.headerAction,
   });
 
   @override
@@ -202,6 +204,10 @@ class ProfileContent extends ConsumerWidget {
                     ),
                   ),
                 ),
+                if (headerAction != null) ...[
+                  const SizedBox(width: 16),
+                  headerAction!,
+                ],
               ],
             ),
             const SizedBox(height: 32),

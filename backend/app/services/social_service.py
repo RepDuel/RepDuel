@@ -68,6 +68,27 @@ async def _with_relationship_flags(
     ]
 
 
+async def get_user_relationship(
+    db: AsyncSession, target: User, viewer_id: UUID | None
+) -> dict[str, Any]:
+    """Return relationship metadata for ``target`` from ``viewer_id``'s perspective."""
+
+    annotated = await _with_relationship_flags(db, [target], viewer_id)
+    if annotated:
+        return annotated[0]
+
+    return {
+        "id": target.id,
+        "username": target.username,
+        "display_name": target.display_name,
+        "avatar_url": target.avatar_url,
+        "is_following": False,
+        "is_followed_by": False,
+        "is_friend": False,
+        "is_self": bool(viewer_id and target.id == viewer_id),
+    }
+
+
 async def follow(db: AsyncSession, me_id: UUID, target_id: UUID) -> None:
     """Create (or reactivate) a follow edge from ``me_id`` to ``target_id``."""
     result = await db.execute(

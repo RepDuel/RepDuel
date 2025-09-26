@@ -73,6 +73,17 @@ def _build_list_response(
     )
 
 
+@router.get("/{user_id}/relationship", response_model=SocialUser)
+async def get_relationship(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SocialUser:
+    target = await _ensure_user(db, user_id)
+    summary = await social_service.get_user_relationship(db, target, current_user.id)
+    return SocialUser.model_validate(summary)
+
+
 @router.post("/{user_id}/follow", status_code=status.HTTP_204_NO_CONTENT)
 async def follow_user(
     user_id: UUID,

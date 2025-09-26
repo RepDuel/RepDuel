@@ -3,11 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/user_by_username_provider.dart';
 import '../../../core/providers/workout_history_provider.dart';
 import '../../../widgets/loading_spinner.dart';
 import '../providers/level_progress_provider.dart';
+import '../providers/user_relationship_provider.dart';
 import '../widgets/energy_graph.dart' show energyGraphProvider;
+import '../widgets/profile_follow_button.dart';
 import 'profile_screen.dart';
 
 class PublicProfileScreen extends ConsumerWidget {
@@ -18,6 +21,7 @@ class PublicProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(userByUsernameProvider(username));
+    final authAsync = ref.watch(authProvider);
     final title = userAsync.maybeWhen(
       data: (user) {
         final display = user.displayName?.trim();
@@ -52,6 +56,15 @@ class PublicProfileScreen extends ConsumerWidget {
           );
         },
         data: (user) {
+          final currentUser = authAsync.maybeWhen(
+            data: (auth) => auth.user,
+            orElse: () => null,
+          );
+          final isViewingSelf = currentUser?.id == user.id;
+          final headerAction =
+              (!isViewingSelf && currentUser != null)
+                  ? ProfileFollowButton(userId: user.id)
+                  : null;
           final levelProgressAsync =
               ref.watch(levelProgressByUserProvider(user.id));
 
@@ -62,6 +75,12 @@ class PublicProfileScreen extends ConsumerWidget {
               ref.invalidate(workoutHistoryProvider(refreshed.id));
               ref.invalidate(levelProgressByUserProvider(refreshed.id));
               ref.invalidate(energyGraphProvider(refreshed.id));
+              final viewerId = ref
+                  .read(authProvider)
+                  .maybeWhen(data: (auth) => auth.user?.id, orElse: () => null);
+              if (viewerId != null && viewerId != refreshed.id) {
+                ref.invalidate(userRelationshipProvider(refreshed.id));
+              }
               await ref.read(levelProgressByUserProvider(refreshed.id).future);
             } catch (_) {
               ref.invalidate(userByUsernameProvider(username));
@@ -76,6 +95,7 @@ class PublicProfileScreen extends ConsumerWidget {
               ref.invalidate(levelProgressByUserProvider(user.id));
             },
             showPersonalQuests: false,
+            headerAction: headerAction,
           );
         },
       ),
