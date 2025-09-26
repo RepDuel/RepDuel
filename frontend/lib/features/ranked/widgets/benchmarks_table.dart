@@ -8,17 +8,22 @@ import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../utils/rank_utils.dart';
 import '../../../core/providers/auth_provider.dart';
+import 'ranking_table.dart' show LiftSpec;
 
 class BenchmarksTable extends ConsumerWidget {
   final Map<String, dynamic> standards;
   final Function() onViewRankings;
   final bool showLifts;
+  final List<LiftSpec> lifts;
+  final Widget? header;
 
   const BenchmarksTable({
     super.key,
     required this.standards,
     required this.onViewRankings,
+    required this.lifts,
     this.showLifts = true,
+    this.header,
   });
 
   @override
@@ -59,6 +64,11 @@ class BenchmarksTable extends ConsumerWidget {
                 ),
               ),
             ),
+            if (header != null)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                sliver: SliverToBoxAdapter(child: header),
+              ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverToBoxAdapter(
@@ -71,6 +81,7 @@ class BenchmarksTable extends ConsumerWidget {
                 pinned: true,
                 delegate: _BenchmarksTableHeaderDelegate(
                   showLifts: showLifts,
+                  lifts: lifts,
                 ),
               ),
             ),
@@ -90,6 +101,7 @@ class BenchmarksTable extends ConsumerWidget {
                       rank: rank,
                       lifts: showLifts ? standards[rank]['lifts'] : null,
                       metadata: standards[rank]['metadata'],
+                      liftSpecs: lifts,
                     );
                   },
                   childCount: sortedRanks.length,
@@ -134,8 +146,12 @@ class BenchmarksTable extends ConsumerWidget {
 
 class _BenchmarksTableHeaderDelegate extends SliverPersistentHeaderDelegate {
   final bool showLifts;
+  final List<LiftSpec> lifts;
 
-  _BenchmarksTableHeaderDelegate({required this.showLifts});
+  _BenchmarksTableHeaderDelegate({
+    required this.showLifts,
+    required this.lifts,
+  });
 
   @override
   double get minExtent => 48;
@@ -149,19 +165,36 @@ class _BenchmarksTableHeaderDelegate extends SliverPersistentHeaderDelegate {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       alignment: Alignment.centerLeft,
-      child: _BenchmarksTableHeader(showLifts: showLifts),
+      child: _BenchmarksTableHeader(
+        showLifts: showLifts,
+        lifts: lifts,
+      ),
     );
   }
 
   @override
   bool shouldRebuild(covariant _BenchmarksTableHeaderDelegate oldDelegate) {
-    return oldDelegate.showLifts != showLifts;
+    return oldDelegate.showLifts != showLifts || oldDelegate.lifts != lifts;
   }
 }
 
 class _BenchmarksTableHeader extends StatelessWidget {
   final bool showLifts;
-  const _BenchmarksTableHeader({this.showLifts = true});
+  final List<LiftSpec> lifts;
+  const _BenchmarksTableHeader({
+    this.showLifts = true,
+    required this.lifts,
+  });
+
+  String _titleize(String key) {
+    final withSpaces = key.replaceAll('_', ' ');
+    return withSpaces
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) =>
+            part[0].toUpperCase() + (part.length > 1 ? part.substring(1) : ''))
+        .join(' ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -175,18 +208,14 @@ class _BenchmarksTableHeader extends StatelessWidget {
           ),
         ),
         if (showLifts) ...[
-          const Expanded(
-            flex: 2,
-            child: _HeaderText('Bench', center: true),
-          ),
-          const Expanded(
-            flex: 2,
-            child: _HeaderText('Squat', center: true),
-          ),
-          const Expanded(
-            flex: 2,
-            child: _HeaderText('Deadlift', center: true),
-          ),
+          for (final spec in lifts)
+            Expanded(
+              flex: 2,
+              child: _HeaderText(
+                spec.shortLabel ?? spec.name ?? _titleize(spec.key),
+                center: true,
+              ),
+            ),
         ],
       ],
     );
@@ -197,11 +226,13 @@ class _BenchmarkRow extends StatelessWidget {
   final String rank;
   final Map<String, dynamic>? lifts;
   final Map<String, dynamic>? metadata;
+  final List<LiftSpec> liftSpecs;
 
   const _BenchmarkRow({
     required this.rank,
     this.lifts,
     this.metadata,
+    required this.liftSpecs,
   });
 
   @override
@@ -243,18 +274,11 @@ class _BenchmarkRow extends StatelessWidget {
             ),
           ),
           if (lifts != null) ...[
-            Expanded(
-              flex: 2,
-              child: _LiftValue(lifts!['bench']),
-            ),
-            Expanded(
-              flex: 2,
-              child: _LiftValue(lifts!['squat']),
-            ),
-            Expanded(
-              flex: 2,
-              child: _LiftValue(lifts!['deadlift']),
-            ),
+            for (final spec in liftSpecs)
+              Expanded(
+                flex: 2,
+                child: _LiftValue(lifts![spec.key]),
+              ),
           ],
         ],
       ),

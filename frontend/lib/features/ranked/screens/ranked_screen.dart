@@ -19,6 +19,40 @@ class RankedScreenData {
   RankedScreenData({required this.liftStandards, required this.userHighScores});
 }
 
+class BenchmarkConfig {
+  final String id;
+  final String name;
+  final List<LiftSpec> lifts;
+  final Map<String, String> aliases;
+  final bool showLiftsInBenchmarks;
+
+  const BenchmarkConfig({
+    required this.id,
+    required this.name,
+    required this.lifts,
+    this.aliases = const {},
+    this.showLiftsInBenchmarks = true,
+  });
+}
+
+const BenchmarkConfig defaultBenchmarkConfig = BenchmarkConfig(
+  id: 'powerlifting',
+  name: 'Powerlifting',
+  lifts: <LiftSpec>[
+    LiftSpec(key: 'bench', scenarioId: 'barbell_bench_press', name: 'Bench'),
+    LiftSpec(key: 'squat', scenarioId: 'back_squat', name: 'Squat'),
+    LiftSpec(key: 'deadlift', scenarioId: 'deadlift', name: 'Deadlift'),
+  ],
+);
+
+const List<BenchmarkConfig> benchmarkConfigs = <BenchmarkConfig>[
+  defaultBenchmarkConfig,
+];
+
+final Map<String, BenchmarkConfig> _benchmarkConfigMap = {
+  for (final config in benchmarkConfigs) config.id: config,
+};
+
 double _lbPerKg(double kg) => kg * 2.2046226218;
 
 // NOTE: make standards provider react to scoreEvents/version & auth changes.
@@ -43,25 +77,29 @@ final liftStandardsProvider =
   return (response.data as Map).cast<String, dynamic>();
 });
 
+final selectedBenchmarkConfigIdProvider =
+    StateProvider.autoDispose<String>((ref) => defaultBenchmarkConfig.id);
+
 // NOTE: also make highscores reactive to scoreEvents & the current user id.
 final highScoresProvider =
     FutureProvider.autoDispose<Map<String, double>>((ref) async {
   // 🔄 refetch highscores whenever we bump this
   ref.watch(scoreEventsProvider);
+  final configId = ref.watch(selectedBenchmarkConfigIdProvider);
+  final config = _benchmarkConfigMap[configId] ?? defaultBenchmarkConfig;
 
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) return {};
   final client = ref.watch(privateHttpClientProvider);
-  final liftIds = ['back_squat', 'barbell_bench_press', 'deadlift'];
-  final liftKeys = ['squat', 'bench', 'deadlift'];
-  final scoreFutures = liftIds
-      .map((id) => client
-          .get('/scores/user/${user.id}/scenario/$id/highscore')
+  final scoreFutures = config.lifts
+      .map((spec) => client
+          .get('/scores/user/${user.id}/scenario/${spec.scenarioId}/highscore')
           .then((res) => (res.data['score_value'] as num?)?.toDouble() ?? 0.0)
           .catchError((_) => 0.0))
       .toList();
   final scores = await Future.wait(scoreFutures);
-  return Map.fromIterables(liftKeys, scores);
+  final keys = config.lifts.map((spec) => spec.key);
+  return Map.fromIterables(keys, scores);
 });
 
 final rankedScreenDataProvider =
@@ -80,14 +118,12 @@ class RankedScreen extends ConsumerStatefulWidget {
 class _RankedScreenState extends ConsumerState<RankedScreen> {
   bool _showBenchmarks = false;
 
-  static const defaultLifts = <LiftSpec>[
-    LiftSpec(key: 'bench', scenarioId: 'barbell_bench_press', name: 'Bench'),
-    LiftSpec(key: 'squat', scenarioId: 'back_squat', name: 'Squat'),
-    LiftSpec(key: 'deadlift', scenarioId: 'deadlift', name: 'Deadlift'),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final selectedConfigId = ref.watch(selectedBenchmarkConfigIdProvider);
+    final selectedConfig =
+        _benchmarkConfigMap[selectedConfigId] ?? defaultBenchmarkConfig;
+    final selectedLifts = selectedConfig.lifts;
     // keep energy up-to-date (same as before)
     ref.listen<AsyncValue<RankedScreenData>>(rankedScreenDataProvider,
         (previous, next) {
@@ -154,56 +190,121 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                   onRetry: () => ref.invalidate(rankedScreenDataProvider))),
           data: (data) {
             final liftKeyToScenario = {
-              for (final l in defaultLifts) l.key: l.scenarioId
+              for (final l in selectedLifts) l.key: l.scenarioId
             };
             if (_showBenchmarks) {
               return BenchmarksTable(
                 standards: data.liftStandards,
                 onViewRankings: () => setState(() => _showBenchmarks = false),
+                lifts: selectedLifts,
+                showLifts: selectedConfig.showLiftsInBenchmarks,
+                header: benchmarkConfigs.length > 1
+                    ? _buildConfigSelector(context, selectedConfigId)
+                    : null,
               );
             }
 
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              child: RankingTable(
-                liftStandards: data.liftStandards,
-                lifts: defaultLifts,
-                userHighScores: data.userHighScores,
-                onViewBenchmarks: () =>
-                    setState(() => _showBenchmarks = true),
-                onLiftTapped: (liftKey) async {
-                  final scenarioId = liftKeyToScenario[liftKey];
-                  if (scenarioId == null) return;
-                  final shouldRefresh = await context.push<bool>(
-                      '/scenario/$scenarioId',
-                      extra: liftKey);
-                  if (shouldRefresh == true && mounted) {
-                    // option A: nuke the joined provider
-                    ref.invalidate(rankedScreenDataProvider);
-                    // also bump the global version in case other screens rely on it
-                    ref.read(scoreEventsProvider.notifier).state++;
-                    // pull user again (energy, etc.)
-                    await ref
-                        .read(authProvider.notifier)
-                        .refreshUserData();
-                  }
-                },
-                onLeaderboardTapped: (scenarioId) {
-                  final liftName = defaultLifts
-                      .firstWhere((l) => l.scenarioId == scenarioId,
-                          orElse: () =>
-                              const LiftSpec(key: 'lift', scenarioId: ''))
-                      .name;
-                  context.push(
-                      '/leaderboard/$scenarioId?liftName=${liftName ?? ''}');
-                },
-                onEnergyLeaderboardTapped: () =>
-                    context.pushNamed('energyLeaderboard'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (benchmarkConfigs.length > 1)
+                    _buildConfigSelector(context, selectedConfigId),
+                  RankingTable(
+                    liftStandards: data.liftStandards,
+                    lifts: selectedLifts,
+                    userHighScores: data.userHighScores,
+                    aliases: selectedConfig.aliases.isEmpty
+                        ? null
+                        : selectedConfig.aliases,
+                    onViewBenchmarks: () =>
+                        setState(() => _showBenchmarks = true),
+                    onLiftTapped: (liftKey) async {
+                      final scenarioId = liftKeyToScenario[liftKey];
+                      if (scenarioId == null) return;
+                      final shouldRefresh = await context.push<bool>(
+                          '/scenario/$scenarioId',
+                          extra: liftKey);
+                      if (shouldRefresh == true && mounted) {
+                        // option A: nuke the joined provider
+                        ref.invalidate(rankedScreenDataProvider);
+                        // also bump the global version in case other screens rely on it
+                        ref.read(scoreEventsProvider.notifier).state++;
+                        // pull user again (energy, etc.)
+                        await ref
+                            .read(authProvider.notifier)
+                            .refreshUserData();
+                      }
+                    },
+                    onLeaderboardTapped: (scenarioId) {
+                      final lift = selectedLifts.firstWhere(
+                        (l) => l.scenarioId == scenarioId,
+                        orElse: () => const LiftSpec(
+                          key: 'lift',
+                          scenarioId: '',
+                        ),
+                      );
+                      final liftDisplayName =
+                          lift.name ?? lift.shortLabel ?? lift.key;
+                      context.push(
+                        '/leaderboard/$scenarioId?liftName=$liftDisplayName',
+                      );
+                    },
+                    onEnergyLeaderboardTapped: () =>
+                        context.pushNamed('energyLeaderboard'),
+                  ),
+                ],
               ),
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildConfigSelector(BuildContext context, String selectedId) {
+    if (benchmarkConfigs.length <= 1) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          const Text(
+            'Benchmark set',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: DropdownButton<String>(
+              value: selectedId,
+              dropdownColor: Colors.grey[900],
+              iconEnabledColor: Colors.white,
+              style: const TextStyle(color: Colors.white),
+              underline: Container(
+                height: 1,
+                color: Colors.white24,
+              ),
+              items: [
+                for (final config in benchmarkConfigs)
+                  DropdownMenuItem<String>(
+                    value: config.id,
+                    child: Text(config.name),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value == null || value == selectedId) return;
+                ref.read(selectedBenchmarkConfigIdProvider.notifier).state =
+                    value;
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
