@@ -334,13 +334,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (authStateAsync.isLoading) return null;
 
       final isLoggedIn = authStateAsync.valueOrNull?.user != null;
-      final publicRoutes = ['/login', '/register'];
-      final isAuthRoute = publicRoutes.contains(state.uri.path);
+      final path = state.uri.path;
+      final authRoutes = {'/login', '/register'};
+      final isAuthRoute = authRoutes.contains(path);
+      final isPublicRoute = _isPublicRoute(path);
       final fromParam = state.uri.queryParameters['from'];
 
       // If not logged in and trying to access a private route, redirect to login
       // and preserve the intended destination as ?from=...
-      if (!isLoggedIn && !isAuthRoute) {
+      if (!isLoggedIn && !isPublicRoute) {
         final dest = Uri.encodeComponent(state.uri.toString());
         return '/login?from=$dest';
       }
@@ -365,4 +367,20 @@ class GoRouterRefreshStream extends ChangeNotifier {
     // Notify router whenever auth state changes
     stream.asBroadcastStream().listen((_) => notifyListeners());
   }
+}
+
+bool _isPublicRoute(String path) {
+  const publicRoutes = {'/login', '/register'};
+  if (publicRoutes.contains(path)) {
+    return true;
+  }
+
+  if (path.startsWith('/profile/')) {
+    final segments = path.split('/');
+    if (segments.length == 3 && segments[2].isNotEmpty) {
+      return true;
+    }
+  }
+
+  return false;
 }
