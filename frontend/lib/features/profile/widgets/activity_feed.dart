@@ -8,11 +8,48 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_history_provider.dart';
 import '../../../core/providers/score_events_provider.dart';
 import '../../../core/providers/user_by_id_provider.dart';
+import '../../../core/providers/api_providers.dart';
 import '../../../core/models/user.dart';
 import '../../../core/models/routine_submission_read.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../ranked/utils/rank_utils.dart';
 import '../../../core/providers/personal_best_events_provider.dart';
+
+final _feedTargetUsersProvider = FutureProvider.autoDispose
+    .family<List<String>, String>((ref, baseUserId) async {
+  final ids = <String>{baseUserId};
+  final authState = ref.watch(authProvider);
+  final me = authState.valueOrNull?.user;
+
+  if (me == null) {
+    return ids.toList(growable: false);
+  }
+
+  ids.add(me.id);
+
+  try {
+    final client = ref.watch(privateHttpClientProvider);
+    final response = await client.get('/users/${me.id}/following');
+    final data = response.data;
+
+    if (data is Map<String, dynamic>) {
+      final items = data['items'] as List<dynamic>? ?? const [];
+      for (final raw in items) {
+        if (raw is Map<String, dynamic>) {
+          final id = raw['id'] as String?;
+          if (id != null && id.isNotEmpty) {
+            ids.add(id);
+          }
+        }
+      }
+    }
+  } catch (error, stackTrace) {
+    debugPrint('[ActivityFeed] Failed to load following list: $error');
+    debugPrintStack(stackTrace: stackTrace);
+  }
+
+  return ids.toList(growable: false);
+});
 
 class ActivityFeed extends ConsumerWidget {
   final String userId;
@@ -21,15 +58,26 @@ class ActivityFeed extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final feedTargetsAsync = ref.watch(_feedTargetUsersProvider(userId));
+    final targetUserIds = feedTargetsAsync.valueOrNull ?? <String>[userId];
+
     // When scores change anywhere (finishing a routine or logging a score),
     // invalidate the history so this feed stays fresh.
     ref.listen<int>(scoreEventsProvider, (prev, next) {
-      ref.invalidate(workoutHistoryProvider(userId));
-      ref.invalidate(personalBestEventsProvider(userId));
+      final ids = ref.read(_feedTargetUsersProvider(userId)).valueOrNull ??
+          <String>[userId];
+      for (final id in ids) {
+        ref.invalidate(workoutHistoryProvider(id));
+        ref.invalidate(personalBestEventsProvider(id));
+      }
     });
 
-    final historyAsync = ref.watch(workoutHistoryProvider(userId));
-    final personalBestsAsync = ref.watch(personalBestEventsProvider(userId));
+    final historyAsyncValues = [
+      for (final id in targetUserIds) ref.watch(workoutHistoryProvider(id)),
+    ];
+    final personalBestsAsyncValues = [
+      for (final id in targetUserIds) ref.watch(personalBestEventsProvider(id)),
+    ];
     final authAsync = ref.watch(authProvider);
 
     final userMultiplier = authAsync.valueOrNull?.user?.weightMultiplier ?? 1.0;
@@ -74,8 +122,14 @@ class ActivityFeed extends ConsumerWidget {
       return weight * (1 + reps / 30.0);
     }
 
-    if (historyAsync.hasError) {
-      final message = historyAsync.error.toString();
+    final historyError = historyAsyncValues.firstWhere(
+      (value) => value.hasError,
+      orElse: () => const AsyncValue<List<RoutineSubmissionRead>>.data(
+          <RoutineSubmissionRead>[]),
+    );
+
+    if (historyError.hasError) {
+      final message = historyError.error.toString();
       final isAuthError =
           message.contains('Authentication token not available');
       final display =
@@ -92,27 +146,52 @@ class ActivityFeed extends ConsumerWidget {
       );
     }
 
-    if (personalBestsAsync.hasError) {
+    final personalBestError = personalBestsAsyncValues.firstWhere(
+      (value) => value.hasError,
+      orElse: () =>
+          const AsyncValue<List<PersonalBestEvent>>.data(<PersonalBestEvent>[]),
+    );
+
+    if (personalBestError.hasError) {
       return Center(
         child: Text(
-          'Error: ${personalBestsAsync.error}',
+          'Error: ${personalBestError.error}',
           style: const TextStyle(color: Colors.red),
         ),
       );
     }
 
-    final isLoading =
-        (historyAsync.isLoading && historyAsync.valueOrNull == null) ||
-            (personalBestsAsync.isLoading &&
-                personalBestsAsync.valueOrNull == null);
-
-    if (isLoading) {
-      return const Center(child: LoadingSpinner());
+    final entries = <RoutineSubmissionRead>[];
+    var waitingForHistory = false;
+    for (final async in historyAsyncValues) {
+      final data = async.valueOrNull;
+      if (data != null) {
+        entries.addAll(data);
+      }
+      if (async.isLoading && data == null) {
+        waitingForHistory = true;
+      }
     }
 
-    final entries = historyAsync.valueOrNull ?? const <RoutineSubmissionRead>[];
-    final personalBestEvents =
-        personalBestsAsync.valueOrNull ?? const <PersonalBestEvent>[];
+    final personalBestEvents = <PersonalBestEvent>[];
+    var waitingForPersonalBests = false;
+    for (final async in personalBestsAsyncValues) {
+      final data = async.valueOrNull;
+      if (data != null) {
+        personalBestEvents.addAll(data);
+      }
+      if (async.isLoading && data == null) {
+        waitingForPersonalBests = true;
+      }
+    }
+
+    final isInitialLoading = (waitingForHistory || waitingForPersonalBests) &&
+        entries.isEmpty &&
+        personalBestEvents.isEmpty;
+
+    if (isInitialLoading) {
+      return const Center(child: LoadingSpinner());
+    }
 
     if (entries.isEmpty && personalBestEvents.isEmpty) {
       return const Center(
