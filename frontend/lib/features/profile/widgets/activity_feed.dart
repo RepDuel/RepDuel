@@ -21,11 +21,9 @@ final _feedTargetUsersProvider = FutureProvider.autoDispose
   final authState = ref.watch(authProvider);
   final me = authState.valueOrNull?.user;
 
-  if (me == null) {
+  if (me == null || me.id != baseUserId) {
     return ids.toList(growable: false);
   }
-
-  ids.add(me.id);
 
   try {
     final client = ref.watch(privateHttpClientProvider);
