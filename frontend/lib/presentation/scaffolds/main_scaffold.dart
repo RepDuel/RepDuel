@@ -29,10 +29,19 @@ class MainScaffold extends ConsumerWidget {
     final String location = uri.toString();
     final String path = uri.path;
 
+    final bool isViewingPublicProfile =
+        (path.startsWith('/profile/') || path.startsWith('/ranked/profile/')) &&
+            !path.startsWith('/profile/settings') &&
+            !path.startsWith('/profile/find') &&
+            !path.startsWith('/profile/theme-selector');
+
     final bool hideTitleBar = path.startsWith('/routines/play') ||
         path.startsWith('/routines/exercise-list') ||
         path.startsWith('/routines/free-workout') ||
-        path.startsWith('/routines/custom');
+        path.startsWith('/routines/custom') ||
+        path.startsWith('/ranked/leaderboard') ||
+        path.startsWith('/ranked/leaderboard-energy') ||
+        isViewingPublicProfile;
 
     final showBottomNav = ref.watch(bottomNavVisibilityProvider);
 

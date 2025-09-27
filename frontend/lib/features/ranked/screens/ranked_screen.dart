@@ -248,8 +248,10 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                       );
                       final liftDisplayName =
                           lift.name ?? lift.shortLabel ?? lift.key;
-                      context.push(
-                        '/leaderboard/$scenarioId?liftName=$liftDisplayName',
+                      context.pushNamed(
+                        'liftLeaderboard',
+                        pathParameters: {'scenarioId': scenarioId},
+                        queryParameters: {'liftName': liftDisplayName},
                       );
                     },
                     onEnergyLeaderboardTapped: () =>

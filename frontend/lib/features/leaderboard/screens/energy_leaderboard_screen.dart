@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -15,11 +16,13 @@ class EnergyLeaderboardEntry {
   final String displayName;
   final int totalEnergy;
   final String userRank;
+  final String username;
 
   EnergyLeaderboardEntry({
     required this.displayName,
     required this.totalEnergy,
     required this.userRank,
+    required this.username,
   });
 
   factory EnergyLeaderboardEntry.fromJson(Map<String, dynamic> json) {
@@ -34,6 +37,7 @@ class EnergyLeaderboardEntry {
       displayName: _resolveDisplayName(displayName, username),
       totalEnergy: (json['total_energy'] ?? 0).round(),
       userRank: (rank is String && rank.isNotEmpty) ? rank : 'Unranked',
+      username: username is String ? username.trim() : '',
     );
   }
 }
@@ -162,54 +166,66 @@ class EnergyLeaderboardScreen extends ConsumerWidget {
                     final entryRank = entry.userRank;
                     final entryRankColor = getRankColor(entryRank);
 
-                    return Container(
-                      color: rowColor,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 40,
-                            child: Text(
-                              '${index + 1}',
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Text(
-                              entry.displayName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
+                    final username = entry.username;
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: username.isEmpty
+                            ? null
+                            : () => context.pushNamed(
+                                  'rankedPublicProfile',
+                                  pathParameters: {'username': username},
+                                ),
+                        child: Container(
+                          color: rowColor,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: Row(
                             children: [
-                              Text(
-                                '${entry.totalEnergy} $entryRank',
-                                style: TextStyle(
-                                  color: entryRankColor,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
+                              SizedBox(
+                                width: 40,
+                                child: Text(
+                                  '${index + 1}',
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              SvgPicture.asset(
-                                'assets/images/ranks/${entryRank.toLowerCase()}.svg',
-                                height: 20,
-                                width: 20,
+                              const SizedBox(width: 20),
+                              Expanded(
+                                child: Text(
+                                  entry.displayName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '${entry.totalEnergy} $entryRank',
+                                    style: TextStyle(
+                                      color: entryRankColor,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  SvgPicture.asset(
+                                    'assets/images/ranks/${entryRank.toLowerCase()}.svg',
+                                    height: 20,
+                                    width: 20,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     );
                   },

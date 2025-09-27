@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:repduel/core/providers/api_providers.dart';
 
 import '../../../core/providers/auth_provider.dart';
@@ -12,10 +13,12 @@ import '../../../widgets/loading_spinner.dart';
 class LeaderboardEntry {
   final String displayName;
   final double scoreValue;
+  final String username;
 
   LeaderboardEntry({
     required this.displayName,
     required this.scoreValue,
+    required this.username,
   });
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
@@ -28,6 +31,7 @@ class LeaderboardEntry {
     return LeaderboardEntry(
       displayName: _resolveDisplayName(rawDisplayName, rawUsername),
       scoreValue: (json['score_value'] as num?)?.toDouble() ?? 0.0,
+      username: rawUsername is String ? rawUsername.trim() : '',
     );
   }
 }
@@ -200,43 +204,55 @@ class LeaderboardScreen extends ConsumerWidget {
                             ? const Color(0xFF101218)
                             : const Color(0xFF0B0D13);
 
-                        return Container(
-                          color: rowColor,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 40,
-                                child: Text(
-                                  '${index + 1}',
-                                  textAlign: TextAlign.right,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
+                        final username = entry.username;
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: username.isEmpty
+                                ? null
+                                : () => context.pushNamed(
+                                      'rankedPublicProfile',
+                                      pathParameters: {'username': username},
+                                    ),
+                            child: Container(
+                              color: rowColor,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 40,
+                                    child: Text(
+                                      '${index + 1}',
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                             Expanded(
-                                child: Text(
-                                  entry.displayName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: Text(
+                                      entry.displayName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  Text(
+                                    '$displayScore $displayUnit',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                '$displayScore $displayUnit',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         );
                       },

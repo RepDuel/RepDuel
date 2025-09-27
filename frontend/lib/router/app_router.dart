@@ -69,6 +69,33 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: '/ranked',
               name: 'ranked',
               builder: (context, state) => const RankedScreen(),
+              routes: [
+                GoRoute(
+                  path: 'leaderboard/:scenarioId',
+                  name: 'liftLeaderboard',
+                  builder: (context, state) {
+                    final scenarioId = state.pathParameters['scenarioId']!;
+                    final liftName =
+                        state.uri.queryParameters['liftName'] ?? 'Unknown';
+                    return LeaderboardScreen(
+                        scenarioId: scenarioId, liftName: liftName);
+                  },
+                ),
+                GoRoute(
+                  path: 'leaderboard-energy',
+                  name: 'energyLeaderboard',
+                  builder: (context, state) =>
+                      const EnergyLeaderboardScreen(),
+                ),
+                GoRoute(
+                  path: 'profile/:username',
+                  name: 'rankedPublicProfile',
+                  builder: (context, state) {
+                    final username = state.pathParameters['username']!;
+                    return PublicProfileScreen(username: username);
+                  },
+                ),
+              ],
             ),
           ]),
           // Routines tab
@@ -164,6 +191,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                   name: 'themeSelector',
                   builder: (context, state) => const ThemeSelectorScreen(),
                 ),
+                GoRoute(
+                  path: ':username',
+                  name: 'publicProfile',
+                  builder: (context, state) {
+                    final username = state.pathParameters['username']!;
+                    return PublicProfileScreen(username: username);
+                  },
+                ),
               ],
             ),
           ]),
@@ -203,31 +238,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'paymentCancel',
         builder: (context, state) => const PaymentCancelScreen(),
       ),
-      GoRoute(
-        path: '/profile/:username',
-        name: 'publicProfile',
-        builder: (context, state) {
-          final username = state.pathParameters['username']!;
-          return PublicProfileScreen(username: username);
-        },
-      ),
-
       // Leaderboards
-      GoRoute(
-        path: '/leaderboard/:scenarioId',
-        name: 'liftLeaderboard',
-        builder: (context, state) {
-          final scenarioId = state.pathParameters['scenarioId']!;
-          final liftName = state.uri.queryParameters['liftName'] ?? 'Unknown';
-          return LeaderboardScreen(scenarioId: scenarioId, liftName: liftName);
-        },
-      ),
-      GoRoute(
-        path: '/leaderboard-energy',
-        name: 'energyLeaderboard',
-        builder: (context, state) => const EnergyLeaderboardScreen(),
-      ),
-
       // Add exercise
       GoRoute(
         path: '/add-exercise',
