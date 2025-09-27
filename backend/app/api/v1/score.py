@@ -11,7 +11,6 @@ from app.api.v1.deps import get_db
 from app.models.score import Score
 from app.models.personal_best_event import PersonalBestEvent
 from app.models.scenario import Scenario
-from app.models.user import User
 from app.schemas.score import (
     ScoreCreate,
     ScoreCreateResponse,
@@ -19,6 +18,8 @@ from app.schemas.score import (
     ScoreReadWithUser,
 )
 from app.services.energy_service import update_energy_if_personal_best
+from app.services.level_service import award_xp
+from app.services.user_service import get_user_by_id
 
 router = APIRouter(prefix="/scores", tags=["Scores"])
 
@@ -29,6 +30,77 @@ def calculate_score_value(weight_lifted: float, reps: int | None, is_bodyweight:
     if reps is None or reps == 1:
         return weight_lifted
     return weight_lifted * (1 + reps / 30)
+
+
+def _effective_multiplier(value: float | None) -> float:
+    if value is None:
+        return 1.0
+    return value if value > 0 else 0.0
+
+
+async def _award_volume_xp(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    score_payload: ScoreCreate,
+    scenario: Scenario,
+    score_id: int,
+) -> None:
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        return
+
+    bodyweight = user.weight or 0
+    if bodyweight <= 0:
+        return
+
+    load = score_payload.weight_lifted
+    if load is None or load <= 0:
+        if scenario.is_bodyweight:
+            load = bodyweight
+        else:
+            return
+
+    reps = score_payload.reps if score_payload.reps is not None else 1
+    sets = score_payload.sets if score_payload.sets is not None else 1
+
+    if reps <= 0 or sets <= 0:
+        return
+
+    total_volume = load * reps * sets * _effective_multiplier(scenario.volume_multiplier)
+    if total_volume <= 0:
+        return
+
+    xp_amount = int(total_volume // bodyweight)
+    if xp_amount <= 0:
+        return
+
+    await award_xp(
+        db,
+        user_id,
+        xp_amount,
+        reason=f"Volume from score {score_id}",
+        source_type="score_volume",
+        source_id=str(score_id),
+    )
+
+
+async def _award_personal_best_xp(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    scenario: Scenario,
+    score_id: int,
+) -> None:
+    scenario_label = scenario.name or scenario.id
+    await award_xp(
+        db,
+        user_id,
+        10,
+        reason=f"Personal record for {scenario_label}",
+        source_type="score_pr",
+        source_id=str(score_id),
+    )
 
 
 @router.post("/", response_model=ScoreOut)
@@ -101,6 +173,22 @@ async def create_score_for_scenario(
 
     await db.commit()
     await db.refresh(db_score)
+
+    await _award_volume_xp(
+        db,
+        user_id=score.user_id,
+        score_payload=score,
+        scenario=scenario,
+        score_id=db_score.id,
+    )
+
+    if is_personal_best:
+        await _award_personal_best_xp(
+            db,
+            user_id=score.user_id,
+            scenario=scenario,
+            score_id=db_score.id,
+        )
 
     await update_energy_if_personal_best(
         db=db,
