@@ -17,7 +17,6 @@ import '../core/providers/auth_provider.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
-import '../features/normal/screens/normal_screen.dart';
 import '../features/premium/screens/payment_cancel_screen.dart';
 import '../features/premium/screens/payment_success_screen.dart';
 import '../features/premium/screens/subscription_screen.dart';
@@ -55,14 +54,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return MainScaffold(navigationShell: navigationShell);
         },
         branches: [
-          // Normal tab
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/normal',
-              name: 'normal',
-              builder: (context, state) => const NormalScreen(),
-            ),
-          ]),
           // Ranked tab
           StatefulShellBranch(routes: [
             GoRoute(

@@ -29,10 +29,6 @@ class MainBottomNavBar extends StatelessWidget {
       onTap: _onTap,
       items: const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.list),
-          label: 'Normal',
-        ),
-        BottomNavigationBarItem(
           icon: Icon(Icons.bar_chart),
           label: 'Ranked',
         ),

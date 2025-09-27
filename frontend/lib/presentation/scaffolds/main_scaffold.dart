@@ -18,7 +18,6 @@ class MainScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const List<String> titles = [
-      'Normal',
       'Ranked',
       'Routines',
       'Profile',
@@ -56,13 +55,13 @@ class MainScaffold extends ConsumerWidget {
               foregroundColor: Colors.white,
               elevation: 0,
               actions: [
-                if (currentIndex == 3 &&
+                if (currentIndex == 2 &&
                     !location.contains('/profile/find'))
                   IconButton(
                     icon: const Icon(Icons.search),
                     onPressed: () => context.go('/profile/find'),
                   ),
-                if (currentIndex == 3 &&
+                if (currentIndex == 2 &&
                     !location.contains('/profile/settings'))
                   IconButton(
                     icon: const Icon(Icons.settings),
