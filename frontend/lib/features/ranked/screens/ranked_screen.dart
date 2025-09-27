@@ -1,5 +1,7 @@
 // frontend/lib/features/ranked/screens/ranked_screen.dart
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -192,6 +194,31 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
             final liftKeyToScenario = {
               for (final l in selectedLifts) l.key: l.scenarioId
             };
+            final user = ref.watch(authProvider).valueOrNull?.user;
+            final unit = user?.preferredUnit ?? 'lbs';
+            final weightMultiplier = unit == 'lbs' ? 2.2046226218 : 1.0;
+            final energyDataPoints = selectedLifts
+                .map((lift) {
+                  final score =
+                      (data.userHighScores[lift.key] ?? 0.0) * weightMultiplier;
+                  final energy = getInterpolatedEnergy(
+                    score: score,
+                    thresholds: data.liftStandards,
+                    liftKey: lift.key,
+                    userMultiplier: 1.0,
+                  );
+                  final rank = _getRankForEnergy(energy);
+                  final color = getRankColor(rank);
+                  final label = lift.name ?? lift.shortLabel ?? lift.key;
+                  return _EnergyDataPoint(
+                    label: label,
+                    energy: energy,
+                    color: color,
+                    rank: rank,
+                  );
+                })
+                .where((point) => point.energy >= 0)
+                .toList();
             if (_showBenchmarks) {
               return BenchmarksTable(
                 standards: data.liftStandards,
@@ -224,18 +251,15 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                     onLiftTapped: (liftKey) async {
                       final scenarioId = liftKeyToScenario[liftKey];
                       if (scenarioId == null) return;
-                      final shouldRefresh = await context.push<bool>(
-                          '/scenario/$scenarioId',
-                          extra: liftKey);
+                      final shouldRefresh = await context
+                          .push<bool>('/scenario/$scenarioId', extra: liftKey);
                       if (shouldRefresh == true && mounted) {
                         // option A: nuke the joined provider
                         ref.invalidate(rankedScreenDataProvider);
                         // also bump the global version in case other screens rely on it
                         ref.read(scoreEventsProvider.notifier).state++;
                         // pull user again (energy, etc.)
-                        await ref
-                            .read(authProvider.notifier)
-                            .refreshUserData();
+                        await ref.read(authProvider.notifier).refreshUserData();
                       }
                     },
                     onLeaderboardTapped: (scenarioId) {
@@ -257,6 +281,13 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
                     onEnergyLeaderboardTapped: () =>
                         context.pushNamed('energyLeaderboard'),
                   ),
+                  if (energyDataPoints.length >= 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 24, bottom: 24),
+                      child: _EnergySpiderChart(
+                        dataPoints: energyDataPoints,
+                      ),
+                    ),
                 ],
               ),
             );
@@ -309,5 +340,429 @@ class _RankedScreenState extends ConsumerState<RankedScreen> {
         ],
       ),
     );
+  }
+}
+
+String _getRankForEnergy(double energy) {
+  if (energy <= 0) return 'Unranked';
+  final sortedRanks = rankEnergy.entries.toList()
+    ..sort((a, b) => a.value.compareTo(b.value));
+  for (var i = sortedRanks.length - 1; i >= 0; i--) {
+    if (energy >= sortedRanks[i].value) {
+      return sortedRanks[i].key;
+    }
+  }
+  return 'Unranked';
+}
+
+class _EnergyDataPoint {
+  final String label;
+  final double energy;
+  final Color color;
+  final String rank;
+
+  const _EnergyDataPoint({
+    required this.label,
+    required this.energy,
+    required this.color,
+    required this.rank,
+  });
+}
+
+class _RankRing {
+  final double energy;
+  final Color color;
+
+  const _RankRing({required this.energy, required this.color});
+}
+
+class _EnergySpiderChart extends StatelessWidget {
+  const _EnergySpiderChart({required this.dataPoints});
+
+  final List<_EnergyDataPoint> dataPoints;
+
+  static const double _maxEnergy = 1200.0;
+
+  List<_RankRing> _buildRings() {
+    final sortedRanks = rankEnergy.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    final rings = <_RankRing>[
+      for (final entry in sortedRanks)
+        _RankRing(
+          energy: entry.value.toDouble().clamp(0.0, _maxEnergy),
+          color: getRankColor(entry.key),
+        ),
+    ];
+    if (rings.isEmpty || rings.last.energy < _maxEnergy) {
+      rings.add(
+        _RankRing(
+          energy: _maxEnergy,
+          color: rings.isEmpty ? Colors.white54 : rings.last.color,
+        ),
+      );
+    }
+    return rings;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 320.0;
+        final size = math.min(maxWidth, 320.0);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: size,
+              child: Center(
+                child: SizedBox(
+                  width: size,
+                  height: size,
+                  child: CustomPaint(
+                    painter: _SpiderChartPainter(
+                      dataPoints: dataPoints,
+                      rings: _buildRings(),
+                      maxEnergy: _maxEnergy,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                for (final point in dataPoints)
+                  _LegendItem(
+                    color: point.color,
+                    label:
+                        '${point.label}: ${point.energy.toStringAsFixed(0)} (${point.rank})',
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpiderChartPainter extends CustomPainter {
+  _SpiderChartPainter({
+    required this.dataPoints,
+    required this.rings,
+    required this.maxEnergy,
+  });
+
+  final List<_EnergyDataPoint> dataPoints;
+  final List<_RankRing> rings;
+  final double maxEnergy;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (dataPoints.length < 3) return;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 * 0.85;
+    final angleStep = 2 * math.pi / dataPoints.length;
+
+    _drawRings(canvas, center, radius);
+    _drawAxes(canvas, center, radius, angleStep);
+    _drawData(canvas, center, radius, angleStep);
+    _drawLabels(canvas, center, radius, angleStep);
+  }
+
+  void _drawRings(
+    Canvas canvas,
+    Offset center,
+    double radius,
+  ) {
+    for (final ring in rings) {
+      final normalized = (ring.energy / maxEnergy).clamp(0.0, 1.0);
+      if (normalized <= 0) continue;
+      final ringRadius = radius * normalized;
+      final fillPaint = Paint()
+        ..color = ring.color.withValues(alpha: 0.22)
+        ..style = PaintingStyle.fill;
+      final strokePaint = Paint()
+        ..color = ring.color.withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+      canvas.drawCircle(center, ringRadius, fillPaint);
+      canvas.drawCircle(center, ringRadius, strokePaint);
+    }
+  }
+
+  void _drawAxes(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    double angleStep,
+  ) {
+    final axisPaint = Paint()
+      ..color = Colors.white24
+      ..strokeWidth = 1;
+    for (int i = 0; i < dataPoints.length; i++) {
+      final angle = -math.pi / 2 + angleStep * i;
+      final end = center + Offset(math.cos(angle), math.sin(angle)) * radius;
+      canvas.drawLine(center, end, axisPaint);
+    }
+  }
+
+  void _drawData(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    double angleStep,
+  ) {
+    final offsets = <Offset>[];
+    final normalizedValues = <double>[];
+    final angles = <double>[];
+    for (int i = 0; i < dataPoints.length; i++) {
+      final point = dataPoints[i];
+      final normalized = (point.energy / maxEnergy).clamp(0.0, 1.0);
+      final angle = -math.pi / 2 + angleStep * i;
+      final offset = center +
+          Offset(
+                math.cos(angle),
+                math.sin(angle),
+              ) *
+              radius *
+              normalized;
+      offsets.add(offset);
+      normalizedValues.add(normalized);
+      angles.add(angle);
+    }
+
+    if (offsets.length >= 3) {
+      final fillColor = _averageColor(
+        dataPoints.map((point) => point.color).toList(),
+      ).withValues(alpha: 0.18);
+
+      final fillPaint = Paint()
+        ..color = fillColor
+        ..style = PaintingStyle.fill;
+      final strokePaint = Paint()
+        ..color = Colors.white70
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeJoin = StrokeJoin.round
+        ..strokeCap = StrokeCap.round;
+
+      final path = _buildCurvedPath(
+        center: center,
+        offsets: offsets,
+        normalizedValues: normalizedValues,
+        radius: radius,
+        angles: angles,
+        angleStep: angleStep,
+      );
+
+      if (path != null) {
+        canvas.drawPath(path, fillPaint);
+        canvas.drawPath(path, strokePaint);
+      }
+    }
+
+    for (int i = 0; i < dataPoints.length; i++) {
+      final point = dataPoints[i];
+      final offset = offsets[i];
+      final paint = Paint()
+        ..color = point.color
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(offset, 5, paint);
+    }
+  }
+
+  Path? _buildCurvedPath({
+    required Offset center,
+    required List<Offset> offsets,
+    required List<double> normalizedValues,
+    required double radius,
+    required List<double> angles,
+    required double angleStep,
+  }) {
+    if (offsets.length < 3) return null;
+    final first = normalizedValues.first;
+    final allEqual =
+        normalizedValues.every((value) => (value - first).abs() < 1e-4);
+
+    if (allEqual) {
+      if (first <= 0) {
+        return null;
+      }
+      final circleRadius = radius * first;
+      return Path()
+        ..addOval(Rect.fromCircle(center: center, radius: circleRadius));
+    }
+
+    return _buildPolarSplinePath(
+      center: center,
+      normalizedValues: normalizedValues,
+      angles: angles,
+      baseRadius: radius,
+      angleStep: angleStep,
+    );
+  }
+
+  Path _buildPolarSplinePath({
+    required Offset center,
+    required List<double> normalizedValues,
+    required List<double> angles,
+    required double baseRadius,
+    required double angleStep,
+  }) {
+    final count = normalizedValues.length;
+    final radii = List<double>.generate(
+      count,
+      (index) => normalizedValues[index] * baseRadius,
+    );
+
+    final derivatives = List<double>.generate(count, (index) {
+      final prev = (index - 1 + count) % count;
+      final next = (index + 1) % count;
+      return (radii[next] - radii[prev]) / (2 * angleStep);
+    });
+
+    final path = Path();
+    final start = _polarToOffset(center, angles[0], radii[0]);
+    path.moveTo(start.dx, start.dy);
+
+    for (int i = 0; i < count; i++) {
+      final currentAngle = angles[i];
+      final nextIndex = (i + 1) % count;
+      final nextAngleBase = angles[nextIndex];
+      final adjustedNextAngle =
+          nextIndex == 0 ? nextAngleBase + 2 * math.pi : nextAngleBase;
+
+      final currentRadius = radii[i];
+      final nextRadius = radii[nextIndex];
+      final currentDerivative = derivatives[i];
+      final nextDerivative = derivatives[nextIndex];
+
+      final p0 = _polarToOffset(center, currentAngle, currentRadius);
+      final p1 = _polarToOffset(center, nextAngleBase, nextRadius);
+      final dp0 =
+          _polarDerivative(currentAngle, currentRadius, currentDerivative);
+      final dp1 = _polarDerivative(nextAngleBase, nextRadius, nextDerivative);
+      final deltaTheta = adjustedNextAngle - currentAngle;
+
+      final control1 = p0 + dp0 * (deltaTheta / 3.0);
+      final control2 = p1 - dp1 * (deltaTheta / 3.0);
+
+      path.cubicTo(
+        control1.dx,
+        control1.dy,
+        control2.dx,
+        control2.dy,
+        p1.dx,
+        p1.dy,
+      );
+    }
+
+    path.close();
+    return path;
+  }
+
+  Offset _polarToOffset(Offset center, double angle, double radius) {
+    return center +
+        Offset(
+          math.cos(angle) * radius,
+          math.sin(angle) * radius,
+        );
+  }
+
+  Offset _polarDerivative(double angle, double radius, double radialSlope) {
+    final dx = radialSlope * math.cos(angle) - radius * math.sin(angle);
+    final dy = radialSlope * math.sin(angle) + radius * math.cos(angle);
+    return Offset(dx, dy);
+  }
+
+  Color _averageColor(List<Color> colors) {
+    if (colors.isEmpty) {
+      return Colors.white;
+    }
+    double r = 0;
+    double g = 0;
+    double b = 0;
+    for (final color in colors) {
+      r += color.r;
+      g += color.g;
+      b += color.b;
+    }
+    final count = colors.length.toDouble();
+    final red = ((r / count) * 255).round().clamp(0, 255).toInt();
+    final green = ((g / count) * 255).round().clamp(0, 255).toInt();
+    final blue = ((b / count) * 255).round().clamp(0, 255).toInt();
+    return Color.fromARGB(
+      255,
+      red,
+      green,
+      blue,
+    );
+  }
+
+  void _drawLabels(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    double angleStep,
+  ) {
+    for (int i = 0; i < dataPoints.length; i++) {
+      final point = dataPoints[i];
+      final angle = -math.pi / 2 + angleStep * i;
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      final labelPosition = center + direction * (radius + 12);
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: point.label,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: 80);
+      final offset =
+          labelPosition - Offset(textPainter.width / 2, textPainter.height / 2);
+      textPainter.paint(canvas, offset);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpiderChartPainter oldDelegate) {
+    return oldDelegate.dataPoints != dataPoints ||
+        oldDelegate.rings != rings ||
+        oldDelegate.maxEnergy != maxEnergy;
   }
 }
