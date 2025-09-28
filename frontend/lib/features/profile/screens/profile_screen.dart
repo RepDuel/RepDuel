@@ -153,9 +153,7 @@ class ProfileContent extends ConsumerWidget {
                   _showQuestClaimFailedSnackBar(context);
                 }
               } finally {
-                ref
-                    .read(_claimingQuestIdsProvider.notifier)
-                    .update((state) {
+                ref.read(_claimingQuestIdsProvider.notifier).update((state) {
                   final updated = {...state};
                   updated.remove(quest.id);
                   return updated;
@@ -217,13 +215,13 @@ class ProfileContent extends ConsumerWidget {
                   progress: progress,
                   showProgress: showProgress,
                   primaryColor: primaryColor,
-                  onToggle: () =>
-                      ref.read(showProgressProvider.notifier).state =
-                          !showProgress,
+                  onToggle: () => ref
+                      .read(showProgressProvider.notifier)
+                      .state = !showProgress,
                 ),
               ),
-              loading: () =>
-                  wrapSection(_LevelProgressLoading(primaryColor: primaryColor)),
+              loading: () => wrapSection(
+                  _LevelProgressLoading(primaryColor: primaryColor)),
               error: (error, _) => wrapSection(
                 _LevelProgressError(
                   primaryColor: primaryColor,
@@ -310,9 +308,8 @@ void _showQuestClaimedSnackBar(BuildContext context, QuestInstance quest) {
   messenger.hideCurrentSnackBar(reason: SnackBarClosedReason.hide);
   final theme = Theme.of(context);
   final rewardXp = quest.rewardXp;
-  final questTitle = quest.template.title.isNotEmpty
-      ? quest.template.title
-      : 'Quest';
+  final questTitle =
+      quest.template.title.isNotEmpty ? quest.template.title : 'Quest';
   messenger.showSnackBar(
     SnackBar(
       behavior: SnackBarBehavior.floating,
@@ -502,7 +499,7 @@ class _RecurringQuestsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Recurring Quests',
+          'Quests',
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
