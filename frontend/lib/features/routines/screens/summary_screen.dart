@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart'; // ← needed for context.go
 
 import '../../../core/providers/auth_provider.dart';
@@ -43,6 +44,7 @@ class SummaryScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: SingleChildScrollView(
@@ -51,6 +53,7 @@ class SummaryScreen extends ConsumerWidget {
                       children: [
                         const Text(
                           'Routine Complete!',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
@@ -64,10 +67,12 @@ class SummaryScreen extends ConsumerWidget {
                             fontSize: 18,
                             color: Colors.grey[400],
                           ),
+                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '${displayVolume.round()} ${isLbs ? 'lbs' : 'kg'}',
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w600,
@@ -84,21 +89,23 @@ class SummaryScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    // Done → take them to the Routines tab (not back to exercise list)
-                    context.go('/routines');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                      horizontal: 32,
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Done → take them to the Routines tab (not back to exercise list)
+                      context.go('/routines');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 32,
+                      ),
+                      textStyle: const TextStyle(fontSize: 16),
                     ),
-                    textStyle: const TextStyle(fontSize: 16),
+                    child: const Text('Done'),
                   ),
-                  child: const Text('Done'),
                 ),
               ],
             ),
@@ -122,11 +129,12 @@ class _PersonalBestsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (personalBests.isEmpty) {
       return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: const [
           Icon(Icons.insights, color: Colors.white24, size: 42),
           SizedBox(height: 12),
           Text(
-            'No personal bests this time — keep pushing!',
+            'No highlights logged this session — keep pushing!',
             style: TextStyle(color: Colors.white54, fontSize: 14),
             textAlign: TextAlign.center,
           ),
@@ -135,14 +143,15 @@ class _PersonalBestsSection extends StatelessWidget {
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: const [
             Icon(Icons.emoji_events, color: Colors.amberAccent),
             SizedBox(width: 8),
             Text(
-              'New Personal Bests',
+              'Session Highlights',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -176,20 +185,22 @@ class _PersonalBestTile extends StatelessWidget {
     final displayUnit = isLbs ? 'lbs' : 'kg';
     final weightDisplay = _formatNumber(
       isLbs ? best.weightKg * 2.20462 : best.weightKg,
+      decimalForLarge: false,
+    );
+    final oneRmDisplay = _formatNumber(
+      isLbs ? best.scoreValue * 2.20462 : best.scoreValue,
+      decimalForLarge: true,
     );
 
     final subtitle = best.isBodyweight
-        ? '${best.reps} reps logged'
+        ? '${best.reps} reps'
         : '$weightDisplay $displayUnit × ${best.reps} reps';
     final scoreLabel = best.isBodyweight
-        ? 'Best set: ${best.reps} reps'
-        : '1RM: ${_formatNumber(
-            isLbs ? best.scoreValue * 2.20462 : best.scoreValue,
-            decimalForLarge: true,
-          )} $displayUnit';
+        ? '${_formatNumber(best.scoreValue, decimalForLarge: true)} reps'
+        : '$oneRmDisplay $displayUnit';
 
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: Alignment.center,
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minWidth: isWide ? minWidth : double.infinity,
@@ -197,36 +208,82 @@ class _PersonalBestTile extends StatelessWidget {
         ),
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.grey[900],
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 best.exerciseName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (best.isPersonalBest)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.green[700]?.withValues(alpha: 0.4) ??
+                        Colors.green.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.greenAccent, width: 1),
+                  ),
+                  child: const Text(
+                    'New Personal Record',
+                    style: TextStyle(
+                      color: Colors.greenAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              if (best.isPersonalBest) const SizedBox(height: 12),
+              Text(
+                'Best Set',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 12),
               Text(
-                subtitle,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                best.isBodyweight ? 'Score' : '1RM',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 scoreLabel,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.greenAccent,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+              const SizedBox(height: 16),
+              _RankDisplay(rankName: best.rankName),
             ],
           ),
         ),
@@ -242,5 +299,60 @@ class _PersonalBestTile extends StatelessWidget {
       return str;
     }
     return str.endsWith('.0') ? str.substring(0, str.length - 2) : str;
+  }
+}
+
+class _RankDisplay extends StatelessWidget {
+  final String rankName;
+
+  const _RankDisplay({required this.rankName});
+
+  @override
+  Widget build(BuildContext context) {
+    final badgePath = _rankAssetForName(rankName);
+    final displayName = rankName.trim().isEmpty ? 'Unranked' : rankName;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SvgPicture.asset(
+          badgePath,
+          height: 36,
+          width: 36,
+        ),
+        const SizedBox(width: 12),
+        Text(
+          displayName,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _rankAssetForName(String name) {
+    const knownBadges = {
+      'iron',
+      'bronze',
+      'silver',
+      'gold',
+      'platinum',
+      'diamond',
+      'jade',
+      'master',
+      'grandmaster',
+      'nova',
+      'astra',
+      'celestial',
+      'unranked',
+    };
+
+    final normalized = name.toLowerCase().replaceAll(' ', '');
+    if (knownBadges.contains(normalized)) {
+      return 'assets/images/ranks/$normalized.svg';
+    }
+    return 'assets/images/ranks/unranked.svg';
   }
 }

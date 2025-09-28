@@ -196,43 +196,80 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
           }
         }
         if (bestSet != null) {
-          final response = await client.post('/scores/scenario/${entry.key}/',
+          double finalScoreForRank = best1RM;
+          bool isBodyweight = false;
+          bool isPersonalBest = false;
+          String rankName = 'Unranked';
+
+          try {
+            final response = await client.post(
+              '/scores/scenario/${entry.key}/',
               data: {
-            'user_id': user.id,
-            'weight_lifted': bestSet.weight,
-            'reps': bestSet.reps,
-            'sets': 1
-          });
+                'user_id': user.id,
+                'weight_lifted': bestSet.weight,
+                'reps': bestSet.reps,
+                'sets': 1
+              },
+            );
 
-          final responseData = response.data;
-          Map<String, dynamic> responseMap = {};
-          if (responseData is Map) {
-            responseMap = responseData.cast<String, dynamic>();
-          }
+            final responseData = response.data;
+            Map<String, dynamic> responseMap = {};
+            if (responseData is Map) {
+              responseMap = responseData.cast<String, dynamic>();
+            }
 
-          final scoreJson = responseMap['score'];
-          Map<String, dynamic> scoreMap = {};
-          if (scoreJson is Map) {
-            scoreMap = scoreJson.cast<String, dynamic>();
-          }
+            final scoreJson = responseMap['score'];
+            Map<String, dynamic> scoreMap = {};
+            if (scoreJson is Map) {
+              scoreMap = scoreJson.cast<String, dynamic>();
+            }
 
-          final isPersonalBest = responseMap['is_personal_best'] == true;
-          if (isPersonalBest) {
-            final scenarioName =
-                scenarioNames[entry.key] ?? 'Personal Best';
-            final isBodyweight = scoreMap['is_bodyweight'] == true;
-            final scoreValue =
+            isPersonalBest = responseMap['is_personal_best'] == true;
+            isBodyweight = scoreMap['is_bodyweight'] == true;
+            finalScoreForRank =
                 (scoreMap['score_value'] as num?)?.toDouble() ?? best1RM;
-
-            personalBests.add(SummaryPersonalBest(
-              scenarioId: entry.key,
-              exerciseName: scenarioName,
-              weightKg: bestSet.weight,
-              reps: bestSet.reps,
-              scoreValue: scoreValue,
-              isBodyweight: isBodyweight,
-            ));
+          } catch (_) {
+            finalScoreForRank = bestSet.reps > 0
+                ? _calc1RM(bestSet.weight, bestSet.reps)
+                : best1RM;
           }
+
+          final userWeight = user.weight ?? 0;
+          if (userWeight > 0) {
+            final gender = (user.gender ?? 'male').toLowerCase();
+            try {
+              final rankResponse = await client.get(
+                '/ranks/get_rank_progress',
+                queryParameters: {
+                  'scenario_id': entry.key,
+                  'final_score': finalScoreForRank,
+                  'user_weight': userWeight,
+                  'user_gender': gender,
+                },
+              );
+              final data = rankResponse.data;
+              if (data is Map) {
+                final currentRank = data['current_rank'];
+                if (currentRank is String && currentRank.trim().isNotEmpty) {
+                  rankName = currentRank;
+                }
+              }
+            } catch (_) {
+              rankName = 'Unranked';
+            }
+          }
+
+          final scenarioName = scenarioNames[entry.key] ?? 'Session Highlight';
+          personalBests.add(SummaryPersonalBest(
+            scenarioId: entry.key,
+            exerciseName: scenarioName,
+            weightKg: bestSet.weight,
+            reps: bestSet.reps,
+            scoreValue: finalScoreForRank,
+            isBodyweight: isBodyweight,
+            isPersonalBest: isPersonalBest,
+            rankName: rankName,
+          ));
         }
       }
 

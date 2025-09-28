@@ -7,6 +7,8 @@ class SummaryPersonalBest {
   final int reps;
   final double scoreValue;
   final bool isBodyweight;
+  final bool isPersonalBest;
+  final String rankName;
 
   const SummaryPersonalBest({
     required this.scenarioId,
@@ -15,5 +17,7 @@ class SummaryPersonalBest {
     required this.reps,
     required this.scoreValue,
     required this.isBodyweight,
+    required this.isPersonalBest,
+    required this.rankName,
   });
 }
