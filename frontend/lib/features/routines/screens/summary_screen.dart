@@ -8,6 +8,9 @@ import 'package:go_router/go_router.dart'; // ← needed for context.go
 import '../../../core/providers/auth_provider.dart';
 import '../models/summary_personal_best.dart';
 
+const double _lbsPerKg = 2.20462;
+const int _personalBestXpReward = 10;
+
 class SummaryScreen extends ConsumerWidget {
   final double totalVolumeKg;
   final List<SummaryPersonalBest> personalBests;
@@ -24,7 +27,16 @@ class SummaryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).valueOrNull?.user;
     final isLbs = (user?.weightMultiplier ?? 1.0) > 1.5;
-    final displayVolume = isLbs ? totalVolumeKg * 2.20462 : totalVolumeKg;
+    final displayVolume = isLbs ? totalVolumeKg * _lbsPerKg : totalVolumeKg;
+    final bodyweightKg = user?.weight;
+    final hasBodyweight = (bodyweightKg ?? 0) > 0;
+    final displayBodyweight =
+        hasBodyweight ? (isLbs ? bodyweightKg! * _lbsPerKg : bodyweightKg!) : 0.0;
+    final volumeXp = hasBodyweight ? (totalVolumeKg / bodyweightKg!).floor() : 0;
+    final personalBestCount =
+        personalBests.where((best) => best.isPersonalBest).length;
+    final personalBestXp = personalBestCount * _personalBestXpReward;
+    final totalXp = volumeXp + personalBestXp;
 
     return PopScope(
       canPop: false, // block back navigation from returning to ExerciseList
@@ -80,6 +92,17 @@ class SummaryScreen extends ConsumerWidget {
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
+                        ),
+                        const SizedBox(height: 24),
+                        _XpSummaryCard(
+                          totalXp: totalXp,
+                          volumeXp: volumeXp,
+                          personalBestXp: personalBestXp,
+                          hasBodyweight: hasBodyweight,
+                          displayVolume: displayVolume,
+                          displayBodyweight: displayBodyweight,
+                          isLbs: isLbs,
+                          personalBestCount: personalBestCount,
                         ),
                         if (durationMinutes != null) ...[
                           const SizedBox(height: 24),
@@ -156,6 +179,155 @@ class SummaryScreen extends ConsumerWidget {
     }
 
     return '${seconds}s';
+  }
+}
+
+class _XpSummaryCard extends StatelessWidget {
+  final int totalXp;
+  final int volumeXp;
+  final int personalBestXp;
+  final bool hasBodyweight;
+  final double displayVolume;
+  final double displayBodyweight;
+  final bool isLbs;
+  final int personalBestCount;
+
+  const _XpSummaryCard({
+    required this.totalXp,
+    required this.volumeXp,
+    required this.personalBestXp,
+    required this.hasBodyweight,
+    required this.displayVolume,
+    required this.displayBodyweight,
+    required this.isLbs,
+    required this.personalBestCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final unitLabel = isLbs ? "lbs" : "kg";
+    final formattedVolume = _formatMeasurement(displayVolume);
+    final formattedBodyweight = _formatMeasurement(displayBodyweight);
+
+    final volumeDescription = hasBodyweight
+        ? "Formula: $formattedVolume $unitLabel ÷ $formattedBodyweight $unitLabel = $volumeXp XP"
+        : "Set your bodyweight in your profile to calculate volume XP.";
+
+    final personalBestDescription = personalBestCount > 0
+        ? "Reward: ${personalBestCount == 1 ? "1 new personal record" : "$personalBestCount new personal records"} × $_personalBestXpReward XP"
+        : "No new personal records this session.";
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.auto_graph, color: Colors.greenAccent),
+              SizedBox(width: 8),
+              Text(
+                "XP Earned",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "+$totalXp XP",
+            style: const TextStyle(
+              color: Colors.greenAccent,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _XpBreakdownRow(
+            label: "Volume XP",
+            xpValue: volumeXp,
+            explanation: volumeDescription,
+          ),
+          const SizedBox(height: 12),
+          _XpBreakdownRow(
+            label: "Personal Best XP",
+            xpValue: personalBestXp,
+            explanation: personalBestDescription,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatMeasurement(double value) {
+    if (value <= 0) {
+      return "0";
+    }
+    final decimals = value >= 100 ? 0 : 1;
+    final text = value.toStringAsFixed(decimals);
+    if (decimals == 0) {
+      return text;
+    }
+    return text.endsWith(".0") ? text.substring(0, text.length - 2) : text;
+  }
+}
+
+class _XpBreakdownRow extends StatelessWidget {
+  final String label;
+  final int xpValue;
+  final String explanation;
+
+  const _XpBreakdownRow({
+    required this.label,
+    required this.xpValue,
+    required this.explanation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              "+$xpValue XP",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          explanation,
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
   }
 }
 
