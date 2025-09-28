@@ -6,11 +6,15 @@ import 'package:flutter/material.dart';
 class LoadingSpinner extends StatefulWidget {
   final String? message;
   final double size;
+  final double acceleration;
+  final Duration duration;
 
   const LoadingSpinner({
     super.key,
     this.message,
     this.size = 60.0,
+    this.acceleration = 1, // tweak 0.8–2.0 for feel
+    this.duration = const Duration(milliseconds: 1500), // was 2s
   });
 
   @override
@@ -26,7 +30,7 @@ class _LoadingSpinnerState extends State<LoadingSpinner>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: widget.duration,
     )..repeat();
   }
 
@@ -50,10 +54,10 @@ class _LoadingSpinnerState extends State<LoadingSpinner>
             child: AnimatedBuilder(
               animation: _controller,
               builder: (context, child) {
-                // Speed-up effect: make rotation accelerate
                 final t = _controller.value;
-                final eased = Curves.easeIn.transform(t);
-                final angle = 2 * math.pi * eased;
+                // Fast ramp-up: progress = t + a*t²
+                final progress = (t + widget.acceleration * t * t) % 1.0;
+                final angle = 2 * math.pi * progress;
 
                 return Stack(
                   alignment: Alignment.center,
