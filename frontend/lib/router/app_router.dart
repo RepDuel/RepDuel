@@ -75,8 +75,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                   path: 'leaderboard-energy',
                   name: 'energyLeaderboard',
-                  builder: (context, state) =>
-                      const EnergyLeaderboardScreen(),
+                  builder: (context, state) => const EnergyLeaderboardScreen(),
                 ),
                 GoRoute(
                   path: 'profile/:username',
@@ -247,10 +246,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             return SummaryScreen(
               totalVolumeKg: extra.totalVolumeKg,
               personalBests: extra.personalBests,
+              durationMinutes: extra.durationMinutes,
             );
           }
-          final fallbackVolume =
-              extra is num ? extra.toDouble() : 0.0;
+          final fallbackVolume = extra is num ? extra.toDouble() : 0.0;
           return SummaryScreen(totalVolumeKg: fallbackVolume);
         },
       ),

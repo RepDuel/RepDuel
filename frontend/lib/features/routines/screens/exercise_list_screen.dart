@@ -131,8 +131,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       RoutineDetails? routineDetails;
       if (widget.routineId != null) {
         try {
-          routineDetails = await ref
-              .read(routineDetailsProvider(widget.routineId!).future);
+          routineDetails =
+              await ref.read(routineDetailsProvider(widget.routineId!).future);
         } catch (_) {
           routineDetails = null;
         }
@@ -167,8 +167,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       final Map<String, dynamic> submissionBody = {
         'user_id': user.id,
         'duration': durationMinutes,
-        'completion_timestamp':
-            DateTime.now().toUtc().toIso8601String(),
+        'completion_timestamp': DateTime.now().toUtc().toIso8601String(),
         'status': 'completed',
         'scenario_submissions': scenariosPayload,
       };
@@ -288,6 +287,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         extra: SummaryScreenArgs(
           totalVolumeKg: totalVolume,
           personalBests: personalBests,
+          durationMinutes: durationMinutes,
         ),
       );
     } catch (e) {
@@ -525,8 +525,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
           return const Center(child: LoadingSpinner());
         }
         if (routineDetailsAsync.hasError) {
-          final message =
-              routineDetailsAsync.error?.toString() ?? 'Failed to load routine.';
+          final message = routineDetailsAsync.error?.toString() ??
+              'Failed to load routine.';
           return Center(
             child: ErrorDisplay(
               message: message,
@@ -542,9 +542,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         final apiExercises = routineDetails?.scenarios ?? <Scenario>[];
         final localExercises =
             _localAddedExercises.map((e) => Scenario.fromJson(e)).toList();
-        final allExercises = [...apiExercises, ...localExercises]
-            .map(_applyOverrides)
-            .toList();
+        final allExercises =
+            [...apiExercises, ...localExercises].map(_applyOverrides).toList();
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -592,7 +591,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                                 .length),
                           );
 
-                          final isCompleted = completedSetsCount >= exercise.sets;
+                          final isCompleted =
+                              completedSetsCount >= exercise.sets;
 
                           return Card(
                             color: isCompleted
@@ -605,7 +605,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                                       color: Colors.white, fontSize: 18)),
                               subtitle: Text(
                                   'Sets: ${exercise.sets} | Reps: ${exercise.reps}',
-                                  style: const TextStyle(color: Colors.white70)),
+                                  style:
+                                      const TextStyle(color: Colors.white70)),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -654,8 +655,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                                 ],
                               ),
                               onTap: () async {
-                                final setData =
-                                    await context.push<List<Map<String, dynamic>>>(
+                                final setData = await context
+                                    .push<List<Map<String, dynamic>>>(
                                   '/exercise-play',
                                   extra: exercise,
                                 );

@@ -11,11 +11,13 @@ import '../models/summary_personal_best.dart';
 class SummaryScreen extends ConsumerWidget {
   final double totalVolumeKg;
   final List<SummaryPersonalBest> personalBests;
+  final double? durationMinutes;
 
   const SummaryScreen({
     super.key,
     required this.totalVolumeKg,
     this.personalBests = const [],
+    this.durationMinutes,
   });
 
   @override
@@ -79,6 +81,27 @@ class SummaryScreen extends ConsumerWidget {
                             color: Colors.white,
                           ),
                         ),
+                        if (durationMinutes != null) ...[
+                          const SizedBox(height: 24),
+                          Text(
+                            'Duration:',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[400],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _formatDuration(durationMinutes!),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 32),
                         _PersonalBestsSection(
                           personalBests: personalBests,
@@ -113,6 +136,26 @@ class SummaryScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _formatDuration(double minutes) {
+    final totalSeconds = (minutes * 60).round();
+    final hours = totalSeconds ~/ 3600;
+    final minutesPart = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      final twoDigitMinutes = minutesPart.toString().padLeft(2, '0');
+      final twoDigitSeconds = seconds.toString().padLeft(2, '0');
+      return '$hours:$twoDigitMinutes:$twoDigitSeconds';
+    }
+
+    if (minutesPart > 0) {
+      final twoDigitSeconds = seconds.toString().padLeft(2, '0');
+      return '$minutesPart:$twoDigitSeconds';
+    }
+
+    return '${seconds}s';
   }
 }
 

@@ -5,9 +5,11 @@ import 'summary_personal_best.dart';
 class SummaryScreenArgs {
   final double totalVolumeKg;
   final List<SummaryPersonalBest> personalBests;
+  final double durationMinutes;
 
   const SummaryScreenArgs({
     required this.totalVolumeKg,
     required this.personalBests,
+    required this.durationMinutes,
   });
 }
