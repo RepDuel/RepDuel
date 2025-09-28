@@ -56,4 +56,15 @@ async def get_scenario_details(scenario_id: str, db: AsyncSession = Depends(get_
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
 
-    return scenario
+    return ScenarioRead(
+        id=scenario.id,
+        name=scenario.name,
+        description=scenario.description,
+        multiplier=scenario.multiplier,
+        volume_multiplier=scenario.volume_multiplier,
+        is_bodyweight=scenario.is_bodyweight,
+        primary_muscles=[muscle.name for muscle in scenario.primary_muscles],
+        secondary_muscles=[muscle.name for muscle in scenario.secondary_muscles],
+        equipment=[item.name for item in scenario.equipment],
+        calibration=scenario.calibration,
+    )
