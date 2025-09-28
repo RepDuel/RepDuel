@@ -1,9 +1,9 @@
-# Include CocoaPods settings for Release builds
-# This also gets used by the Xcode "Profile" configuration in Flutter,
-# so include the Profile Pods config as well to satisfy CocoaPods.
-# See: CocoaPods warning about base configuration for `Runner` target.
+// Include CocoaPods settings for Release builds
+// This also gets used by the Xcode "Profile" configuration in Flutter,
+// so include the Profile Pods config as well to satisfy CocoaPods.
+// See: CocoaPods warning about base configuration for `Runner` target.
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"
 
-# Flutter generated defines
+// Flutter generated defines
 #include "Generated.xcconfig"
