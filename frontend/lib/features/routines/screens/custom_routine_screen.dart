@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:repduel/widgets/loading_spinner.dart';
 
 import '../../../core/models/routine.dart';
@@ -31,9 +33,11 @@ class CustomRoutineScreen extends ConsumerStatefulWidget {
 class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
   final List<_CustomExercise> _items = [];
   bool _saving = false;
+  bool _uploadingImage = false;
 
   late final TextEditingController _nameCtrl;
   late final TextEditingController _imgCtrl;
+  String? _imagePreviewUrl;
 
   @override
   void initState() {
@@ -42,6 +46,7 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
       final r = widget.initial!;
       _nameCtrl = TextEditingController(text: r.name);
       _imgCtrl = TextEditingController(text: r.imageUrl ?? '');
+      _imagePreviewUrl = r.imageUrl;
       _items.addAll(
         r.scenarios.map((s) => _CustomExercise(
               scenarioId: s.scenarioId,
@@ -57,14 +62,31 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
     } else {
       _nameCtrl = TextEditingController(text: 'Custom Routine');
       _imgCtrl = TextEditingController(text: '');
+      _imagePreviewUrl = null;
     }
+    _imgCtrl.addListener(_handleImageUrlChange);
+    _handleImageUrlChange();
   }
 
   @override
   void dispose() {
+    _imgCtrl.removeListener(_handleImageUrlChange);
     _nameCtrl.dispose();
     _imgCtrl.dispose();
     super.dispose();
+  }
+
+  void _handleImageUrlChange() {
+    final trimmed = _imgCtrl.text.trim();
+    if (trimmed.isEmpty && _imagePreviewUrl == null) {
+      return;
+    }
+    if (trimmed == _imagePreviewUrl) {
+      return;
+    }
+    setState(() {
+      _imagePreviewUrl = trimmed.isEmpty ? null : trimmed;
+    });
   }
 
   Future<void> _addExercise() async {
@@ -101,6 +123,83 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
     if (_items[index].reps <= 1) return;
     setState(() =>
         _items[index] = _items[index].copyWith(reps: _items[index].reps - 1));
+  }
+
+  Future<void> _pickImage() async {
+    if (_uploadingImage) return;
+
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+      if (pickedFile == null) return;
+
+      setState(() => _uploadingImage = true);
+
+      final bytes = await pickedFile.readAsBytes();
+      final mimeType = pickedFile.mimeType ?? 'image/jpeg';
+
+      final formData = FormData.fromMap({
+        'image': MultipartFile.fromBytes(
+          bytes,
+          filename: pickedFile.name,
+          contentType: MediaType.parse(mimeType),
+        ),
+      });
+
+      final client = ref.read(privateHttpClientProvider);
+      final response = await client.dio.post(
+        '/routines/images',
+        data: formData,
+        options: Options(
+          headers: {'Content-Type': 'multipart/form-data'},
+        ),
+      );
+
+      if (!mounted) return;
+
+      final imageUrl = response.data['image_url'] as String?;
+      if (imageUrl == null || imageUrl.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to upload image. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _imgCtrl.text = imageUrl;
+        _imagePreviewUrl = imageUrl;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Routine image updated!')),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final errorMsg = e.response?.data?['detail'] ?? 'Failed to upload image.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An unexpected error occurred: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _uploadingImage = false);
+      }
+    }
   }
 
   Future<void> _saveRoutine() async {
@@ -197,16 +296,77 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
                       borderSide: BorderSide(color: Colors.white54))),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _imgCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                  labelText: 'Image URL (optional)',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white24)),
-                  focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white54))),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    height: 96,
+                    width: 96,
+                    child: _imagePreviewUrl != null
+                        ? Image.network(
+                            _imagePreviewUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: Colors.grey[800],
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.image_not_supported,
+                                  color: Colors.white54),
+                            ),
+                          )
+                        : Image.asset(
+                            'assets/images/routine_placeholder.png',
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _imgCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Image URL (optional)',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white24),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white54),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _uploadingImage ? null : _pickImage,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white24),
+                        ),
+                        icon: _uploadingImage
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: LoadingSpinner(size: 18),
+                              )
+                            : const Icon(Icons.photo_library_outlined),
+                        label: Text(
+                          _uploadingImage ? 'Uploading…' : 'Choose image',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Upload or paste a link to customize your routine card.',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Expanded(

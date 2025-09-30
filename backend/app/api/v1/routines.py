@@ -1,9 +1,11 @@
 # backend/app/api/v1/routines.py
 
 from typing import List
-from uuid import UUID
+import os
+import shutil
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +18,32 @@ from app.schemas.routine_share import RoutineImportRequest, RoutineShareRead
 from app.services import routine_service
 
 router = APIRouter(prefix="/routines", tags=["Routines"])
+
+
+@router.post(
+    "/images",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload an image for a routine",
+)
+async def upload_routine_image(
+    request: Request,
+    file: UploadFile = File(..., alias="image"),
+    _current_user: User = Depends(get_current_user),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    ext = os.path.splitext(file.filename or "")[1]
+    filename = f"{uuid4().hex}{ext}"
+    image_dir = os.path.join("static", "routine-images")
+    os.makedirs(image_dir, exist_ok=True)
+
+    file_path = os.path.join(image_dir, filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    public_url = str(request.base_url) + f"static/routine-images/{filename}"
+    return {"image_url": public_url}
 
 
 @router.post(
