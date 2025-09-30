@@ -36,7 +36,6 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
   bool _uploadingImage = false;
 
   late final TextEditingController _nameCtrl;
-  late final TextEditingController _imgCtrl;
   String? _imagePreviewUrl;
 
   @override
@@ -45,7 +44,6 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
     if (widget.mode == RoutineEditorMode.edit && widget.initial != null) {
       final r = widget.initial!;
       _nameCtrl = TextEditingController(text: r.name);
-      _imgCtrl = TextEditingController(text: r.imageUrl ?? '');
       _imagePreviewUrl = r.imageUrl;
       _items.addAll(
         r.scenarios.map((s) => _CustomExercise(
@@ -61,32 +59,14 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
       );
     } else {
       _nameCtrl = TextEditingController(text: 'Custom Routine');
-      _imgCtrl = TextEditingController(text: '');
       _imagePreviewUrl = null;
     }
-    _imgCtrl.addListener(_handleImageUrlChange);
-    _handleImageUrlChange();
   }
 
   @override
   void dispose() {
-    _imgCtrl.removeListener(_handleImageUrlChange);
     _nameCtrl.dispose();
-    _imgCtrl.dispose();
     super.dispose();
-  }
-
-  void _handleImageUrlChange() {
-    final trimmed = _imgCtrl.text.trim();
-    if (trimmed.isEmpty && _imagePreviewUrl == null) {
-      return;
-    }
-    if (trimmed == _imagePreviewUrl) {
-      return;
-    }
-    setState(() {
-      _imagePreviewUrl = trimmed.isEmpty ? null : trimmed;
-    });
   }
 
   Future<void> _addExercise() async {
@@ -174,7 +154,6 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
       }
 
       setState(() {
-        _imgCtrl.text = imageUrl;
         _imagePreviewUrl = imageUrl;
       });
 
@@ -219,7 +198,10 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
 
     final payload = {
       "name": name,
-      "image_url": _imgCtrl.text.trim().isEmpty ? null : _imgCtrl.text.trim(),
+      "image_url":
+          _imagePreviewUrl == null || _imagePreviewUrl!.trim().isEmpty
+              ? null
+              : _imagePreviewUrl!.trim(),
       "scenarios": _items
           .map((e) => {
                 "scenario_id": e.scenarioId,
@@ -326,21 +308,6 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(
-                        controller: _imgCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          labelText: 'Image URL (optional)',
-                          labelStyle: TextStyle(color: Colors.white70),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white24),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white54),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
                       OutlinedButton.icon(
                         onPressed: _uploadingImage ? null : _pickImage,
                         style: OutlinedButton.styleFrom(
@@ -358,9 +325,22 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
                           _uploadingImage ? 'Uploading…' : 'Choose image',
                         ),
                       ),
+                      if (_imagePreviewUrl != null) ...[
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _uploadingImage
+                              ? null
+                              : () => setState(() => _imagePreviewUrl = null),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white70,
+                          ),
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('Remove image'),
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       const Text(
-                        'Upload or paste a link to customize your routine card.',
+                        'Upload an image to customize your routine card.',
                         style: TextStyle(color: Colors.white54, fontSize: 12),
                       ),
                     ],
