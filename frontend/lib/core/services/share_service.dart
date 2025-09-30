@@ -2,6 +2,7 @@
 
 import 'dart:io' show File;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,15 +11,34 @@ import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../config/env.dart';
-
 import '../../features/ranked/screens/result_screen.dart'
     show ShareableResultCard;
+import '../providers/api_providers.dart';
 
-final shareServiceProvider = Provider<ShareService>((ref) => ShareService());
+class RoutineShareDetails {
+  RoutineShareDetails({required this.code, required this.name});
+
+  final String code;
+  final String name;
+
+  factory RoutineShareDetails.fromJson(Map<String, dynamic> json) {
+    final rawCode = (json['code'] as String?) ?? '';
+    if (rawCode.trim().isEmpty) {
+      throw Exception('Share code missing from response.');
+    }
+    return RoutineShareDetails(
+      code: rawCode.trim().toUpperCase(),
+      name: (json['name'] as String?) ?? 'Shared Routine',
+    );
+  }
+}
+
+final shareServiceProvider = Provider<ShareService>((ref) => ShareService(ref));
 
 class ShareService {
-  ShareService();
+  ShareService(this._ref);
+
+  final Ref _ref;
 
   Future<void> shareResult({
     required BuildContext context,
@@ -79,24 +99,34 @@ class ShareService {
     }
   }
 
-  /// Build the canonical share URL for a routine
-  Uri buildRoutineUrl({required String routineId}) {
-    final base = Env.publicBaseUrl;
-    return Uri.parse(base).resolve('/routines/play').replace(
-      queryParameters: {'routineId': routineId},
-    );
+  Future<RoutineShareDetails> _createRoutineShare({required String routineId}) async {
+    final client = _ref.read(privateHttpClientProvider);
+    try {
+      final response = await client.post('/routines/$routineId/share');
+      if (response.statusCode != 200) {
+        throw Exception(
+            'Failed to create share code (status ${response.statusCode}).');
+      }
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Unexpected response when creating share code.');
+      }
+      return RoutineShareDetails.fromJson(data);
+    } on DioException catch (err) {
+      final message = err.response?.data is Map<String, dynamic>
+          ? (err.response?.data['detail'] as String?)
+          : err.message;
+      throw Exception(message ?? 'Failed to create share code.');
+    }
   }
 
-  Future<void> shareRoutineLink({
-    required String routineId,
+  Future<void> shareRoutineCode({
     required String routineName,
+    required String shareCode,
   }) async {
     try {
-      // Build a universal link that the app can open via GoRouter
-      // Path: /routines/play?routineId=ID
-      final url = buildRoutineUrl(routineId: routineId);
-
-      final text = 'Check out my routine "$routineName" on RepDuel: $url';
+      final text =
+          'Check out my routine "$routineName" on RepDuel! Use share code $shareCode in the app to import it.';
 
       await SharePlus.instance.share(
         ShareParams(
@@ -105,19 +135,49 @@ class ShareService {
         ),
       );
     } catch (e) {
-      debugPrint("[ShareService] Error during shareRoutineLink: $e");
-      throw Exception('Failed to share routine link: $e');
+      debugPrint("[ShareService] Error during shareRoutineCode: $e");
+      throw Exception('Failed to share routine code: $e');
     }
   }
 
-  /// Show a popup with the routine link and copy/share actions
+  /// Show a popup with the share code and copy/share actions
   Future<void> showShareRoutineDialog({
     required BuildContext context,
     required String routineId,
     required String routineName,
   }) async {
-    final url = buildRoutineUrl(routineId: routineId).toString();
+    final navigator = Navigator.of(context, rootNavigator: true);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
 
+    late final RoutineShareDetails share;
+    try {
+      share = await _createRoutineShare(routineId: routineId);
+    } catch (e) {
+      debugPrint("[ShareService] Error creating share code: $e");
+      if (navigator.mounted) {
+        navigator.pop();
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+      return;
+    }
+
+    if (navigator.mounted) {
+      navigator.pop();
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final code = share.code;
     await showDialog<void>(
       context: context,
       builder: (ctx) {
@@ -127,21 +187,29 @@ class ShareService {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Link'),
-              const SizedBox(height: 8),
-              SelectableText(
-                url,
-                style: const TextStyle(fontSize: 14),
+              const Text('Share code'),
+              const SizedBox(height: 12),
+              Center(
+                child: SelectableText(
+                  code,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3,
+                  ),
+                ),
               ),
+              const SizedBox(height: 12),
+              const Text('Anyone can import this routine by entering the code on the routines screen.'),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: url));
+                await Clipboard.setData(ClipboardData(text: code));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Link copied to clipboard')),
+                    const SnackBar(content: Text('Share code copied to clipboard')),
                   );
                 }
               },
@@ -150,9 +218,9 @@ class ShareService {
             TextButton(
               onPressed: () async {
                 try {
-                  await shareRoutineLink(
-                    routineId: routineId,
+                  await shareRoutineCode(
                     routineName: routineName,
+                    shareCode: code,
                   );
                 } catch (_) {}
               },

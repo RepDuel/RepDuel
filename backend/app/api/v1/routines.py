@@ -12,6 +12,7 @@ from app.api.v1.deps import get_db
 from app.models.routine import Routine
 from app.models.user import User
 from app.schemas.routine import RoutineCreate, RoutineRead, RoutineUpdate
+from app.schemas.routine_share import RoutineImportRequest, RoutineShareRead
 from app.services import routine_service
 
 router = APIRouter(prefix="/routines", tags=["Routines"])
@@ -116,3 +117,61 @@ async def delete_routine_by_id(
         )
 
     await routine_service.delete_routine(db, routine_orm)
+
+
+@router.post(
+    "/{routine_id}/share",
+    response_model=RoutineShareRead,
+    summary="Create a share code for a routine",
+)
+async def create_routine_share_code(
+    routine_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    routine = await routine_service.get_routine(db, routine_id)
+    if not routine:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routine not found")
+
+    if routine.user_id is not None and routine.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to share this routine",
+        )
+
+    share = await routine_service.create_routine_share(db, routine, current_user.id)
+    return share
+
+
+@router.get(
+    "/shared/{share_code}",
+    response_model=RoutineShareRead,
+    summary="Fetch a shared routine snapshot by code",
+)
+async def get_shared_routine_snapshot(
+    share_code: str,
+    db: AsyncSession = Depends(get_db),
+):
+    share = await routine_service.get_routine_share_snapshot(db, share_code)
+    if not share:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Share code not found")
+    return share
+
+
+@router.post(
+    "/import",
+    response_model=RoutineRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Import a routine by share code",
+)
+async def import_routine_by_share_code(
+    payload: RoutineImportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    share = await routine_service.get_routine_share_snapshot(db, payload.share_code)
+    if not share:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Share code not found")
+
+    created = await routine_service.import_shared_routine(db, share, current_user.id)
+    return created

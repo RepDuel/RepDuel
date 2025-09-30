@@ -294,6 +294,145 @@ class RoutinesScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _importRoutineByCode(
+      BuildContext context, WidgetRef ref, String code) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final normalized = code.trim().toUpperCase();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: LoadingSpinner()),
+    );
+
+    try {
+      final client = ref.read(privateHttpClientProvider);
+      final response = await client.post(
+        '/routines/import',
+        data: {'share_code': normalized},
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final detail = response.data is Map<String, dynamic>
+            ? (response.data['detail'] as String?)
+            : null;
+        throw Exception(detail ??
+            'Failed to import routine (status ${response.statusCode}).');
+      }
+
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Unexpected response when importing routine.');
+      }
+
+      final importedName = (data['name'] as String?) ?? 'Imported routine';
+      ref.invalidate(routinesProvider);
+
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Added "$importedName" to your routines.')),
+        );
+      }
+    } on DioException catch (err) {
+      final message = err.response?.data is Map<String, dynamic>
+          ? (err.response?.data['detail'] as String?)
+          : err.message;
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(message ?? 'Failed to import routine.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (err) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(err.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (navigator.mounted) {
+        navigator.pop();
+      }
+    }
+  }
+
+  Future<void> _showImportDialog(BuildContext context, WidgetRef ref) async {
+    final user = ref.read(authProvider).valueOrNull?.user;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to import routines.')),
+      );
+      return;
+    }
+
+    final controller = TextEditingController();
+    String? errorText;
+
+    final code = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const Text('Import routine'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: 'Share code',
+                      hintText: 'e.g. ABCD1234',
+                      errorText: errorText,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Paste the share code you received to add the routine to your library.',
+                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final value = controller.text.trim().toUpperCase();
+                    if (value.length < 4) {
+                      setState(() {
+                        errorText = 'Enter a valid share code.';
+                      });
+                      return;
+                    }
+                    Navigator.of(ctx).pop(value);
+                  },
+                  child: const Text('Import'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    controller.dispose();
+
+    if (code != null && context.mounted) {
+      await _importRoutineByCode(context, ref, code);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final routinesAsync = ref.watch(routinesProvider);
@@ -301,6 +440,11 @@ class RoutinesScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showImportDialog(context, ref),
+        icon: const Icon(Icons.download),
+        label: const Text('Import routine'),
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(routinesProvider.future),
         child: routinesAsync.when(
@@ -464,7 +608,7 @@ class RoutinesScreen extends ConsumerWidget {
                           items.add(
                             const PopupMenuItem(
                               value: 'share',
-                              child: Text('Share link'),
+                              child: Text('Share code'),
                             ),
                           );
                           return items;

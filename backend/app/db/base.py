@@ -21,3 +21,4 @@ from app.models.user_xp import UserXP
 from app.models.social import SocialEdge
 from app.models.personal_best_event import PersonalBestEvent
 from app.models.daily_workout_aggregate import DailyWorkoutAggregate
+from app.models.routine_share_snapshot import RoutineShareSnapshot

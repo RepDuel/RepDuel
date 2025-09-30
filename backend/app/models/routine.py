@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, func, text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
@@ -23,6 +23,13 @@ class Routine(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
+    )
+
+    is_share_template = Column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
     )
 
     created_at = Column(
