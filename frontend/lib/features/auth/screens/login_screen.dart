@@ -50,6 +50,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
         },
         data: (authState) {
+          final message = authState.statusMessage;
+          if (message != null && message.isNotEmpty) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(message),
+                ),
+              );
+            ref.read(authProvider.notifier).clearStatusMessage();
+          }
           if (authState.user != null) {
             // Navigate back to the originally requested route if provided
             final from = GoRouterState.of(context).uri.queryParameters['from'];

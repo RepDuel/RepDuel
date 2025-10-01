@@ -372,6 +372,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     if (confirmed == true) {
       await ref.read(authProvider.notifier).logout();
+      if (!mounted) return;
+      context.go('/login');
     }
   }
 
@@ -394,6 +396,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _showFeedbackSnackbar('Account deleted.', isSuccess: true);
       }
       await ref.read(authProvider.notifier).logout();
+      if (mounted) {
+        context.go('/login');
+      }
     } on DioException catch (e) {
       final data = e.response?.data;
       final message = (data is Map<String, dynamic> && data['detail'] != null)

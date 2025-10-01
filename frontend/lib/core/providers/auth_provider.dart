@@ -17,14 +17,27 @@ import 'api_providers.dart';
 class AuthState {
   final User? user;
   final String? token;
+  final String? statusMessage;
 
-  AuthState({this.user, this.token});
+  AuthState({this.user, this.token, this.statusMessage});
 
-  AuthState copyWith({User? user, String? token}) {
-    return AuthState(user: user ?? this.user, token: token ?? this.token);
+  AuthState copyWith({
+    User? user,
+    String? token,
+    String? statusMessage,
+    bool resetStatusMessage = false,
+  }) {
+    return AuthState(
+      user: user ?? this.user,
+      token: token ?? this.token,
+      statusMessage: resetStatusMessage
+          ? null
+          : (statusMessage ?? this.statusMessage),
+    );
   }
 
-  factory AuthState.initial() => AuthState(user: null, token: null);
+  factory AuthState.initial({String? statusMessage}) =>
+      AuthState(user: null, token: null, statusMessage: statusMessage);
 }
 
 final authProvider =
@@ -229,7 +242,17 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
 
   Future<void> logout() async {
     await _secureStorage.deleteToken();
-    state = AsyncValue.data(AuthState.initial());
+    state = AsyncValue.data(
+      AuthState.initial(statusMessage: 'Logged out successfully'),
+    );
+  }
+
+  void clearStatusMessage() {
+    final currentState = state.valueOrNull;
+    if (currentState == null) {
+      return;
+    }
+    state = AsyncValue.data(currentState.copyWith(resetStatusMessage: true));
   }
 
   Future<void> loadUserFromToken() async {
