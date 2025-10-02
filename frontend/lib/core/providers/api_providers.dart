@@ -10,6 +10,7 @@ import '../api/guild_api_service.dart';
 import '../api/level_api_service.dart';
 import '../config/env.dart';
 import '../http/adapter.dart';
+import '../http/logging_interceptor.dart';
 import '../models/guild.dart';
 import '../providers/auth_provider.dart';
 import '../providers/secure_storage_provider.dart';
@@ -34,7 +35,7 @@ final publicHttpClientProvider = Provider<HttpClient>((ref) {
   configureDioForPlatform(dio);
 
   if (kDebugMode) {
-    dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+    dio.interceptors.add(const CompactLoggingInterceptor());
   }
 
   dio.interceptors.add(GlobalErrorInterceptor(ref));
@@ -230,7 +231,7 @@ final privateHttpClientProvider = Provider<HttpClient>((ref) {
   dio.interceptors.add(GlobalErrorInterceptor(ref));
 
   if (kDebugMode) {
-    dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+    dio.interceptors.add(const CompactLoggingInterceptor());
   }
 
   return HttpClient(dio);
