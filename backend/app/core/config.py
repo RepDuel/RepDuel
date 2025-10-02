@@ -33,18 +33,46 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str
 
+    APPLE_TEAM_ID: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("APPLE_TEAM_ID", "apple_team_id"),
+    )
+    IOS_BUNDLE_ID: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("IOS_BUNDLE_ID", "ios_bundle_id"),
+    )
+    OPENAI_API_KEY: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("OPENAI_API_KEY", "openai_api_key"),
+    )
+
     FRONTEND_ORIGINS: List[AnyHttpUrl] = Field(
         default_factory=list,
-        validation_alias=AliasChoices("FRONTEND_ORIGINS", "CORS_ALLOW_ORIGINS", "cors_allow_origins"),
+        validation_alias=AliasChoices(
+            "FRONTEND_ORIGINS",
+            "CORS_ALLOW_ORIGINS",
+            "cors_allow_origins",
+            "frontend_origins",
+        ),
     )
 
     COOKIE_SAMESITE: str = Field(
         default="none",
-        validation_alias=AliasChoices("COOKIE_SAMESITE", "REFRESH_COOKIE_SAMESITE", "refresh_cookie_samesite"),
+        validation_alias=AliasChoices(
+            "COOKIE_SAMESITE",
+            "REFRESH_COOKIE_SAMESITE",
+            "refresh_cookie_samesite",
+            "cookie_samesite",
+        ),
     )
     COOKIE_SECURE: bool = Field(
         default=True,
-        validation_alias=AliasChoices("COOKIE_SECURE", "REFRESH_COOKIE_SECURE", "refresh_cookie_secure"),
+        validation_alias=AliasChoices(
+            "COOKIE_SECURE",
+            "REFRESH_COOKIE_SECURE",
+            "refresh_cookie_secure",
+            "cookie_secure",
+        ),
     )
 
     XP_MAX_LEVEL: int = Field(
