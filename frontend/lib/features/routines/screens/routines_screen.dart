@@ -13,9 +13,8 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/share_service.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
-import '../widgets/add_routine_card.dart';
-import '../widgets/quick_workout_card.dart';
-import '../widgets/routine_card.dart';
+import '../widgets/quick_actions_bar.dart';
+import '../widgets/routine_row.dart';
 
 final routinesProvider = FutureProvider.autoDispose<List<Routine>>((ref) async {
   return ref.watch(authProvider).when(
@@ -118,6 +117,73 @@ class HiddenRoutinesNotifier extends StateNotifier<Set<String>> {
     } else {
       await hide(id);
     }
+  }
+}
+
+class _EmptyRoutinesState extends StatelessWidget {
+  const _EmptyRoutinesState({
+    required this.onCreateRoutine,
+    required this.onImportRoutine,
+  });
+
+  final VoidCallback onCreateRoutine;
+  final VoidCallback onImportRoutine;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.fitness_center,
+            size: 56,
+            color: theme.colorScheme.primary.withValues(alpha: 0.6),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No routines yet',
+            style: theme.textTheme.titleLarge,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Create your own training plan or import a routine to get started.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.textTheme.bodyMedium?.color
+                          ?.withValues(alpha: 0.8) ??
+                      theme.colorScheme.onSurfaceVariant,
+                ) ??
+                TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: theme.textTheme.bodyMedium?.fontSize,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              ElevatedButton.icon(
+                onPressed: onCreateRoutine,
+                icon: const Icon(Icons.add),
+                label: const Text('Create routine'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onImportRoutine,
+                icon: const Icon(Icons.download),
+                label: const Text('Import'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -459,95 +525,104 @@ class RoutinesScreen extends ConsumerWidget {
             final visibleRoutines = routines
                 .where((r) => !(r.userId == null && hidden.contains(r.id)))
                 .toList();
-            if (visibleRoutines.isEmpty) {
-              // Keeps the content scrollable to avoid overflow when centered.
-              return Center(
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Container(
-                    constraints: BoxConstraints(
-                        minHeight: MediaQuery.of(context).size.height * 0.7),
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("No routines found.",
-                            style: TextStyle(color: Colors.grey, fontSize: 18)),
-                        const SizedBox(height: 8),
-                        const Text("Pull down to refresh or create one!",
-                            style: TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: 220,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              QuickWorkoutCard(
-                                onPressed: () => _startQuickWorkout(context),
-                              ),
-                              const SizedBox(height: 12),
-                              AddRoutineCard(
-                                onPressed: () =>
-                                    _onAddRoutinePressed(context, ref, routines),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                SliverToBoxAdapter(
+                  child: QuickActionsBar(
+                    onQuickWorkout: () => _startQuickWorkout(context),
+                    onCreateRoutine: () =>
+                        _onAddRoutinePressed(context, ref, routines),
+                    onImportRoutine: () => _showImportDialog(context, ref),
                   ),
                 ),
-              );
-            }
-            return GridView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: visibleRoutines.length + 2,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount:
-                    (MediaQuery.of(context).size.width ~/ 250).clamp(2, 6),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.65,
-              ),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return QuickWorkoutCard(
-                    onPressed: () => _startQuickWorkout(context),
-                  );
-                }
-                if (index == 1) {
-                  return AddRoutineCard(
-                      onPressed: () =>
-                          _onAddRoutinePressed(context, ref, routines));
-                }
-                final routine = visibleRoutines[index - 2];
-                final canEdit =
-                    routine.userId == null || routine.userId == currentUserId;
-                final canDelete =
-                    routine.userId != null && routine.userId == currentUserId;
-                final isGlobal = routine.userId == null;
-                final isHidden = hidden.contains(routine.id);
-
-                return Stack(
-                  children: [
-                    GestureDetector(
-                      // ✅ Navigate to RoutinePlay using Option A (pass the object via `extra`)
-                      onTap: () =>
-                          context.pushNamed('routinePlay', extra: routine),
-                      child: RoutineCard(
-                        name: routine.name,
-                        imageUrl: routine.imageUrl,
-                        duration: '${routine.totalDurationMinutes} min',
-                        difficultyLevel: 2,
-                      ),
+                if (visibleRoutines.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _EmptyRoutinesState(
+                      onCreateRoutine: () =>
+                          _onAddRoutinePressed(context, ref, routines),
+                      onImportRoutine: () => _showImportDialog(context, ref),
                     ),
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: PopupMenuButton<String>(
-                        icon:
-                            const Icon(Icons.more_vert, color: Colors.white70),
-                        onSelected: (value) async {
+                  )
+                else
+                  SliverList.separated(
+                    itemCount: visibleRoutines.length,
+                    separatorBuilder: (context, _) => Divider(
+                      height: 1,
+                      indent: 92,
+                      endIndent: 12,
+                      color: Theme.of(context)
+                          .dividerColor
+                          .withValues(
+                            alpha: Theme.of(context).brightness == Brightness.dark
+                                ? 0.2
+                                : 0.4,
+                          ),
+                    ),
+                    itemBuilder: (context, index) {
+                      final routine = visibleRoutines[index];
+                      final canEdit = routine.userId == null ||
+                          routine.userId == currentUserId;
+                      final canDelete =
+                          routine.userId != null &&
+                              routine.userId == currentUserId;
+                      final isGlobal = routine.userId == null;
+                      final isHidden = hidden.contains(routine.id);
+                      final badges = <String>[];
+                      if (routine.scenarios.isNotEmpty) {
+                        badges.add(
+                            '${routine.scenarios.length} exercise${routine.scenarios.length == 1 ? '' : 's'}');
+                      }
+                      if (routine.totalSets > 0) {
+                        badges.add('${routine.totalSets} set${routine.totalSets == 1 ? '' : 's'}');
+                      }
+                      badges.add(isGlobal ? 'Global template' : 'My routine');
+
+                      return RoutineRow(
+                        title: routine.name,
+                        imageUrl: routine.imageUrl,
+                        durationMinutes: routine.totalDurationMinutes,
+                        badges: badges,
+                        onTap: () =>
+                            context.pushNamed('routinePlay', extra: routine),
+                        menuBuilder: (context) {
+                          final items = <PopupMenuEntry<String>>[];
+                          if (canEdit) {
+                            items.add(const PopupMenuItem(
+                                value: 'edit', child: Text('Edit')));
+                          }
+                          if (canDelete) {
+                            items.add(
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.error),
+                                ),
+                              ),
+                            );
+                          }
+                          if (isGlobal) {
+                            items.add(
+                              PopupMenuItem(
+                                value: isHidden ? 'unhide' : 'hide',
+                                child: Text(isHidden ? 'Unhide' : 'Hide'),
+                              ),
+                            );
+                          }
+                          items.add(
+                            const PopupMenuItem(
+                              value: 'share',
+                              child: Text('Share code'),
+                            ),
+                          );
+                          return items;
+                        },
+                        onMenuSelected: (value) async {
                           if (value == 'edit') {
                             final routineToEdit =
                                 await _prepareRoutineForEditing(
@@ -581,43 +656,11 @@ class RoutinesScreen extends ConsumerWidget {
                                 );
                           }
                         },
-                        itemBuilder: (context) {
-                          final items = <PopupMenuEntry<String>>[];
-                          if (canEdit) {
-                            items.add(const PopupMenuItem(
-                                value: 'edit', child: Text('Edit')));
-                          }
-                          if (canDelete) {
-                            items.add(
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Text(
-                                  'Delete',
-                                  style: const TextStyle(color: Colors.red),
-                                ),
-                              ),
-                            );
-                          }
-                          if (isGlobal) {
-                            items.add(
-                              PopupMenuItem(
-                                  value: isHidden ? 'unhide' : 'hide',
-                                  child: Text(isHidden ? 'Unhide' : 'Hide')),
-                            );
-                          }
-                          items.add(
-                            const PopupMenuItem(
-                              value: 'share',
-                              child: Text('Share code'),
-                            ),
-                          );
-                          return items;
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
+                      );
+                    },
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 88)),
+              ],
             );
           },
         ),
