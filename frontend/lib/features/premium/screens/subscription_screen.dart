@@ -106,9 +106,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               code: 'no_products', message: 'No products found.');
         }
 
-        await ref
+        final purchaseCompleted = await ref
             .read(subscriptionProvider.notifier)
             .purchasePackage(packageToPurchase);
+        if (!purchaseCompleted) {
+          shouldShowSuccess = false;
+        }
       } else {
         shouldShowSuccess = false;
         _showErrorSnackbar(

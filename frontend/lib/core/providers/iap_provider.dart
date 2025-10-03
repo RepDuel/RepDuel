@@ -143,16 +143,18 @@ class SubscriptionNotifier extends StateNotifier<AsyncValue<SubscriptionTier>> {
     _updateSubscriptionStatus();
   }
 
-  Future<void> purchasePackage(Package package) async {
-    if (kIsWeb) return;
+  Future<bool> purchasePackage(Package package) async {
+    if (kIsWeb) return false;
     try {
       await Purchases.purchasePackage(package);
       await _updateSubscriptionStatus();
+      return true;
     } on PlatformException catch (e) {
-      if (PurchasesErrorHelper.getErrorCode(e) !=
+      if (PurchasesErrorHelper.getErrorCode(e) ==
           PurchasesErrorCode.purchaseCancelledError) {
-        throw Exception("Purchase failed: ${e.message}");
+        return false;
       }
+      rethrow;
     }
   }
 
