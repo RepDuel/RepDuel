@@ -71,6 +71,12 @@ class PaymentCancelScreen extends StatelessWidget {
   }
 
   Widget _buildBenefitsReminder(TextTheme textTheme) {
+    const perks = [
+      'Track your score history with progress charts',
+      'Unlimited custom routines',
+      'Support future development',
+    ];
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -90,10 +96,10 @@ class PaymentCancelScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _buildBenefitItem(
-              textTheme, 'Track your score history with progress charts'),
-          const SizedBox(height: 12),
-          _buildBenefitItem(textTheme, 'Support future development'),
+          for (int i = 0; i < perks.length; i++) ...[
+            _buildBenefitItem(textTheme, perks[i]),
+            if (i != perks.length - 1) const SizedBox(height: 12),
+          ],
         ],
       ),
     );
