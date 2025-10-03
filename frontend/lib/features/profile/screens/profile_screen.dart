@@ -110,7 +110,7 @@ class ProfileContent extends ConsumerWidget {
 
     Widget wrapSection(Widget child) {
       return Align(
-        alignment: Alignment.centerLeft,
+        alignment: Alignment.center,
         child: ConstrainedBox(
           constraints: sectionConstraints,
           child: child,
@@ -181,32 +181,34 @@ class ProfileContent extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: _buildAvatar(user.avatarUrl),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    user.displayName?.trim().isNotEmpty == true
-                        ? user.displayName!.trim()
-                        : user.username,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+            wrapSection(
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _buildAvatar(user.avatarUrl),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      user.displayName?.trim().isNotEmpty == true
+                          ? user.displayName!.trim()
+                          : user.username,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                if (headerAction != null) ...[
-                  const SizedBox(width: 16),
-                  headerAction!,
+                  if (headerAction != null) ...[
+                    const SizedBox(width: 16),
+                    headerAction!,
+                  ],
                 ],
-              ],
+              ),
             ),
             const SizedBox(height: 32),
             levelProgressAsync.when(
@@ -276,7 +278,9 @@ class ProfileContent extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
             if (showPersonalQuests)
-              _RecurringQuestsSection(questsAsync: questsAsync!)
+              wrapSection(
+                _RecurringQuestsSection(questsAsync: questsAsync!),
+              )
             else
               wrapSection(
                 const Text(
@@ -285,16 +289,19 @@ class ProfileContent extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 32),
-            const Text(
-              'Activity',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            wrapSection(
+              const Text(
+                'Activity',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            ActivityFeed(userId: user.id),
+            wrapSection(ActivityFeed(userId: user.id)),
             const SizedBox(height: 16),
           ],
         ),
@@ -441,65 +448,47 @@ class _RecurringQuestsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWide = screenWidth > 700;
-    const minWidth = 300.0;
-    const maxWidth = 600.0;
-    final boxConstraints = BoxConstraints(
-      minWidth: isWide ? minWidth : double.infinity,
-      maxWidth: isWide ? maxWidth : double.infinity,
-    );
-
-    Widget wrapWithWidth(Widget child, {bool addBottomMargin = false}) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        margin: addBottomMargin
-            ? const EdgeInsets.only(bottom: 12)
-            : EdgeInsets.zero,
-        child: ConstrainedBox(
-          constraints: boxConstraints,
-          child: child,
-        ),
-      );
-    }
-
     final content = questsAsync.when<Widget>(
       data: (quests) {
         final children = <Widget>[];
         for (var i = 0; i < _recurringQuestDefinitions.length; i++) {
           final definition = _recurringQuestDefinitions[i];
-          children.add(wrapWithWidth(
-            _RecurringQuestCard(
-              definition: definition,
-              instance: _findQuest(quests, definition.code),
+          final isLast = i == _recurringQuestDefinitions.length - 1;
+          children.add(
+            Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+              child: _RecurringQuestCard(
+                definition: definition,
+                instance: _findQuest(quests, definition.code),
+              ),
             ),
-            addBottomMargin: true,
-          ));
+          );
         }
-        return Column(children: children);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        );
       },
       loading: () => Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        child: wrapWithWidth(
-          const Center(child: LoadingSpinner(size: 36)),
-        ),
+        child: const Center(child: LoadingSpinner(size: 36)),
       ),
       error: (error, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: wrapWithWidth(
-          Text(
-            'Unable to load quests: $error',
-            style: const TextStyle(color: Colors.redAccent, fontSize: 14),
-          ),
+        child: Text(
+          'Unable to load quests: $error',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.redAccent, fontSize: 14),
         ),
       ),
     );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const Text(
           'Quests',
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -507,7 +496,10 @@ class _RecurringQuestsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        content,
+        SizedBox(
+          width: double.infinity,
+          child: content,
+        ),
       ],
     );
   }
