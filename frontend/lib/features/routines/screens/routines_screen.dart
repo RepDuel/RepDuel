@@ -198,26 +198,28 @@ class RoutinesScreen extends ConsumerWidget {
     final hasReachedLimit =
         routines.where((r) => r.userId == user.id).length >= 3;
     if (isFree && hasReachedLimit) {
-      showDialog(
+      final shouldUpgrade = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           title: const Text('Upgrade Required'),
           content: const Text(
               'Free users can create up to 3 custom routines. Upgrade to unlock more.'),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                context.push('/subscribe');
-              },
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Upgrade'),
             ),
           ],
         ),
       );
+
+      if (shouldUpgrade == true && context.mounted) {
+        context.push('/subscribe');
+      }
     } else {
       final result = await context.pushNamed<bool>('createRoutine');
       if (result == true && context.mounted) {
