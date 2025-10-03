@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.routine import RoutineCreate, RoutineRead, RoutineUpdate
 from app.schemas.routine_share import RoutineImportRequest, RoutineShareRead
 from app.services import routine_service
+from app.utils.storage import build_public_url
 
 router = APIRouter(prefix="/routines", tags=["Routines"])
 
@@ -42,8 +43,11 @@ async def upload_routine_image(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    public_url = str(request.base_url) + f"static/routine-images/{filename}"
-    return {"image_url": public_url}
+    storage_key = f"routine-images/{filename}"
+    public_url = build_public_url(storage_key)
+    if not public_url:
+        public_url = str(request.base_url).rstrip("/") + f"/static/{storage_key}"
+    return {"image_url": public_url, "image_key": storage_key}
 
 
 @router.post(

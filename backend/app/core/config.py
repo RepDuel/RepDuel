@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     APP_URL: str
     BASE_URL: str
     DATABASE_URL: PostgresDsn
-    STATIC_PUBLIC_BASE: AnyHttpUrl = Field(
-        default="http://127.0.0.1:8000/static",
+    STATIC_PUBLIC_BASE: Optional[AnyHttpUrl] = Field(
+        default=None,
         validation_alias=AliasChoices("STATIC_PUBLIC_BASE", "static_public_base"),
     )
 
@@ -118,6 +118,8 @@ class Settings(BaseSettings):
         self.BASE_URL = self.BASE_URL.rstrip("/")
         if self.STATIC_PUBLIC_BASE:
             self.STATIC_PUBLIC_BASE = str(self.STATIC_PUBLIC_BASE).rstrip("/")
+        else:
+            self.STATIC_PUBLIC_BASE = f"{self.BASE_URL.rstrip('/')}/static"
         if not self.REFRESH_JWT_SECRET_KEY:
             self.REFRESH_JWT_SECRET_KEY = self.JWT_SECRET_KEY
         if self.COOKIE_SAMESITE:

@@ -30,14 +30,15 @@ ALLOWED_ORIGINS = list(dict.fromkeys(_origins))
 # Keep localhost regex for dev convenience
 ALLOWED_ORIGIN_REGEX = r"^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$"
 
-app.add_middleware(
-    CORSMiddleware,
+cors_config = dict(
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+app.add_middleware(CORSMiddleware, **cors_config)
 
 WEB_DIR = os.getenv(
     "FRONTEND_WEB_DIR",
@@ -56,7 +57,11 @@ _mount_if_exists("/assets", "assets")
 _mount_if_exists("/canvaskit", "canvaskit")
 _mount_if_exists("/icons", "icons")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_cors_config = dict(cors_config)
+static_cors_config["allow_methods"] = ["GET", "HEAD", "OPTIONS"]
+
+static_app = StaticFiles(directory="static")
+app.mount("/static", CORSMiddleware(static_app, **static_cors_config), name="static")
 
 app.include_router(api_router, prefix="/api/v1")
 from app.api.aasa import router as aasa_router

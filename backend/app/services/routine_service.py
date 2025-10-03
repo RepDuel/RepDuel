@@ -20,6 +20,7 @@ from app.schemas.routine import (
     ScenarioSet,
 )
 from app.schemas.routine_share import RoutineShareRead
+from app.utils.storage import normalize_storage_key
 
 
 async def get_routine(db: AsyncSession, routine_id: UUID) -> Optional[Routine]:
@@ -52,7 +53,7 @@ async def get_routine_read(db: AsyncSession, routine_id: UUID) -> Optional[Routi
     return RoutineRead(
         id=routine.id,
         name=routine.name,
-        image_url=routine.image_url,
+        image_url=normalize_storage_key(routine.image_url) or routine.image_url,
         user_id=routine.user_id,
         created_at=routine.created_at,
         scenarios=scenarios,
@@ -96,7 +97,7 @@ async def get_user_routines(
             RoutineRead(
                 id=routine.id,
                 name=routine.name,
-                image_url=routine.image_url,
+                image_url=normalize_storage_key(routine.image_url) or routine.image_url,
                 user_id=routine.user_id,
                 created_at=routine.created_at,
                 scenarios=scenarios,
@@ -228,7 +229,7 @@ async def create_routine_share(
     snapshot = RoutineShareSnapshot(
         code=code,
         name=routine_data.name,
-        image_url=routine_data.image_url,
+        image_url=normalize_storage_key(routine_data.image_url) or routine_data.image_url,
         scenarios=[_scenario_to_payload(item) for item in routine_data.scenarios],
         source_routine_id=routine.id,
         created_by_user_id=created_by_user_id,
