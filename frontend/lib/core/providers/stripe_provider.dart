@@ -30,9 +30,9 @@ class StripeService {
 
       final String baseUrl = Uri.base.toString().split('#').first;
       final String successUrl =
-          Uri.parse(baseUrl).resolve('/subscribe/payment-success').toString();
+          Uri.parse(baseUrl).resolve('/payment-success').toString();
       final String cancelUrl =
-          Uri.parse(baseUrl).resolve('/subscribe/payment-cancel').toString();
+          Uri.parse(baseUrl).resolve('/payment-cancel').toString();
 
       final response = await http
           .post(

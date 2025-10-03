@@ -223,14 +223,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/payment-success',
+        path: '/subscribe/payment-success',
         name: 'paymentSuccess',
         builder: (context, state) => const PaymentSuccessScreen(),
       ),
       GoRoute(
-        path: '/payment-cancel',
+        path: '/subscribe/payment-cancel',
         name: 'paymentCancel',
         builder: (context, state) => const PaymentCancelScreen(),
+      ),
+      GoRoute(
+        path: '/payment-success',
+        redirect: (context, state) => '/subscribe/payment-success',
+      ),
+      GoRoute(
+        path: '/payment-cancel',
+        redirect: (context, state) => '/subscribe/payment-cancel',
       ),
       // Leaderboards
       // Add exercise
