@@ -52,8 +52,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: isSuccess ? Colors.green : Colors.red,
+        content: Text(
+          message,
+          style: TextStyle(
+            color: isSuccess ? Colors.black : Colors.white,
+          ),
+        ),
+        backgroundColor: isSuccess ? Colors.white : Colors.red,
       ),
     );
   }
@@ -117,16 +122,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         }
 
         final uri = Uri.parse(managementURL);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri);
-        } else {
-          throw Exception("Could not launch URL: $managementURL");
-        }
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } on DioException catch (e) {
-      final errorMsg =
-          e.response?.data?['detail'] ?? 'Failed to open subscription portal.';
-      _showFeedbackSnackbar(errorMsg, isSuccess: false);
+      final data = e.response?.data;
+      final message = (data is Map && data['detail'] != null)
+          ? data['detail'].toString()
+          : 'Failed to open subscription portal.';
+      _showFeedbackSnackbar(message, isSuccess: false);
     } catch (e) {
       _showFeedbackSnackbar(e.toString().replaceFirst("Exception: ", ""),
           isSuccess: false);
@@ -503,39 +506,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              if (subscriptionTier == SubscriptionTier.free)
-                ListTile(
-                  leading:
-                      const Icon(Icons.workspace_premium, color: Colors.amber),
-                  title: const Text('Upgrade to Gold',
-                      style: TextStyle(color: Colors.amber)),
-                  subtitle: const Text('Unlock charts and support the app!'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => context.push(
-                    '/subscribe',
-                    extra: GoRouterState.of(context).uri.toString(),
-                  ),
-                )
-              else if (subscriptionTier != null)
-                ListTile(
-                  leading: const Icon(Icons.credit_card, color: Colors.green),
-                  title: const Text('Manage Subscription'),
-                  subtitle: Text(
-                      'You are a ${subscriptionTier.name.toUpperCase()} member.'),
-                  trailing: _isManagingSubscription
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: LoadingSpinner(size: 24))
-                      : const Icon(Icons.launch, size: 18),
-                  onTap: _manageSubscription,
+              ListTile(
+                key: const Key('settings_subscription_entry'),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                title: Text(
+                  subscriptionTier == null ||
+                          subscriptionTier == SubscriptionTier.free
+                      ? 'Subscribe to RepDuel Gold'
+                      : subscriptionTier.name.toUpperCase(),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
+                subtitle: Text(
+                  subscriptionTier == null ||
+                          subscriptionTier == SubscriptionTier.free
+                      ? r'$4.99/mo'
+                      : r'$4.99/mo · Active',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                trailing: _isManagingSubscription
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: LoadingSpinner(size: 24),
+                      )
+                    : null,
+                onTap: _isManagingSubscription
+                    ? null
+                    : () {
+                        if (subscriptionTier == null ||
+                            subscriptionTier == SubscriptionTier.free) {
+                          context.push(
+                            '/subscribe',
+                            extra: GoRouterState.of(context).uri.toString(),
+                          );
+                        } else {
+                          _manageSubscription();
+                        }
+                      },
+              ),
               const Divider(color: Colors.grey),
               ListTile(
                 title: const Text('Username'),
                 subtitle: Text(user.username),
-                trailing:
-                    const Icon(Icons.edit_off, color: Colors.grey, size: 18),
                 onTap: () => _showFeedbackSnackbar(
                     'Username cannot be changed.',
                     isSuccess: true),
@@ -549,14 +562,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ? user.displayName!
                       : 'Not set',
                 ),
-                trailing: const Icon(Icons.edit, size: 18),
                 onTap: _editDisplayName,
               ),
               const Divider(color: Colors.grey),
               ListTile(
                 title: const Text('Gender'),
                 subtitle: Text(user.gender ?? "Not specified"),
-                trailing: const Icon(Icons.edit, size: 18),
                 onTap: _editGender,
               ),
               const Divider(color: Colors.grey),
@@ -567,7 +578,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ? "${_toDisplayUnit(user, user.weight!).toStringAsFixed(1)} ${_unitLabel(user)}"
                       : "Not specified",
                 ),
-                trailing: const Icon(Icons.edit, size: 18),
                 onTap: _editWeight,
               ),
               const Divider(color: Colors.grey),
@@ -576,14 +586,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 subtitle: Text(user.preferredUnit == 'kg'
                     ? "Kilograms (kg)"
                     : "Pounds (lbs)"),
-                trailing: const Icon(Icons.edit, size: 18),
                 onTap: _editWeightUnit,
               ),
               const Divider(color: Colors.grey),
               ListTile(
                 title: const Text('Restore Purchases'),
                 subtitle: const Text('Re-sync your subscription status'),
-                trailing: const Icon(Icons.restore, size: 18),
                 onTap: _restorePurchases,
               ),
               // Insert this just before the "Log out" tile
@@ -601,7 +609,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         height: 24,
                         child: LoadingSpinner(size: 24),
                       )
-                    : const Icon(Icons.delete_forever, color: Colors.red),
+                    : null,
                 onTap: () async {
                   final confirmed = await _showConfirmationDialog(
                     title: 'Delete All Scores',
@@ -668,14 +676,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         height: 24,
                         child: LoadingSpinner(size: 24),
                       )
-                    : const Icon(Icons.person_off, color: Colors.red),
+                    : null,
                 onTap: _deleteAccount,
               ),
 
               const Divider(color: Colors.grey),
               ListTile(
                 title: const Text('Log out'),
-                trailing: const Icon(Icons.logout),
                 onTap: _logout,
               ),
             ],
