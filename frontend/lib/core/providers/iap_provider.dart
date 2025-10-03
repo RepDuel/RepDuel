@@ -22,6 +22,9 @@ final subscriptionProvider =
 
 final offeringsProvider = FutureProvider<Offerings>((ref) async {
   if (kIsWeb) return const Offerings(<String, Offering>{});
+  if (!(Platform.isIOS || Platform.isMacOS)) {
+    return const Offerings(<String, Offering>{});
+  }
   try {
     return await Purchases.getOfferings();
   } on PlatformException catch (e) {
