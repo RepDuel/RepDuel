@@ -14,6 +14,7 @@ import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/iap_provider.dart';
 import '../../../core/providers/score_events_provider.dart';
+import '../../../router/app_router.dart' show rootNavigatorKey;
 import '../../../widgets/loading_spinner.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -364,6 +365,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  void _navigateToLogin() {
+    final rootContext = rootNavigatorKey.currentContext;
+    if (rootContext != null) {
+      rootContext.go('/login');
+    } else if (mounted) {
+      context.go('/login');
+    }
+  }
+
   Future<void> _logout() async {
     final confirmed = await _showConfirmationDialog(
       title: 'Log out',
@@ -373,7 +383,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (confirmed == true) {
       await ref.read(authProvider.notifier).logout();
       if (!mounted) return;
-      context.go('/login');
+      _navigateToLogin();
     }
   }
 
@@ -396,9 +406,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _showFeedbackSnackbar('Account deleted.', isSuccess: true);
       }
       await ref.read(authProvider.notifier).logout();
-      if (mounted) {
-        context.go('/login');
-      }
+      if (!mounted) return;
+      _navigateToLogin();
     } on DioException catch (e) {
       final data = e.response?.data;
       final message = (data is Map<String, dynamic> && data['detail'] != null)
