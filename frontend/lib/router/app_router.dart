@@ -216,7 +216,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/subscribe',
         name: 'subscribe',
-        builder: (context, state) => const SubscriptionScreen(),
+        builder: (context, state) {
+          final extra = state.extra;
+          final fallbackLocation = extra is String ? extra : null;
+          return SubscriptionScreen(fallbackLocation: fallbackLocation);
+        },
       ),
       GoRoute(
         path: '/payment-success',

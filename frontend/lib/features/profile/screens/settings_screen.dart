@@ -511,7 +511,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       style: TextStyle(color: Colors.amber)),
                   subtitle: const Text('Unlock charts and support the app!'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => context.push('/subscribe'),
+                  onTap: () => context.push(
+                    '/subscribe',
+                    extra: GoRouterState.of(context).uri.toString(),
+                  ),
                 )
               else if (subscriptionTier != null)
                 ListTile(

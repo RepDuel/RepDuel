@@ -12,7 +12,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:repduel/widgets/loading_spinner.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
-  const SubscriptionScreen({super.key});
+  const SubscriptionScreen({super.key, this.fallbackLocation});
+
+  final String? fallbackLocation;
 
   @override
   ConsumerState<SubscriptionScreen> createState() => _SubscriptionScreenState();
@@ -20,6 +22,26 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _isPurchasing = false;
+
+  void _close([bool? result]) {
+    if (context.canPop()) {
+      context.pop(result);
+      return;
+    }
+
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    if (rootNavigator.canPop()) {
+      rootNavigator.pop(result);
+      return;
+    }
+
+    final fallback = widget.fallbackLocation;
+    if (fallback != null && fallback.isNotEmpty) {
+      context.go(fallback);
+    } else {
+      context.go('/routines');
+    }
+  }
 
   Future<void> _handlePurchase() async {
     if (_isPurchasing) return;
@@ -55,7 +77,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          context.pop(true);
+          _close(true);
         }
       }
     } on PlatformException catch (e) {
@@ -111,7 +133,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        context.pop(true);
+        _close(true);
       }
     } catch (e) {
       if (mounted) {
@@ -153,7 +175,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
+          onPressed: _close,
         ),
       ),
       body: SingleChildScrollView(

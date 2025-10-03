@@ -542,7 +542,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                                   "Upgrade to Gold to track your progress.",
                               onTap: () async {
                                 final purchaseSuccess =
-                                    await context.push<bool>('/subscribe');
+                                    await context.push<bool>(
+                                  '/subscribe',
+                                  extra: GoRouterState.of(context).uri.toString(),
+                                );
                                 if (purchaseSuccess == true && mounted) {
                                   await ref
                                       .read(authProvider.notifier)

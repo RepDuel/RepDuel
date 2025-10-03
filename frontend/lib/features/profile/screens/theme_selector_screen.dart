@@ -38,7 +38,10 @@ class ThemeSelectorScreen extends ConsumerWidget {
           return GestureDetector(
             onTap: () {
               if (isLocked) {
-                context.push('/subscribe');
+                context.push(
+                  '/subscribe',
+                  extra: GoRouterState.of(context).uri.toString(),
+                );
               } else if (!isSelected) {
                 ref.read(themeProvider.notifier).setTheme(theme.id);
               }

@@ -218,7 +218,10 @@ class RoutinesScreen extends ConsumerWidget {
       );
 
       if (shouldUpgrade == true && context.mounted) {
-        context.push('/subscribe');
+        context.push(
+          '/subscribe',
+          extra: GoRouterState.of(context).uri.toString(),
+        );
       }
     } else {
       final result = await context.pushNamed<bool>('createRoutine');
