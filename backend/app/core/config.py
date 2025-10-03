@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     APP_URL: str
     BASE_URL: str
     DATABASE_URL: PostgresDsn
+    STATIC_PUBLIC_BASE: AnyHttpUrl = Field(
+        default="http://127.0.0.1:8000/static",
+        validation_alias=AliasChoices("STATIC_PUBLIC_BASE", "static_public_base"),
+    )
 
     JWT_SECRET_KEY: str
     REFRESH_JWT_SECRET_KEY: Optional[str] = Field(
@@ -112,6 +116,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _normalize(self) -> "Settings":
         self.BASE_URL = self.BASE_URL.rstrip("/")
+        if self.STATIC_PUBLIC_BASE:
+            self.STATIC_PUBLIC_BASE = str(self.STATIC_PUBLIC_BASE).rstrip("/")
         if not self.REFRESH_JWT_SECRET_KEY:
             self.REFRESH_JWT_SECRET_KEY = self.JWT_SECRET_KEY
         if self.COOKIE_SAMESITE:

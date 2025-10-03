@@ -4,9 +4,17 @@ from datetime import datetime
 from typing import Optional, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, ValidationInfo, field_validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    FieldSerializationInfo,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+)
 
 from app.utils.datetime import ensure_aware_utc
+from app.utils.storage import build_public_url
 
 
 class UserBase(BaseModel):
@@ -43,6 +51,12 @@ class UserRead(UserBase):
     @field_validator("created_at", "updated_at", mode="after")
     def _validate_timestamps(cls, value: datetime, info: ValidationInfo) -> datetime:
         return ensure_aware_utc(value, field_name=info.field_name, allow_naive=True)
+
+    @field_serializer("avatar_url")
+    def _serialize_avatar_url(
+        self, value: str | None, info: FieldSerializationInfo
+    ) -> str | None:
+        return build_public_url(value)
 
 
 class UserUpdate(BaseModel):

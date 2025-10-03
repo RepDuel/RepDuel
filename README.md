@@ -117,6 +117,7 @@ docker run --name repduel-postgres -p 5432:5432 \
 cat <<'ENV' > backend/.env
 APP_URL=http://localhost:5000
 BASE_URL=http://127.0.0.1:8000
+STATIC_PUBLIC_BASE=http://127.0.0.1:8000/static
 DATABASE_URL=postgresql+asyncpg://repduel:repduel@localhost:5432/repduel
 JWT_SECRET_KEY=change-this-access-secret
 REFRESH_JWT_SECRET_KEY=change-this-refresh-secret
@@ -179,6 +180,7 @@ docker run --name repduel-postgres -p 5432:5432 \`
 @'
 APP_URL=http://localhost:5000
 BASE_URL=http://127.0.0.1:8000
+STATIC_PUBLIC_BASE=http://127.0.0.1:8000/static
 DATABASE_URL=postgresql+asyncpg://repduel:repduel@localhost:5432/repduel
 JWT_SECRET_KEY=change-this-access-secret
 REFRESH_JWT_SECRET_KEY=change-this-refresh-secret
@@ -261,11 +263,19 @@ JWT_SECRET_KEY=superlongrandomaccesssecret
 JWT_REFRESH_SECRET_KEY=superlongrandomrefreshsecret
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=30
+STATIC_PUBLIC_BASE=https://cdn.repduel.com
 
 REVENUECAT_WEBHOOK_AUTH_TOKEN=your_token
 STRIPE_SECRET_KEY=your_stripe_key
 STRIPE_WEBHOOK_SECRET=your_webhook_secret
 ```
+
+### Static assets & CDN policy
+
+* **Single origin for uploads** – all user generated files live behind the CDN URL defined by `STATIC_PUBLIC_BASE` (e.g. `https://cdn.repduel.com`).
+* **Database stores keys only** – the backend persists storage keys like `avatars/abc123.jpg`; responses automatically expand them to absolute URLs using `STATIC_PUBLIC_BASE`.
+* **Direct-to-storage ready** – clients can upload to S3/GCS (or MinIO in dev) using presigned URLs and only send the resulting object key back to the API.
+* **Local dev parity** – set `STATIC_PUBLIC_BASE=http://127.0.0.1:8000/static` to keep behaviour consistent without serving assets off random localhost ports.
 
 ---
 

@@ -233,7 +233,6 @@ async def get_user_uuid_by_username(username: str, db: AsyncSession = Depends(ge
 
 @router.patch("/me/avatar", response_model=schemas.UserRead)
 async def upload_avatar(
-    request: Request,
     file: UploadFile = File(..., alias="avatar"),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -250,8 +249,8 @@ async def upload_avatar(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    public_url = str(request.base_url) + f"static/avatars/{filename}"
-    current_user.avatar_url = public_url
+    storage_key = f"avatars/{filename}"
+    current_user.avatar_url = storage_key
 
     db.add(current_user)
     await db.commit()

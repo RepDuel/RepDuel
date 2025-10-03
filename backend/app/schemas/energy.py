@@ -4,9 +4,10 @@ from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, FieldSerializationInfo, field_serializer, field_validator
 
 from app.utils.datetime import ensure_aware_utc
+from app.utils.storage import build_public_url
 
 
 class DailyEnergyEntry(BaseModel):
@@ -45,3 +46,9 @@ class EnergyLeaderboardEntry(BaseModel):
     user_rank: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("avatar_url")
+    def _serialize_avatar_url(
+        self, value: Optional[str], info: FieldSerializationInfo
+    ) -> Optional[str]:
+        return build_public_url(value)
