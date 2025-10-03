@@ -8,6 +8,9 @@ class PaymentCancelScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -19,125 +22,134 @@ class PaymentCancelScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  children: [
-                    const SizedBox(height: 24),
-                    _buildTitle(),
-                    const SizedBox(height: 12),
-                    _buildDescription(),
-                    const SizedBox(height: 40),
-                    _buildBenefitsReminder(),
-                  ],
-                ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTitle(textTheme),
+                  const SizedBox(height: 24),
+                  _buildDescription(textTheme),
+                  const SizedBox(height: 32),
+                  _buildBenefitsReminder(textTheme),
+                  const SizedBox(height: 28),
+                  _buildPrimaryCta(context),
+                  const SizedBox(height: 12),
+                  _buildSecondaryCta(context),
+                  const SizedBox(height: 24),
+                ],
               ),
-              const SizedBox(height: 20), // Spacing before buttons
-              _buildActionButtons(context),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTitle() {
-    return const Text(
-      'Payment Canceled',
-      style: TextStyle(
-          color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
-      textAlign: TextAlign.center,
+  Widget _buildTitle(TextTheme textTheme) {
+    return Text(
+      'Payment canceled',
+      style: textTheme.headlineSmall?.copyWith(
+        color: Colors.white,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.2,
+      ),
     );
   }
 
-  Widget _buildDescription() {
-    return const Text(
-      'Your payment process was canceled. You have not been charged.',
-      style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
-      textAlign: TextAlign.center,
+  Widget _buildDescription(TextTheme textTheme) {
+    return Text(
+      "You weren't charged. You can try again anytime.",
+      style: textTheme.bodyMedium?.copyWith(
+        color: Colors.white70,
+        height: 1.5,
+      ),
     );
   }
 
-  Widget _buildBenefitsReminder() {
+  Widget _buildBenefitsReminder(TextTheme textTheme) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: const Color(0xFF111111),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withAlpha(77), width: 1),
+        border:
+            Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.star, color: Colors.amber, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Premium Benefits You\'re Missing:',
-                style: TextStyle(
-                    color: Colors.amber,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600),
-              ),
-            ],
+          Text(
+            'Premium perks',
+            style: textTheme.titleMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 16),
-          _buildBenefitItem('View historical progress charts'),
-          _buildBenefitItem('Support the development of RepDuel'),
+          const SizedBox(height: 20),
+          _buildBenefitItem(
+              textTheme, 'Track your score history with progress charts'),
+          const SizedBox(height: 12),
+          _buildBenefitItem(textTheme, 'Support future development'),
         ],
       ),
     );
   }
 
-  Widget _buildBenefitItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          const Icon(Icons.check, color: Colors.green, size: 16),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Text(text,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14))),
-        ],
+  Widget _buildBenefitItem(TextTheme textTheme, String text) {
+    return Text(
+      '• $text',
+      style: textTheme.bodyMedium?.copyWith(
+        color: Colors.white70,
+        height: 1.5,
       ),
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ElevatedButton(
-          onPressed: () => context.go('/subscribe'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.amber,
-            foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text('Try Again',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+  Widget _buildPrimaryCta(BuildContext context) {
+    return FilledButton(
+      onPressed: () => context.go('/subscribe'),
+      style: FilledButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        minimumSize: const Size.fromHeight(56),
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: () => context.go('/profile'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
-            side: const BorderSide(color: Colors.white24),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text('Not Now',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+      ),
+      child: const Text(
+        'Retry payment',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildSecondaryCta(BuildContext context) {
+    return OutlinedButton(
+      onPressed: () => context.go('/profile'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        side: const BorderSide(color: Colors.white24),
+        minimumSize: const Size.fromHeight(56),
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: const Text(
+        'Back to profile',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
