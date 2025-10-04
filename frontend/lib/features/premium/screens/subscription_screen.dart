@@ -222,7 +222,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final Package? iosPackage = offeringsAsync?.hasValue ?? false
         ? offeringsAsync!.value?.current?.availablePackages.firstOrNull
         : null;
-    final String iosPriceLabel = iosPackage?.storeProduct.priceString ?? '';
+    final String iosPriceLabel = iosPackage != null
+        ? _formatIOSPriceLabel(iosPackage.storeProduct)
+        : '';
 
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme.copyWith(
@@ -397,6 +399,23 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       ),
     );
   }
+
+  String _formatIOSPriceLabel(StoreProduct product) {
+    final rawLabel = product.priceString.trim();
+    if (rawLabel.isEmpty) {
+      return rawLabel;
+    }
+
+    final normalized = rawLabel.toLowerCase();
+    if (normalized.contains('/month') ||
+        normalized.contains('per month') ||
+        normalized.contains('monthly')) {
+      return rawLabel;
+    }
+
+    return '$rawLabel/month';
+  }
+
 }
 
 extension<T> on List<T> {
