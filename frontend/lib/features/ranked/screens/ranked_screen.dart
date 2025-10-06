@@ -68,7 +68,7 @@ final liftStandardsProvider =
 
   final unit = user.preferredUnit;
   final bodyweightKg = user.weight ?? 90.7; // stored in kg
-  final gender = (user.gender ?? 'male').toLowerCase();
+  final gender = user.genderForApi();
   final bodyweightForRequest =
       unit == 'lbs' ? _lbPerKg(bodyweightKg) : bodyweightKg;
 

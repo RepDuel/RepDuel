@@ -131,6 +131,30 @@ class User {
     return 'assets/images/default_nonbinary.png';
   }
 
+  /// Returns the gender value accepted by backend APIs.
+  /// Defaults to `male` for unrecognised or unspecified values so
+  /// selections like nonbinary or prefer-not-to-say do not break requests.
+  String genderForApi() {
+    final normalized = gender?.trim().toLowerCase();
+
+    if (normalized == null || normalized.isEmpty) {
+      return 'male';
+    }
+
+    if (normalized == 'female' ||
+        normalized == 'f' ||
+        normalized == 'woman' ||
+        normalized == 'women') {
+      return 'female';
+    }
+
+    if (normalized == 'male' || normalized == 'm' || normalized == 'man') {
+      return 'male';
+    }
+
+    return 'male';
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

@@ -235,7 +235,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
           final userWeight = user.weight ?? 0;
           if (userWeight > 0) {
-            final gender = (user.gender ?? 'male').toLowerCase();
+            final gender = user.genderForApi();
             try {
               final rankResponse = await client.get(
                 '/ranks/get_rank_progress',

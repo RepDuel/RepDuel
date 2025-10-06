@@ -120,7 +120,7 @@ final standardsPackProvider =
   final user = ref.watch(authProvider.select((s) => s.valueOrNull?.user));
   if (user == null) throw Exception("User not authenticated.");
   final bodyweightKg = user.weight ?? 90.7;
-  final gender = (user.gender ?? 'male').toLowerCase();
+  final gender = user.genderForApi();
   final client = ref.watch(publicHttpClientProvider);
   final response = await client.get('/standards/$bodyweightKg?gender=$gender');
   return (response.data as Map).cast<String, dynamic>();
