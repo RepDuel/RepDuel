@@ -23,7 +23,7 @@ final workoutHistoryProvider =
     }
 
     final url =
-        Uri.parse('${Env.baseUrl}/api/v1/routine_submission/user/$userId');
+        Uri.parse('${Env.backendUrl}/api/v1/routine_submission/user/$userId');
 
     try {
       final response = await http.get(

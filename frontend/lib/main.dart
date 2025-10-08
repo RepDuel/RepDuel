@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'core/config/env.dart';
@@ -16,19 +16,11 @@ Future<void> main() async {
 
   usePathUrlStrategy();
 
-  // Load .env file only in development mode or if it exists
-  if (kIsWeb) {
-    // For web, we try to load .env but don't fail if it doesn't exist
-    try {
-      await dotenv.load(fileName: ".env");
-    } catch (e) {
-      debugPrint(
-          "Note: .env file not found or failed to load. Using compile-time environment variables instead.");
-    }
-  } else {
-    // For mobile, load the .env file normally
-    await dotenv.load(fileName: ".env");
-  }
+  await dotenv.load(fileName: ".env").catchError((error) {
+    debugPrint(
+      'Note: .env file not found or failed to load. Using compile-time environment variables instead.',
+    );
+  });
 
   // Initialize Stripe
   if (!kIsWeb) {

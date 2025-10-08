@@ -1,77 +1,66 @@
-// frontend/lib/core/config/env.dart
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+String envVar(
+  String key, {
+  String defaultValue = '',
+}) {
+  final fromDefine = _dartDefineFor(key);
+  if (fromDefine.isNotEmpty) {
+    return fromDefine;
+  }
+
+  if (dotenv.isInitialized) {
+    final fromDotenv = dotenv.maybeGet(key);
+    if (fromDotenv != null && fromDotenv.isNotEmpty) {
+      return fromDotenv;
+    }
+  }
+
+  return defaultValue;
+}
+
+String _dartDefineFor(String key) {
+  switch (key) {
+    case 'BACKEND_URL':
+      return const String.fromEnvironment('BACKEND_URL');
+    case 'PUBLIC_BASE_URL':
+      return const String.fromEnvironment('PUBLIC_BASE_URL');
+    case 'MERCHANT_DISPLAY_NAME':
+      return const String.fromEnvironment('MERCHANT_DISPLAY_NAME');
+    case 'STRIPE_PUBLISHABLE_KEY':
+      return const String.fromEnvironment('STRIPE_PUBLISHABLE_KEY');
+    case 'STRIPE_PREMIUM_PLAN_ID':
+      return const String.fromEnvironment('STRIPE_PREMIUM_PLAN_ID');
+    case 'STRIPE_SUCCESS_URL':
+      return const String.fromEnvironment('STRIPE_SUCCESS_URL');
+    case 'STRIPE_CANCEL_URL':
+      return const String.fromEnvironment('STRIPE_CANCEL_URL');
+    case 'REVENUE_CAT_APPLE_KEY':
+      return const String.fromEnvironment('REVENUE_CAT_APPLE_KEY');
+  }
+
+  return '';
+}
 
 class Env {
   Env._();
 
-  static String get baseUrl {
-    const fromEnv = String.fromEnvironment('BACKEND_URL');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    return dotenv.env['BACKEND_URL'] ?? 'http://localhost:8000';
-  }
+  static final backendUrl =
+      envVar('BACKEND_URL', defaultValue: 'http://127.0.0.1:8000');
 
-  static String get revenueCatAppleKey {
-    const fromEnv = String.fromEnvironment('REVENUE_CAT_APPLE_KEY');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    return dotenv.env['REVENUE_CAT_APPLE_KEY'] ?? '';
-  }
+  static final publicBaseUrl =
+      envVar('PUBLIC_BASE_URL', defaultValue: 'http://localhost:5000');
 
-  static String get stripePublishableKey {
-    const fromEnv = String.fromEnvironment('STRIPE_PUBLISHABLE_KEY');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    return dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
-  }
+  static final merchantDisplayName =
+      envVar('MERCHANT_DISPLAY_NAME', defaultValue: 'RepDuel');
 
-  static String get merchantDisplayName {
-    const fromEnv = String.fromEnvironment('MERCHANT_DISPLAY_NAME');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    return dotenv.env['MERCHANT_DISPLAY_NAME'] ?? 'RepDuel';
-  }
+  static final stripePublishableKey = envVar('STRIPE_PUBLISHABLE_KEY');
 
-  // Public base URL for shareable links and deep links
-  // Example: https://repduel.com
-  static String get publicBaseUrl {
-    const fromEnv = String.fromEnvironment('PUBLIC_BASE_URL');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    final fromDot = dotenv.env['PUBLIC_BASE_URL'];
-    if (fromDot != null && fromDot.isNotEmpty) {
-      return fromDot;
-    }
-    return 'https://repduel.com';
-  }
+  static final stripePremiumPlanId = envVar('STRIPE_PREMIUM_PLAN_ID');
 
-  static String get stripePremiumPlanId {
-    const fromEnv = String.fromEnvironment('STRIPE_PREMIUM_PLAN_ID');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    return dotenv.env['STRIPE_PREMIUM_PLAN_ID'] ?? '';
-  }
+  static final stripeSuccessUrl = envVar('STRIPE_SUCCESS_URL');
 
-  static String get stripeSuccessUrl {
-    const fromEnv = String.fromEnvironment('STRIPE_SUCCESS_URL');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    return dotenv.env['STRIPE_SUCCESS_URL'] ?? '';
-  }
+  static final stripeCancelUrl = envVar('STRIPE_CANCEL_URL');
 
-  static String get stripeCancelUrl {
-    const fromEnv = String.fromEnvironment('STRIPE_CANCEL_URL');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    return dotenv.env['STRIPE_CANCEL_URL'] ?? '';
-  }
+  static final revenueCatAppleKey = envVar('REVENUE_CAT_APPLE_KEY');
 }

@@ -36,7 +36,7 @@ class StripeService {
 
       final response = await http
           .post(
-            Uri.parse('${Env.baseUrl}/api/v1/payments/create-checkout-session'),
+            Uri.parse('${Env.backendUrl}/api/v1/payments/create-checkout-session'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',

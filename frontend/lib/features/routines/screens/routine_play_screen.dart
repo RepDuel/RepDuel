@@ -45,7 +45,7 @@ class _RoutinePlayScreenState extends ConsumerState<RoutinePlayScreen> {
   Future<void> fetchScenarioNames() async {
     try {
       final response =
-          await http.get(Uri.parse('${Env.baseUrl}/api/v1/scenarios/'));
+          await http.get(Uri.parse('${Env.backendUrl}/api/v1/scenarios/'));
       if (response.statusCode == 200) {
         final List scenarios = jsonDecode(response.body);
         if (!mounted) return;

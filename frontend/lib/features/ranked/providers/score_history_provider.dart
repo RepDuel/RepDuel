@@ -27,7 +27,7 @@ final scoreHistoryProvider =
 
     // Construct the URL using user ID.
     final url =
-        '${Env.baseUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
+        '${Env.backendUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
 
     debugPrint(
         'Fetching score history for user: ${user.id}, scenario: $scenarioId');

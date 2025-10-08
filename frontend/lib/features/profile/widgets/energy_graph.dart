@@ -27,7 +27,7 @@ class DailyEnergyEntry {
 final energyGraphProvider =
     FutureProvider.family<List<DailyEnergyEntry>, String>((ref, userId) async {
   final res = await http.get(
-    Uri.parse('${Env.baseUrl}/api/v1/energy/daily/$userId'),
+    Uri.parse('${Env.backendUrl}/api/v1/energy/daily/$userId'),
     headers: {'Content-Type': 'application/json'},
   );
 

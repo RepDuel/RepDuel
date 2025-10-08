@@ -18,7 +18,7 @@ import '../utils/http_client.dart';
 
 final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
   return BaseOptions(
-    baseUrl: '${Env.baseUrl}/api/v1',
+    baseUrl: '${Env.backendUrl}/api/v1',
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 15),
     sendTimeout: const Duration(seconds: 15),
