@@ -1,6 +1,7 @@
 # backend/app/main.py
 
 import os
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,22 +11,51 @@ from app.core.config import settings
 
 from app.api.v1.api_router import api_router
 
-app = FastAPI(
+_fastapi_kwargs = dict(
     title="RepDuel API",
     version="1.0.0",
     description="Backend for the RepDuel app",
 )
 
-try:
-    _origins = [str(u).rstrip('/') for u in (settings.FRONTEND_ORIGINS or [])]
-except Exception:
-    _origins = []
+_base_url = getattr(settings, "BASE_URL", "").strip()
+if _base_url:
+    _fastapi_kwargs["servers"] = [{"url": _base_url.rstrip("/")}]
 
-if getattr(settings, "APP_URL", None):
-    _origins.append(str(settings.APP_URL).rstrip('/'))
+app = FastAPI(**_fastapi_kwargs)
+
+def _origin(url: str | None) -> str | None:
+    if not url:
+        return None
+    try:
+        parsed = urlparse(str(url).strip())
+    except ValueError:
+        return None
+    if not parsed.scheme or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+
+
+_origins: list[str] = []
+
+for candidate in getattr(settings, "FRONTEND_ORIGINS", []) or []:
+    origin = _origin(str(candidate))
+    if origin:
+        _origins.append(origin)
+
+for candidate in (
+    _origin(getattr(settings, "APP_URL", None)),
+    _origin(getattr(settings, "STATIC_PUBLIC_BASE", None)),
+):
+    if candidate:
+        _origins.append(candidate)
+
+_origins.extend([
+    "https://repduel.com",
+    "https://www.repduel.com",
+])
 
 # Dedupe while preserving order
-ALLOWED_ORIGINS = list(dict.fromkeys(_origins))
+ALLOWED_ORIGINS = [origin for origin in dict.fromkeys(_origins) if origin]
 
 # Keep localhost regex for dev convenience
 ALLOWED_ORIGIN_REGEX = r"^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$"

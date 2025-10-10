@@ -132,8 +132,8 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
       });
 
       final client = ref.read(privateHttpClientProvider);
-      final response = await client.dio.post(
-        '/routines/images',
+      final response = await client.post(
+        'routines/images',
         data: formData,
         options: Options(
           headers: {'Content-Type': 'multipart/form-data'},
@@ -216,9 +216,9 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
       final client = ref.read(privateHttpClientProvider);
 
       if (widget.mode == RoutineEditorMode.edit && widget.initial != null) {
-        await client.dio.put('/routines/${widget.initial!.id}', data: payload);
+        await client.put('routines/${widget.initial!.id}', data: payload);
       } else {
-        await client.dio.post('/routines/', data: payload);
+        await client.post('routines', data: payload);
       }
 
       if (!mounted) return;

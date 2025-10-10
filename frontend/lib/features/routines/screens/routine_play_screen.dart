@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
 import 'package:repduel/widgets/loading_spinner.dart';
 
-import '../../../core/config/env.dart';
+import '../../../core/api/api_urls.dart';
 import '../../../core/models/routine.dart';
 import '../../../core/providers/navigation_provider.dart';
 
@@ -44,8 +44,7 @@ class _RoutinePlayScreenState extends ConsumerState<RoutinePlayScreen> {
 
   Future<void> fetchScenarioNames() async {
     try {
-      final response =
-          await http.get(Uri.parse('${Env.backendUrl}/api/v1/scenarios/'));
+      final response = await http.get(apiUri('/scenarios/'));
       if (response.statusCode == 200) {
         final List scenarios = jsonDecode(response.body);
         if (!mounted) return;

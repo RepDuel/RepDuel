@@ -9,20 +9,49 @@ class HttpClient {
 
   Dio get dio => _dio;
 
+  String _resolvePath(String path) {
+    if (path.isEmpty) {
+      return path;
+    }
+
+    final trimmed = path.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+
+    if (trimmed.startsWith('/')) {
+      return trimmed.replaceFirst(RegExp(r'^/+'), '');
+    }
+
+    return trimmed;
+  }
+
   Future<Response> get(
     String path, {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) {
     return _dio.get(
-      path,
+      _resolvePath(path),
       queryParameters: queryParameters,
       options: options,
     );
   }
 
   Future<Response> post(String path, {Object? data, Options? options}) {
-    return _dio.post(path, data: data, options: options);
+    return _dio.post(
+      _resolvePath(path),
+      data: data,
+      options: options,
+    );
+  }
+
+  Future<Response> put(String path, {Object? data, Options? options}) {
+    return _dio.put(
+      _resolvePath(path),
+      data: data,
+      options: options,
+    );
   }
 
   Future<Response> patch(
@@ -32,7 +61,7 @@ class HttpClient {
     Options? options,
   }) {
     return _dio.patch(
-      path,
+      _resolvePath(path),
       data: data,
       queryParameters: queryParameters,
       options: options,
@@ -45,7 +74,7 @@ class HttpClient {
     Options? options,
   }) {
     return _dio.delete(
-      path,
+      _resolvePath(path),
       queryParameters: queryParameters,
       options: options,
     );

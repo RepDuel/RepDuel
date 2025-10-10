@@ -4,11 +4,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../api/api_urls.dart';
 import '../api/auth_api_service.dart';
 import '../api/energy_api_service.dart';
 import '../api/guild_api_service.dart';
 import '../api/level_api_service.dart';
-import '../config/env.dart';
 import '../http/adapter.dart';
 import '../http/logging_interceptor.dart';
 import '../models/guild.dart';
@@ -18,7 +18,7 @@ import '../utils/http_client.dart';
 
 final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
   return BaseOptions(
-    baseUrl: '${Env.backendUrl}/api/v1',
+    baseUrl: apiBaseUrl(),
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 15),
     sendTimeout: const Duration(seconds: 15),

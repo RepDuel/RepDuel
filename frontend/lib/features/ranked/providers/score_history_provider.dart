@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
-import '../../../core/config/env.dart';
+import '../../../core/api/api_urls.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../models/score_history_entry.dart';
 
@@ -26,8 +26,7 @@ final scoreHistoryProvider =
     }
 
     // Construct the URL using user ID.
-    final url =
-        '${Env.backendUrl}/api/v1/scores/user/${user.id}/scenario/$scenarioId';
+    final url = apiUrl('/scores/user/${user.id}/scenario/$scenarioId');
 
     debugPrint(
         'Fetching score history for user: ${user.id}, scenario: $scenarioId');
@@ -37,7 +36,7 @@ final scoreHistoryProvider =
 
     try {
       final response = await http.get(
-        Uri.parse(url),
+        apiUri('/scores/user/${user.id}/scenario/$scenarioId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token', // Use the safely retrieved token

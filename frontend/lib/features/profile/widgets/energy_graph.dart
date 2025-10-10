@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:repduel/widgets/loading_spinner.dart';
 
-import '../../../core/config/env.dart';
+import '../../../core/api/api_urls.dart';
 
 class DailyEnergyEntry {
   final String date;
@@ -27,7 +27,7 @@ class DailyEnergyEntry {
 final energyGraphProvider =
     FutureProvider.family<List<DailyEnergyEntry>, String>((ref, userId) async {
   final res = await http.get(
-    Uri.parse('${Env.backendUrl}/api/v1/energy/daily/$userId'),
+    apiUri('/energy/daily/$userId'),
     headers: {'Content-Type': 'application/json'},
   );
 

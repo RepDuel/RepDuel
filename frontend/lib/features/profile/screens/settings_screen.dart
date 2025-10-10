@@ -106,7 +106,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (kIsWeb) {
         final client = ref.read(privateHttpClientProvider);
         final response =
-            await client.dio.post('/payments/create-portal-session');
+            await client.post('payments/create-portal-session');
         final portalUrlString = response.data['portal_url'] as String?;
         if (portalUrlString == null || portalUrlString.isEmpty) {
           throw Exception("Could not retrieve subscription portal URL.");

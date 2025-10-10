@@ -148,6 +148,12 @@ STRIPE_PUBLISHABLE_KEY=pk_test_replace_me
 STRIPE_SUCCESS_URL=http://localhost:5000/payment-success
 ENV
 
+# Production: BACKEND_URL should point at https://api.repduel.com so the app talks to the
+# dedicated API subdomain. Make sure the backend uses COOKIE_DOMAIN=.repduel.com,
+# COOKIE_SAMESITE=None, and COOKIE_SECURE=true when deploying cross-origin. Set
+# FRONTEND_ORIGINS to every web origin that will load the app (e.g. Render static hosting,
+# marketing preview domains) so CORS stays aligned with your deploy target.
+
 # 6) Sync Flutter deps
 pushd frontend >/dev/null
 flutter pub get
@@ -211,6 +217,10 @@ STRIPE_PUBLISHABLE_KEY=pk_test_replace_me
 STRIPE_SUCCESS_URL=http://localhost:5000/payment-success
 '@ | Set-Content -Encoding UTF8 frontend\.env
 
+# Production: BACKEND_URL should point at https://api.repduel.com and the backend cookies
+# must be configured for cross-site usage (COOKIE_DOMAIN=.repduel.com, COOKIE_SAMESITE=None,
+# COOKIE_SECURE=true).
+
 # 6) Sync Flutter deps
 Push-Location frontend
 flutter pub get
@@ -264,6 +274,10 @@ JWT_REFRESH_SECRET_KEY=superlongrandomrefreshsecret
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=30
 STATIC_PUBLIC_BASE=https://cdn.repduel.com
+
+COOKIE_DOMAIN=.repduel.com
+COOKIE_SAMESITE=None
+COOKIE_SECURE=true
 
 REVENUECAT_WEBHOOK_AUTH_TOKEN=your_token
 STRIPE_SECRET_KEY=your_stripe_key

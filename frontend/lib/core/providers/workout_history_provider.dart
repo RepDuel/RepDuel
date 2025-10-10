@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/env.dart';
+import '../api/api_urls.dart';
 import '../models/routine_submission_read.dart';
 import '../providers/auth_provider.dart';
 
@@ -22,8 +22,7 @@ final workoutHistoryProvider =
       throw Exception("Authentication token not available. Please log in.");
     }
 
-    final url =
-        Uri.parse('${Env.backendUrl}/api/v1/routine_submission/user/$userId');
+    final url = apiUri('/routine_submission/user/$userId');
 
     try {
       final response = await http.get(

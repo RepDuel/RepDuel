@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:repduel/core/api/api_urls.dart';
 import 'package:repduel/core/config/env.dart';
 import 'package:repduel/core/providers/auth_provider.dart';
 
@@ -36,7 +37,7 @@ class StripeService {
 
       final response = await http
           .post(
-            Uri.parse('${Env.backendUrl}/api/v1/payments/create-checkout-session'),
+            apiUri('/payments/create-checkout-session'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',

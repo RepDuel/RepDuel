@@ -72,7 +72,7 @@ class AuthApiService {
     required Map<String, dynamic> updates,
   }) async {
     final response = await _privateClient.patch(
-      '/users/me',
+      'users/me',
       data: updates,
     );
 
@@ -96,8 +96,8 @@ class AuthApiService {
       ),
     });
 
-    final response = await _privateClient.dio.patch(
-      '/users/me/avatar',
+    final response = await _privateClient.patch(
+      'users/me/avatar',
       data: formData,
       options: Options(
         headers: {'Content-Type': 'multipart/form-data'},

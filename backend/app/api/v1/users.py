@@ -34,6 +34,19 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+def _cookie_options() -> tuple[str | None, str, bool]:
+    domain = getattr(settings, "COOKIE_DOMAIN", None)
+    same_site_raw = getattr(settings, "COOKIE_SAMESITE", "none") or "none"
+    same_site_value = same_site_raw.strip().lower()
+    same_site = same_site_value if same_site_value in {"lax", "strict", "none"} else "none"
+    secure = bool(getattr(settings, "COOKIE_SECURE", True))
+    return (
+        domain.strip() if isinstance(domain, str) and domain.strip() else None,
+        same_site,
+        secure,
+    )
+
+
 @router.post("/", response_model=schemas.UserRead, status_code=status.HTTP_201_CREATED)
 async def register_user(user_in: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
     existing_user = await get_user_by_email(db, user_in.email)
@@ -76,13 +89,16 @@ async def login_user(
     access_token = create_access_token({"sub": str(user.id)})
     refresh_token = create_refresh_token({"sub": str(user.id)})
 
+    domain, same_site, secure = _cookie_options()
+
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=getattr(settings, "COOKIE_SECURE", True),
-        samesite=getattr(settings, "COOKIE_SAMESITE", "None"),
+        secure=secure,
+        samesite=same_site,
         path="/api/v1/users/refresh",
+        domain=domain,
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -139,13 +155,16 @@ async def refresh_token_endpoint(
     new_access = create_access_token({"sub": str(user.id)})
     new_refresh = create_refresh_token({"sub": str(user.id)})
 
+    domain, same_site, secure = _cookie_options()
+
     response.set_cookie(
         key="refresh_token",
         value=new_refresh,
         httponly=True,
-        secure=getattr(settings, "COOKIE_SECURE", True),
-        samesite=getattr(settings, "COOKIE_SAMESITE", "None"),
+        secure=secure,
+        samesite=same_site,
         path="/api/v1/users/refresh",
+        domain=domain,
     )
 
     return {"access_token": new_access, "token_type": "bearer"}

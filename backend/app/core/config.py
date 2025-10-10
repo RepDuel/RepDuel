@@ -78,6 +78,13 @@ class Settings(BaseSettings):
             "cookie_secure",
         ),
     )
+    COOKIE_DOMAIN: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "COOKIE_DOMAIN",
+            "cookie_domain",
+        ),
+    )
 
     XP_MAX_LEVEL: int = Field(
         default=100,
@@ -129,6 +136,8 @@ class Settings(BaseSettings):
             self.XP_MAX_LEVEL = 1
         if self.XP_CURVE_BASE < 1:
             self.XP_CURVE_BASE = 1
+        if self.COOKIE_DOMAIN:
+            self.COOKIE_DOMAIN = self.COOKIE_DOMAIN.strip()
         return self
 
 
