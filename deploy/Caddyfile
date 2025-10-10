@@ -25,11 +25,11 @@ www.repduel.com, repduel.com {
   header {
     Content-Security-Policy "
       default-src 'self';
-      script-src 'self' https://js.stripe.com https://m.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:;
-      style-src  'self' 'unsafe-inline' https://js.stripe.com https://m.stripe.com https://m.stripe.network blob:;
+      script-src 'self' https://js.stripe.com https://m.stripe.com https://m.stripe.network https://www.gstatic.com 'unsafe-inline' 'unsafe-eval' blob:;
+      style-src  'self' 'unsafe-inline' https://js.stripe.com https://m.stripe.com https://m.stripe.network https://fonts.googleapis.com blob:;
       img-src    'self' https: data: blob:;
-      font-src   'self' data:;
-      connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://r.stripe.com https://api.revenuecat.com https://cdn.revenuecat.com;
+      font-src   'self' data: https://fonts.gstatic.com;
+      connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://r.stripe.com https://api.revenuecat.com https://cdn.revenuecat.com https://www.gstatic.com https://fonts.gstatic.com;
       frame-src  https://js.stripe.com https://m.stripe.com https://m.stripe.network;
       frame-ancestors 'none';
       form-action 'self' https://checkout.stripe.com;
