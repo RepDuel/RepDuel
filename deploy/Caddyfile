@@ -1,0 +1,42 @@
+# Caddy configuration for serving the Flutter Web frontend.
+#
+# This config ensures that deep links resolve to index.html, applies the
+# required CSP directives for Stripe and RevenueCat, and adds standard
+# security headers.
+#
+# Place this file on the host and reference it when starting Caddy, e.g.:
+#   caddy run --config /etc/caddy/Caddyfile
+# Update the `root` directive if your deploy path differs from /var/www/repduel.
+
+www.repduel.com, repduel.com {
+  encode zstd gzip
+  root * /var/www/repduel
+
+  @static path /assets/* /flutter.js* /favicon.ico /icons/* /manifest.json /robots.txt /sitemap.xml
+  handle @static {
+    file_server
+  }
+
+  handle {
+    try_files {path} /index.html
+    file_server
+  }
+
+  header {
+    Content-Security-Policy "
+      default-src 'self';
+      script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:;
+      style-src  'self' 'unsafe-inline' https://js.stripe.com;
+      img-src    'self' https: data: blob:;
+      font-src   'self' data:;
+      connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://r.stripe.com https://api.revenuecat.com https://cdn.revenuecat.com;
+      frame-src  https://js.stripe.com;
+      frame-ancestors 'none';
+      form-action 'self' https://checkout.stripe.com;
+      worker-src 'self' blob:;
+    "
+    Referrer-Policy "no-referrer"
+    X-Content-Type-Options "nosniff"
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  }
+}

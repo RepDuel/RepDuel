@@ -159,6 +159,18 @@ pushd frontend >/dev/null
 flutter pub get
 popd >/dev/null
 
+### 🌐 Production deployment checklist
+
+When deploying to Hetzner (or any new host) make sure the infrastructure pieces below are in place so authentication keeps working:
+
+1. **SPA routing fallback** – static hosts must rewrite unknown paths such as `/login` to `/index.html`. The provided `deploy/Caddyfile` already does this via `try_files`.
+2. **Content-Security-Policy** – allow Stripe and RevenueCat domains in `script-src`, `style-src`, `connect-src`, and `frame-src`. The sample Caddyfile contains a hardened baseline you can extend if new integrations are added.
+3. **CORS + cookies** – set `FRONTEND_ORIGINS` (backend) to include `https://www.repduel.com`, enable credentials, and send cookies with `Domain=.repduel.com; Secure; SameSite=None; Path=/` so browsers attach them cross-origin.
+4. **Stable auth secrets** – keep `JWT_SECRET_KEY` and `REFRESH_JWT_SECRET_KEY` consistent across redeploys to avoid invalidating all sessions.
+5. **Service worker cache busting** – when CSP or assets change, unregister the old service worker in DevTools (Application → Service Workers) and trigger a hard refresh so the new policy takes effect.
+
+The `deploy/Caddyfile` can be copied to `/etc/caddy/Caddyfile` on the host (adjusting the `root` path if necessary) and run with `caddy run --config /etc/caddy/Caddyfile`.
+
 echo "Backend → source backend/.venv/bin/activate && cd backend && uvicorn app.main:app --reload"
 echo "Frontend → cd frontend && flutter run -d chrome --web-port=5000"
 ```
