@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 String envVar(
@@ -42,11 +43,31 @@ String _dartDefineFor(String key) {
   return '';
 }
 
+String _defaultBackendUrl() {
+  if (kIsWeb) {
+    final host = Uri.base.host.toLowerCase();
+    final isLocalHost = host == 'localhost' || host == '127.0.0.1';
+    if (!isLocalHost) {
+      return 'https://api.repduel.com';
+    }
+  }
+
+  return 'http://127.0.0.1:8000';
+}
+
+String _resolveBackendUrl() {
+  final value = envVar('BACKEND_URL');
+  if (value.isNotEmpty) {
+    return value;
+  }
+
+  return _defaultBackendUrl();
+}
+
 class Env {
   Env._();
 
-  static final backendUrl =
-      envVar('BACKEND_URL', defaultValue: 'http://127.0.0.1:8000');
+  static final backendUrl = _resolveBackendUrl();
 
   static final publicBaseUrl =
       envVar('PUBLIC_BASE_URL', defaultValue: 'http://localhost:5000');
