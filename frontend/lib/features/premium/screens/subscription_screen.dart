@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:repduel/core/config/env.dart';
 import 'package:repduel/core/providers/iap_provider.dart';
 import 'package:repduel/core/providers/stripe_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -77,6 +78,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   Future<void> _handlePurchase() async {
     if (_isProcessing) return;
+
+    if (!Env.paymentsEnabled && widget.onSubscribe == null) {
+      _showErrorSnackbar('Subscriptions are temporarily unavailable.');
+      return;
+    }
+
     setState(() => _isProcessing = true);
 
     bool shouldShowSuccess = true;
@@ -192,6 +199,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   String _ctaLabel(String iosPriceLabel) {
     if (_isProcessing) {
       return 'Processing…';
+    }
+    if (!Env.paymentsEnabled && widget.onSubscribe == null) {
+      return 'Unavailable right now';
     }
     if (kIsWeb) {
       return r'Upgrade — $4.99/month';

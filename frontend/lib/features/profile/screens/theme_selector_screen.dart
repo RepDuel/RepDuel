@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/env.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/themes/app_themes.dart';
@@ -38,6 +39,16 @@ class ThemeSelectorScreen extends ConsumerWidget {
           return GestureDetector(
             onTap: () {
               if (isLocked) {
+                if (!Env.paymentsEnabled) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Premium themes are unavailable right now.'),
+                    ),
+                  );
+                  return;
+                }
+
                 context.push(
                   '/subscribe',
                   extra: GoRouterState.of(context).uri.toString(),

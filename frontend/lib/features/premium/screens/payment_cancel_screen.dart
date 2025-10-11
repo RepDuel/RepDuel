@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:repduel/core/config/env.dart';
 
 class PaymentCancelScreen extends StatelessWidget {
   const PaymentCancelScreen({super.key});
@@ -116,8 +117,10 @@ class PaymentCancelScreen extends StatelessWidget {
   }
 
   Widget _buildPrimaryCta(BuildContext context) {
+    final isEnabled = Env.paymentsEnabled;
+
     return FilledButton(
-      onPressed: () => context.go('/subscribe'),
+      onPressed: isEnabled ? () => context.go('/subscribe') : null,
       style: FilledButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -127,9 +130,9 @@ class PaymentCancelScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      child: const Text(
-        'Retry payment',
-        style: TextStyle(
+      child: Text(
+        isEnabled ? 'Retry payment' : 'Payments unavailable',
+        style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),

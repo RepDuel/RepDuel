@@ -1,0 +1,138 @@
+name: Deploy Web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- Backend tests ---
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+
+      - name: Run backend tests (incl. Stripe webhook tests)
+        working-directory: backend
+        env:
+          APP_URL: http://testserver
+          BASE_URL: http://testserver
+          DATABASE_URL: postgresql+asyncpg://user:pass@localhost/db
+          JWT_SECRET_KEY: test_secret
+          REVENUECAT_WEBHOOK_AUTH_TOKEN: token
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
+        run: pytest -q
+
+      # --- Flutter build ---
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.22.0"
+          channel: "stable"
+
+      - name: Cache Flutter packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            frontend/.dart_tool
+          key: ${{ runner.os }}-flutter-${{ hashFiles('frontend/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+
+      - name: Get Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Build Flutter Web (release)
+        working-directory: frontend
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}
+          MERCHANT_DISPLAY_NAME: ${{ secrets.MERCHANT_DISPLAY_NAME }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_PREMIUM_PLAN_ID: ${{ secrets.STRIPE_PREMIUM_PLAN_ID }}
+          STRIPE_SUCCESS_URL: ${{ secrets.STRIPE_SUCCESS_URL }}
+          STRIPE_CANCEL_URL: ${{ secrets.STRIPE_CANCEL_URL }}
+          REVENUE_CAT_APPLE_KEY: ${{ secrets.REVENUE_CAT_APPLE_KEY }}
+          PAYMENTS_ENABLED: ${{ secrets.PAYMENTS_ENABLED || 'false' }}
+        run: |
+          set -eo pipefail
+          flutter build web --release \
+            --dart-define=BACKEND_URL=$BACKEND_URL \
+            --dart-define=PUBLIC_BASE_URL=$PUBLIC_BASE_URL \
+            --dart-define=MERCHANT_DISPLAY_NAME="$MERCHANT_DISPLAY_NAME" \
+            --dart-define=STRIPE_PUBLISHABLE_KEY=$STRIPE_PUBLISHABLE_KEY \
+            --dart-define=STRIPE_PREMIUM_PLAN_ID=$STRIPE_PREMIUM_PLAN_ID \
+            --dart-define=STRIPE_SUCCESS_URL=$STRIPE_SUCCESS_URL \
+            --dart-define=STRIPE_CANCEL_URL=$STRIPE_CANCEL_URL \
+            --dart-define=REVENUE_CAT_APPLE_KEY=$REVENUE_CAT_APPLE_KEY \
+            --dart-define=PAYMENTS_ENABLED=$PAYMENTS_ENABLED
+
+      # --- Stage bundle ---
+      - name: Stage static bundle
+        run: |
+          set -eo pipefail
+          rm -rf deploy/public
+          mkdir -p deploy/public
+          rsync -a frontend/build/web/ deploy/public/
+
+      # --- Sanity checks (hard fail on regression) ---
+      - name: Verify bundle
+        run: |
+          set -eo pipefail
+          test -f deploy/public/index.html
+          ! grep -R "127.0.0.1:8000" -n deploy/public || (echo "Found localhost leak" && exit 1)
+          ! grep -R "http://localhost" -n deploy/public || (echo "Found localhost leak" && exit 1)
+          python - <<'PY'
+from pathlib import Path
+import re
+base = Path("deploy/public")
+service_worker = base / "flutter_service_worker.js"
+if not service_worker.exists():
+    raise SystemExit("flutter_service_worker.js missing")
+text = service_worker.read_text()
+match = re.search(r'"main\\.dart\\.js"\s*:\s*"([0-9a-f]{8,})"', text)
+if not match:
+    raise SystemExit("main.dart.js hash missing in service worker")
+if not (base / "main.dart.js").exists():
+    raise SystemExit("main.dart.js missing")
+PY
+
+      # --- Deploy to Render ---
+      - name: Trigger Render Deploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
+
+      # --- Smoke probe (post-deploy) ---
+      - name: Smoke check
+        env:
+          PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}
+        run: |
+          set -eo pipefail
+          for i in {1..30}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$PUBLIC_BASE_URL/login" || true)
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Smoke check failed"
+          exit 1

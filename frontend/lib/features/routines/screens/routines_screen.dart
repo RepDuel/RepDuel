@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/config/env.dart';
 import '../../../core/models/routine.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -198,6 +199,17 @@ class RoutinesScreen extends ConsumerWidget {
     final hasReachedLimit =
         routines.where((r) => r.userId == user.id).length >= 3;
     if (isFree && hasReachedLimit) {
+      if (!Env.paymentsEnabled) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Subscriptions are temporarily unavailable.'),
+            ),
+          );
+        }
+        return;
+      }
+
       final shouldUpgrade = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(

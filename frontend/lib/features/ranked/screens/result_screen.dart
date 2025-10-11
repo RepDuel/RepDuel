@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:screenshot/screenshot.dart';
 
+import '../../../core/config/env.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/iap_provider.dart';
@@ -535,6 +536,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                             return ScoreHistoryChart(
                               scenarioId: widget.scenarioId,
                               weightMultiplier: multForScenario,
+                            );
+                          } else if (!Env.paymentsEnabled) {
+                            return const PaywallLock(
+                              message:
+                                  'Premium charts are temporarily unavailable.',
+                              onTap: null,
                             );
                           } else {
                             return PaywallLock(

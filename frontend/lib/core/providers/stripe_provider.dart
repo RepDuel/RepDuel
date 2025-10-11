@@ -23,6 +23,11 @@ class StripeService {
   Future<void> subscribeToPlan({
     required Function(String) onDisplayError,
   }) async {
+    if (!Env.paymentsEnabled) {
+      onDisplayError('Subscriptions are temporarily unavailable.');
+      return;
+    }
+
     try {
       final token = _ref.read(authProvider).valueOrNull?.token;
       if (token == null) {

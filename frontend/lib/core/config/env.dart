@@ -38,6 +38,8 @@ String _dartDefineFor(String key) {
       return const String.fromEnvironment('STRIPE_CANCEL_URL');
     case 'REVENUE_CAT_APPLE_KEY':
       return const String.fromEnvironment('REVENUE_CAT_APPLE_KEY');
+    case 'PAYMENTS_ENABLED':
+      return const String.fromEnvironment('PAYMENTS_ENABLED');
   }
 
   return '';
@@ -45,14 +47,36 @@ String _dartDefineFor(String key) {
 
 String _defaultBackendUrl() {
   if (kIsWeb) {
-    final host = Uri.base.host.toLowerCase();
-    final isLocalHost = host == 'localhost' || host == '127.0.0.1';
-    if (!isLocalHost) {
+    final uri = Uri.base;
+    final host = uri.host.toLowerCase();
+    final isLoopbackHost =
+        host.isEmpty || host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0';
+    final isPrivateNetwork = RegExp(r'^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)')
+        .hasMatch(host);
+    final isLocalHost = isLoopbackHost || host.endsWith('.local');
+    if (!(isLocalHost || isPrivateNetwork)) {
       return 'https://api.repduel.com';
     }
   }
 
   return 'http://127.0.0.1:8000';
+}
+
+bool _envFlag(String key, {bool defaultValue = false}) {
+  final raw = envVar(
+    key,
+    defaultValue: defaultValue ? 'true' : 'false',
+  ).trim();
+
+  switch (raw.toLowerCase()) {
+    case '1':
+    case 'true':
+    case 'yes':
+    case 'on':
+      return true;
+    default:
+      return false;
+  }
 }
 
 String _resolveBackendUrl() {
@@ -84,4 +108,6 @@ class Env {
   static final stripeCancelUrl = envVar('STRIPE_CANCEL_URL');
 
   static final revenueCatAppleKey = envVar('REVENUE_CAT_APPLE_KEY');
+
+  static final paymentsEnabled = _envFlag('PAYMENTS_ENABLED');
 }

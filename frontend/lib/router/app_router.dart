@@ -11,6 +11,7 @@ import 'package:repduel/features/routines/screens/exercise_play_screen.dart';
 import 'package:repduel/features/scenario/screens/scenario_screen.dart';
 import 'package:repduel/features/routines/screens/summary_screen.dart';
 
+import '../core/config/env.dart';
 import '../core/models/routine.dart';
 import '../core/models/routine_details.dart';
 import '../core/providers/auth_provider.dart';
@@ -217,6 +218,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/subscribe',
         name: 'subscribe',
         builder: (context, state) {
+          if (!Env.paymentsEnabled) {
+            return const _SubscriptionsDisabledView();
+          }
           final extra = state.extra;
           final fallbackLocation = extra is String ? extra : null;
           return SubscriptionScreen(fallbackLocation: fallbackLocation);
@@ -379,6 +383,49 @@ class GoRouterRefreshStream extends ChangeNotifier {
     notifyListeners();
     // Notify router whenever auth state changes
     stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+}
+
+class _SubscriptionsDisabledView extends StatelessWidget {
+  const _SubscriptionsDisabledView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Icon(Icons.lock_outline, color: Colors.white70, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Subscriptions are temporarily unavailable.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 20),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Check Statuspage for updates or try again after deploy.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => context.go('/profile'),
+                  child: const Text('Back to profile'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

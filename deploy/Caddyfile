@@ -1,7 +1,7 @@
 # Caddy configuration for serving the Flutter Web frontend.
 #
 # This config ensures that deep links resolve to index.html, applies the
-# required CSP directives for Stripe and RevenueCat, and adds standard
+# required CSP directives for Stripe, and adds standard
 # security headers.
 #
 # Place this file on the host and reference it when starting Caddy, e.g.:
@@ -31,7 +31,7 @@ www.repduel.com, repduel.com {
       style-src  'self' 'unsafe-inline';
       img-src    'self' https: data:;
       font-src   'self' data:;
-      connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com https://api.revenuecat.com https://cdn.revenuecat.com;
+      connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com;
       frame-src  https://js.stripe.com https://hooks.stripe.com;
       worker-src 'self' blob:;
     "

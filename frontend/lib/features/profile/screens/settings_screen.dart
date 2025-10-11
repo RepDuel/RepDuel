@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/env.dart';
 import '../../../core/models/user.dart';
 import '../../../core/providers/api_providers.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -536,6 +537,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     : () {
                         if (subscriptionTier == null ||
                             subscriptionTier == SubscriptionTier.free) {
+                          if (!Env.paymentsEnabled) {
+                            _showFeedbackSnackbar(
+                              'Subscriptions are temporarily unavailable.',
+                              isSuccess: false,
+                            );
+                            return;
+                          }
+
                           context.push(
                             '/subscribe',
                             extra: GoRouterState.of(context).uri.toString(),
