@@ -25,17 +25,17 @@ www.repduel.com, repduel.com {
   header {
     Content-Security-Policy "
       default-src 'self';
-      script-src 'self' https://js.stripe.com https://m.stripe.com https://m.stripe.network https://www.gstatic.com 'unsafe-inline' 'unsafe-eval' blob:;
-      style-src  'self' 'unsafe-inline' https://js.stripe.com https://m.stripe.com https://m.stripe.network https://fonts.googleapis.com blob:;
-      img-src    'self' https: data: blob:;
-      font-src   'self' data: https://fonts.gstatic.com;
-      connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://r.stripe.com https://api.revenuecat.com https://cdn.revenuecat.com https://www.gstatic.com https://fonts.gstatic.com;
-      frame-src  https://js.stripe.com https://m.stripe.com https://m.stripe.network;
-      frame-ancestors 'none';
-      form-action 'self' https://checkout.stripe.com;
+      base-uri 'self';
+      object-src 'none';
+      script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:;
+      style-src  'self' 'unsafe-inline';
+      img-src    'self' https: data:;
+      font-src   'self' data:;
+      connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com https://api.revenuecat.com https://cdn.revenuecat.com;
+      frame-src  https://js.stripe.com https://hooks.stripe.com;
       worker-src 'self' blob:;
     "
-    Referrer-Policy "no-referrer"
+    Referrer-Policy "strict-origin-when-cross-origin"
     X-Content-Type-Options "nosniff"
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
   }

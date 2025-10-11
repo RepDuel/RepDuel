@@ -164,7 +164,7 @@ popd >/dev/null
 When deploying to Hetzner (or any new host) make sure the infrastructure pieces below are in place so authentication keeps working:
 
 1. **SPA routing fallback** – static hosts must rewrite unknown paths such as `/login` to `/index.html`. The provided `deploy/Caddyfile` already does this via `try_files`.
-2. **Content-Security-Policy** – allow Stripe and RevenueCat domains in `script-src`, `style-src`, `connect-src`, and `frame-src`. Stripe Elements now loads helper assets from `https://m.stripe.com` and `https://m.stripe.network` plus uses `blob:` stylesheets, so make sure those sources remain present. The sample Caddyfile contains a hardened baseline you can extend if new integrations are added.
+2. **Content-Security-Policy** – allow Stripe and RevenueCat domains in `script-src`, `style-src`, `connect-src`, and `frame-src`. Stripe Elements now pulls helper assets from `https://m.stripe.com`, `https://m.stripe.network`, and `https://hooks.stripe.com` and also injects `blob:` backed workers/styles, so make sure those sources remain present. The sample Caddyfile contains a hardened baseline you can extend if new integrations are added.
 3. **CORS + cookies** – set `FRONTEND_ORIGINS` (backend) to include `https://www.repduel.com`, enable credentials, and send cookies with `Domain=.repduel.com; Secure; SameSite=None; Path=/` so browsers attach them cross-origin.
 4. **Stable auth secrets** – keep `JWT_SECRET_KEY` and `REFRESH_JWT_SECRET_KEY` consistent across redeploys to avoid invalidating all sessions.
 5. **Service worker cache busting** – when CSP or assets change, unregister the old service worker in DevTools (Application → Service Workers) and trigger a hard refresh so the new policy takes effect.
