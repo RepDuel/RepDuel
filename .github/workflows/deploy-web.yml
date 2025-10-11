@@ -71,7 +71,7 @@ jobs:
           STRIPE_SUCCESS_URL: ${{ secrets.STRIPE_SUCCESS_URL }}
           STRIPE_CANCEL_URL: ${{ secrets.STRIPE_CANCEL_URL }}
           REVENUE_CAT_APPLE_KEY: ${{ secrets.REVENUE_CAT_APPLE_KEY }}
-          PAYMENTS_ENABLED: ${{ secrets.PAYMENTS_ENABLED || 'false' }}
+          PAYMENTS_ENABLED: ${{ secrets.PAYMENTS_ENABLED }}
         run: |
           set -eo pipefail
           flutter build web --release \
@@ -83,7 +83,7 @@ jobs:
             --dart-define=STRIPE_SUCCESS_URL=$STRIPE_SUCCESS_URL \
             --dart-define=STRIPE_CANCEL_URL=$STRIPE_CANCEL_URL \
             --dart-define=REVENUE_CAT_APPLE_KEY=$REVENUE_CAT_APPLE_KEY \
-            --dart-define=PAYMENTS_ENABLED=$PAYMENTS_ENABLED
+            --dart-define=PAYMENTS_ENABLED=${PAYMENTS_ENABLED:-false}
 
       # --- Stage bundle ---
       - name: Stage static bundle
