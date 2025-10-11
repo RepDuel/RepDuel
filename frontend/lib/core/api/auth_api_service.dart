@@ -22,9 +22,13 @@ class AuthApiService {
   Future<Token?> login(String email, String password) async {
     final response = await _publicClient.post(
       '/users/login',
-      data: {'username': email, 'password': password},
+      data: {
+        'username': email,   // FastAPI OAuth2PasswordRequestForm expects "username"
+        'password': password,
+      },
       options: Options(
         contentType: Headers.formUrlEncodedContentType,
+        responseType: ResponseType.json,
       ),
     );
 

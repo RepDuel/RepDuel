@@ -9,15 +9,24 @@ String _trimTrailingSlashes(String value) {
 }
 
 String _normalizePath(String path) {
-  if (path.isEmpty) {
-    return '';
-  }
+  if (path.isEmpty) return '';
   return path.startsWith('/') ? path : '/$path';
+}
+
+bool _hasVersionedApiPath(String value) {
+  if (value.isEmpty) return false;
+  final uri = Uri.tryParse(value);
+  if (uri == null) return false;
+  final normalizedPath = _trimTrailingSlashes(uri.path);
+  // e.g., /api/v1, /api/v2, ...
+  return RegExp(r'^/api/v\d+$').hasMatch(normalizedPath);
 }
 
 String apiBaseUrl() {
   final base = _trimTrailingSlashes(Env.backendUrl);
-  return base.isEmpty ? '' : '$base/api/v1';
+  if (base.isEmpty) return '';
+  if (_hasVersionedApiPath(base)) return base;
+  return '$base/api/v1';
 }
 
 String apiUrl(String path) {
@@ -30,23 +39,13 @@ Uri apiUri(
   Map<String, dynamic>? queryParameters,
 }) {
   final uri = Uri.parse(apiUrl(path));
-  if (queryParameters == null || queryParameters.isEmpty) {
-    return uri;
-  }
+  if (queryParameters == null || queryParameters.isEmpty) return uri;
 
   final qp = <String, String>{};
   for (final entry in queryParameters.entries) {
     final value = entry.value;
-    if (value == null) {
-      continue;
-    }
+    if (value == null) continue;
     qp[entry.key] = value.toString();
   }
-
-  return uri.replace(
-    queryParameters: {
-      ...uri.queryParameters,
-      ...qp,
-    },
-  );
+  return uri.replace(queryParameters: qp);
 }

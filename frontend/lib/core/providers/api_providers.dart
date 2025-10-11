@@ -17,8 +17,15 @@ import '../providers/secure_storage_provider.dart';
 import '../utils/http_client.dart';
 
 final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
+  final base = apiBaseUrl();
+  final baseUrl = base.isEmpty
+      ? ''
+      : base.endsWith('/')
+          ? base
+          : '$base/';
+
   return BaseOptions(
-    baseUrl: apiBaseUrl(),
+    baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 15),
     sendTimeout: const Duration(seconds: 15),
