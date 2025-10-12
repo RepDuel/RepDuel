@@ -1,10 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-echo "--- Starting RepDuel Backend (Doppler) ---"
-
-PROJECT="${PROJECT:-repduel}"
-CONFIG="${CONFIG:-dev_backend}"
+echo "--- Starting RepDuel Backend (Doppler dev) ---"
 
 if ! command -v doppler >/dev/null 2>&1; then
   echo "doppler CLI not found. Install via: brew install dopplerhq/cli/doppler"; exit 1
@@ -20,6 +17,9 @@ if [[ -z "${DOPPLER_TOKEN:-}" ]]; then
   fi
 fi
 
+# Fail fast if DATABASE_URL missing
+doppler secrets get DATABASE_URL --project repduel --config dev_backend >/dev/null
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 
@@ -30,5 +30,5 @@ source "$PROJECT_ROOT/.venv/bin/activate"
 
 cd "$SCRIPT_DIR"
 
-doppler run --project "$PROJECT" --config "$CONFIG" -- \
-  uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --log-level error
+doppler run --project repduel --config dev_backend -- \
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
