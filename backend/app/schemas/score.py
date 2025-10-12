@@ -10,8 +10,10 @@ from app.utils.datetime import ensure_aware_utc
 
 
 class ScoreCreate(BaseModel):
-    user_id: UUID
+    """Payload submitted when a user records a new score."""
+
     weight_lifted: float
+    scenario_id: str | None = None
     sets: int | None = None
     reps: int | None = None
 

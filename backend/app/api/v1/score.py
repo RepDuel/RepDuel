@@ -7,10 +7,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.v1.auth import get_current_user
 from app.api.v1.deps import get_db
 from app.models.score import Score
 from app.models.personal_best_event import PersonalBestEvent
 from app.models.scenario import Scenario
+from app.models.user import User
 from app.schemas.score import (
     ScoreCreate,
     ScoreCreateResponse,
@@ -19,17 +21,10 @@ from app.schemas.score import (
 )
 from app.services.energy_service import update_energy_if_personal_best
 from app.services.level_service import award_xp
+from app.services.score_service import calculate_score_value
 from app.services.user_service import get_user_by_id
 
 router = APIRouter(prefix="/scores", tags=["Scores"])
-
-
-def calculate_score_value(weight_lifted: float, reps: int | None, is_bodyweight: bool = False) -> float:
-    if is_bodyweight:
-        return reps if reps is not None else 0
-    if reps is None or reps == 1:
-        return weight_lifted
-    return weight_lifted * (1 + reps / 30)
 
 
 def _effective_multiplier(value: float | None) -> float:
@@ -103,34 +98,16 @@ async def _award_personal_best_xp(
     )
 
 
-@router.post("/", response_model=ScoreOut)
-async def create_score(
-    score: ScoreCreate,
-    db: AsyncSession = Depends(get_db),
-):
-    score_value = calculate_score_value(score.weight_lifted, score.reps)
-    db_score = Score(**score.dict(), score_value=score_value)
-    db.add(db_score)
-    await db.commit()
-    await db.refresh(db_score)
-    return db_score
-
-
-@router.post("/scenario/{scenario_id}/", response_model=ScoreCreateResponse)
-async def create_score_for_scenario(
-    scenario_id: str,
-    score: ScoreCreate,
-    db: AsyncSession = Depends(get_db),
-):
-    scenario = await db.get(Scenario, scenario_id)
-    if not scenario:
-        raise HTTPException(status_code=404, detail="Scenario not found")
-
-    is_bodyweight = scenario.is_bodyweight
-
+async def _create_score_entry(
+    db: AsyncSession,
+    *,
+    scenario: Scenario,
+    payload: ScoreCreate,
+    user_id: UUID,
+) -> tuple[Score, bool, Score | None]:
     previous_best_stmt = (
         select(Score)
-        .where(Score.user_id == score.user_id, Score.scenario_id == scenario_id)
+        .where(Score.user_id == user_id, Score.scenario_id == scenario.id)
         .order_by(Score.score_value.desc())
         .limit(1)
     )
@@ -138,19 +115,19 @@ async def create_score_for_scenario(
     previous_best = previous_best_result.scalar_one_or_none()
 
     score_value = calculate_score_value(
-        score.weight_lifted,
-        score.reps,
-        is_bodyweight=is_bodyweight,
+        payload.weight_lifted,
+        payload.reps,
+        is_bodyweight=scenario.is_bodyweight,
     )
 
     db_score = Score(
-        user_id=score.user_id,
-        scenario_id=scenario_id,
-        weight_lifted=score.weight_lifted,
-        reps=score.reps,
-        sets=score.sets,
+        user_id=user_id,
+        scenario_id=scenario.id,
+        weight_lifted=payload.weight_lifted,
+        reps=payload.reps,
+        sets=payload.sets,
         score_value=score_value,
-        is_bodyweight=is_bodyweight,
+        is_bodyweight=scenario.is_bodyweight,
     )
 
     is_personal_best = (
@@ -162,12 +139,12 @@ async def create_score_for_scenario(
     if is_personal_best:
         db.add(
             PersonalBestEvent(
-                user_id=score.user_id,
-                scenario_id=scenario_id,
+                user_id=user_id,
+                scenario_id=scenario.id,
                 score_value=score_value,
-                weight_lifted=score.weight_lifted,
-                reps=score.reps,
-                is_bodyweight=is_bodyweight,
+                weight_lifted=payload.weight_lifted,
+                reps=payload.reps,
+                is_bodyweight=scenario.is_bodyweight,
             )
         )
 
@@ -176,8 +153,8 @@ async def create_score_for_scenario(
 
     await _award_volume_xp(
         db,
-        user_id=score.user_id,
-        score_payload=score,
+        user_id=user_id,
+        score_payload=payload,
         scenario=scenario,
         score_id=db_score.id,
     )
@@ -185,16 +162,69 @@ async def create_score_for_scenario(
     if is_personal_best:
         await _award_personal_best_xp(
             db,
-            user_id=score.user_id,
+            user_id=user_id,
             scenario=scenario,
             score_id=db_score.id,
         )
 
     await update_energy_if_personal_best(
         db=db,
-        user_id=score.user_id,
-        scenario_id=scenario_id,
+        user_id=user_id,
+        scenario_id=scenario.id,
         new_score=score_value,
+    )
+
+    return db_score, is_personal_best, previous_best
+
+
+@router.post("/", response_model=ScoreOut)
+async def create_score(
+    score: ScoreCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not score.scenario_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="scenario_id is required",
+        )
+
+    scenario = await db.get(Scenario, score.scenario_id)
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+
+    db_score, *_ = await _create_score_entry(
+        db,
+        scenario=scenario,
+        payload=score,
+        user_id=current_user.id,
+    )
+
+    return ScoreOut.model_validate(db_score)
+
+
+@router.post("/scenario/{scenario_id}/", response_model=ScoreCreateResponse)
+async def create_score_for_scenario(
+    scenario_id: str,
+    score: ScoreCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    scenario = await db.get(Scenario, scenario_id)
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+
+    if score.scenario_id and score.scenario_id != scenario_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="scenario_id in payload does not match path",
+        )
+
+    db_score, is_personal_best, previous_best = await _create_score_entry(
+        db,
+        scenario=scenario,
+        payload=score,
+        user_id=current_user.id,
     )
 
     return ScoreCreateResponse(
@@ -283,7 +313,11 @@ async def get_user_high_score(
 async def delete_all_user_scores(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
     stmt = select(Score).where(Score.user_id == user_id)
     result = await db.execute(stmt)
     user_scores = result.scalars().all()

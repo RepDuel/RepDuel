@@ -28,8 +28,8 @@ if not STATIC_DIR.exists():
     STATIC_DIR.mkdir()
     _created_static = True
 
+from app.api.v1.auth import get_current_user  # noqa: E402
 from app.api.v1.deps import get_db  # noqa: E402
-from app.api.v1.score import calculate_score_value  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.personal_best_event import PersonalBestEvent  # noqa: E402
 from app.models.scenario import Scenario  # noqa: E402
@@ -37,6 +37,7 @@ from app.models.score import Score  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.models.user_xp import UserXP  # noqa: E402
 from app.models.xp_event import XPEvent  # noqa: E402
+from app.services.score_service import calculate_score_value  # noqa: E402
 
 
 @dataclass
@@ -75,6 +76,9 @@ class AsyncSessionWrapper:
     async def flush(self) -> None:
         self._sync_session.flush()
 
+    async def delete(self, instance) -> None:
+        self._sync_session.delete(instance)
+
     async def rollback(self) -> None:
         self._sync_session.rollback()
 
@@ -106,6 +110,13 @@ async def _setup_test_app() -> tuple[SessionFactory, Engine]:
 
     app.dependency_overrides[get_db] = override_get_db
     return factory, engine
+
+
+async def _set_current_user(user: AuthUser) -> None:
+    async def override_current_user() -> AuthUser:
+        return user
+
+    app.dependency_overrides[get_current_user] = override_current_user
 
 
 async def _teardown(engine: Engine) -> None:
@@ -193,12 +204,12 @@ def test_volume_xp_awarded_for_score() -> None:
                 sets=1,
             )
 
+            await _set_current_user(user)
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://testserver") as client:
                 response = await client.post(
                     "/api/v1/scores/scenario/test_strength/",
                     json={
-                        "user_id": str(user.id),
                         "weight_lifted": 180.0,
                         "reps": 1,
                         "sets": 1,
@@ -232,12 +243,12 @@ def test_personal_best_awards_bonus_xp() -> None:
             user = await _create_user(session_maker, "pr_user", weight=90.0)
             await _create_scenario(session_maker, "test_pr")
 
+            await _set_current_user(user)
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://testserver") as client:
                 response = await client.post(
                     "/api/v1/scores/scenario/test_pr/",
                     json={
-                        "user_id": str(user.id),
                         "weight_lifted": 45.0,
                         "reps": 1,
                         "sets": 1,
@@ -258,6 +269,68 @@ def test_personal_best_awards_bonus_xp() -> None:
                 events = event_result.scalars().all()
                 assert len(events) == 1
                 assert events[0].amount == 10
+        finally:
+            await _teardown(engine)
+
+    asyncio.run(run_test())
+
+
+def test_create_score_requires_authentication() -> None:
+    async def run_test() -> None:
+        session_maker, engine = await _setup_test_app()
+        try:
+            await _create_user(session_maker, "unauth_user", weight=75.0)
+            await _create_scenario(session_maker, "test_auth")
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+                response = await client.post(
+                    "/api/v1/scores/scenario/test_auth/",
+                    json={
+                        "weight_lifted": 100.0,
+                        "reps": 1,
+                    },
+                )
+
+            assert response.status_code == 401
+        finally:
+            await _teardown(engine)
+
+    asyncio.run(run_test())
+
+
+def test_delete_scores_requires_owner() -> None:
+    async def run_test() -> None:
+        session_maker, engine = await _setup_test_app()
+        try:
+            owner = await _create_user(session_maker, "deleter", weight=85.0)
+            other = await _create_user(session_maker, "other", weight=90.0)
+            await _create_scenario(session_maker, "delete_scenario")
+            await _create_existing_score(
+                session_maker,
+                user_id=owner.id,
+                scenario_id="delete_scenario",
+                weight_lifted=140.0,
+                reps=1,
+            )
+
+            # Attempt deletion as another user should fail.
+            await _set_current_user(other)
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+                forbidden = await client.delete(f"/api/v1/scores/user/{owner.id}")
+            assert forbidden.status_code == 403
+
+            # Owner can delete their own scores.
+            await _set_current_user(owner)
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+                success = await client.delete(f"/api/v1/scores/user/{owner.id}")
+            assert success.status_code == 204
+
+            async with session_maker() as session:
+                result = await session.execute(select(Score).where(Score.user_id == owner.id))
+                remaining = result.scalars().all()
+                assert not remaining
         finally:
             await _teardown(engine)
 

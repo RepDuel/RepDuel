@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-from collections import deque
-from datetime import datetime, timedelta, timezone
-from typing import Deque, Dict
+from datetime import timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -16,37 +13,15 @@ from app.api.v1.deps import get_db
 from app.models.user import User
 from app.schemas.social import SocialListResponse, SocialUser
 from app.services import social_service
+from app.services.rate_limiter import DistributedRateLimiter
 from app.services.user_service import get_user_by_id
 
 
-class InMemoryRateLimiter:
-    """Very small in-memory rate limiter used for follow/unfollow endpoints."""
-
-    def __init__(self, limit: int, window_seconds: int) -> None:
-        self.limit = limit
-        self.window = timedelta(seconds=window_seconds)
-        self._events: Dict[UUID, Deque[datetime]] = {}
-        self._lock = asyncio.Lock()
-
-    async def check(self, key: UUID) -> None:
-        now = datetime.now(timezone.utc)
-        async with self._lock:
-            queue = self._events.setdefault(key, deque())
-            cutoff = now - self.window
-            while queue and queue[0] <= cutoff:
-                queue.popleft()
-            if len(queue) >= self.limit:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="Rate limit exceeded",
-                )
-            queue.append(now)
-
-    def reset(self) -> None:
-        self._events.clear()
-
-
-follow_rate_limiter = InMemoryRateLimiter(limit=60, window_seconds=3600)
+follow_rate_limiter = DistributedRateLimiter(
+    action="social_follow",
+    limit=60,
+    window=timedelta(hours=1),
+)
 
 router = APIRouter(prefix="/users", tags=["social"])
 
@@ -96,7 +71,7 @@ async def follow_user(
             detail="Cannot follow yourself",
         )
     target = await _ensure_user(db, user_id)
-    await follow_rate_limiter.check(current_user.id)
+    await follow_rate_limiter.check(db, current_user.id)
     await social_service.follow(db, current_user.id, target.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -108,7 +83,7 @@ async def unfollow_user(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     target = await _ensure_user(db, user_id)
-    await follow_rate_limiter.check(current_user.id)
+    await follow_rate_limiter.check(db, current_user.id)
     await social_service.unfollow(db, current_user.id, target.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

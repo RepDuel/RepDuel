@@ -20,8 +20,8 @@ os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test")
 
 from app.api.v1.auth import get_current_user  # noqa: E402
 from app.api.v1.deps import get_db  # noqa: E402
-from app.api.v1.social import follow_rate_limiter  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models.rate_limit_event import RateLimitEvent  # noqa: E402
 from app.models.social import SocialEdge  # noqa: E402
 from app.models.user import User  # noqa: E402
 
@@ -62,6 +62,9 @@ class AsyncSessionWrapper:
     async def delete(self, instance) -> None:
         self._sync_session.delete(instance)
 
+    async def flush(self) -> None:
+        self._sync_session.flush()
+
 
 SessionFactory = Callable[[], AsyncSessionWrapper]
 
@@ -71,6 +74,7 @@ async def _setup_test_app() -> tuple[SessionFactory, Engine]:
     engine = create_engine("sqlite:///:memory:")
     User.__table__.create(bind=engine)
     SocialEdge.__table__.create(bind=engine)
+    RateLimitEvent.__table__.create(bind=engine)
     sync_maker = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
     def factory() -> AsyncSessionWrapper:
@@ -81,7 +85,6 @@ async def _setup_test_app() -> tuple[SessionFactory, Engine]:
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
-    follow_rate_limiter.reset()
     return factory, engine
 
 
@@ -229,6 +232,26 @@ def test_followers_pagination() -> None:
             assert second_data["items"][0]["is_followed_by"] is True
             assert second_data["items"][0]["is_friend"] is False
             assert second_data["items"][0]["is_self"] is False
+        finally:
+            await _teardown(engine)
+
+    asyncio.run(run_test())
+
+
+def test_follow_rate_limit_enforced() -> None:
+    async def run_test() -> None:
+        session_maker, engine = await _setup_test_app()
+        try:
+            follower = await _create_user(session_maker, "rate_limit_tester")
+            target = await _create_user(session_maker, "popular")
+            await _set_current_user(follower)
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+                for _ in range(60):
+                    response = await client.post(f"/api/v1/users/{target.id}/follow")
+                    assert response.status_code == 204
+                overflow = await client.post(f"/api/v1/users/{target.id}/follow")
+                assert overflow.status_code == 429
         finally:
             await _teardown(engine)
 
