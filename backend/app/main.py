@@ -3,9 +3,11 @@
 import os
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, Request
+import asyncpg
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
+from sqlalchemy.exc import OperationalError
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 
@@ -48,6 +50,17 @@ for candidate in (
 ):
     if candidate:
         _origins.append(candidate)
+
+_DEFAULT_DEV_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+_origins.extend(_DEFAULT_DEV_ORIGINS)
 
 _origins.extend([
     "https://repduel.com",
@@ -96,6 +109,41 @@ app.mount("/static", CORSMiddleware(static_app, **static_cors_config), name="sta
 app.include_router(api_router, prefix="/api/v1")
 from app.api.aasa import router as aasa_router
 app.include_router(aasa_router, include_in_schema=False)
+
+
+def _db_unavailable_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={
+            "detail": "Unable to connect to the database. Ensure the Postgres service is running."
+        },
+    )
+
+
+@app.exception_handler(ConnectionRefusedError)
+async def _handle_connection_refused(request: Request, exc: ConnectionRefusedError):
+    return _db_unavailable_response()
+
+
+@app.exception_handler(asyncpg.exceptions.PostgresError)
+async def _handle_asyncpg_errors(request: Request, exc: asyncpg.exceptions.PostgresError):
+    # Surface connection issues with a consistent, actionable response.
+    if isinstance(exc, asyncpg.exceptions.InterfaceError):
+        return _db_unavailable_response()
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "A database error occurred."},
+    )
+
+
+@app.exception_handler(OperationalError)
+async def _handle_operational_error(request: Request, exc: OperationalError):
+    if isinstance(getattr(exc, "orig", None), ConnectionRefusedError):
+        return _db_unavailable_response()
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "A database error occurred."},
+    )
 
 
 @app.get("/", tags=["health"])

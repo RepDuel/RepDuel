@@ -159,6 +159,39 @@ pushd frontend >/dev/null
 flutter pub get
 popd >/dev/null
 
+### 🛰️ Remote Postgres access for local development
+
+If your Postgres instance lives on a remote host (for example a Hetzner VM at
+`178.156.201.92`) you can either point `DATABASE_URL` directly at that host or
+keep using `127.0.0.1` by having `backend/start_backend.sh` create an SSH
+forwarding tunnel automatically. Tunnelling is **on by default** and the script
+assumes your macOS/Linux username on the Hetzner host (`${USER}@178.156.201.92`)
+if you haven't set `SSH_TARGET`, so in many cases you can just run `make backend`:
+
+```bash
+make backend
+```
+
+The script binds to `127.0.0.1:5433` locally to avoid clashing with an existing
+Postgres install. Update your Doppler `dev_backend` `DATABASE_URL` secret to
+match (or set `LOCAL_DB_PORT=5432` if you prefer the old port).
+
+Optional overrides:
+
+* `LOCAL_DB_HOST` / `LOCAL_DB_PORT` – customise the local bind interface/port
+  (defaults to `127.0.0.1:5433`).
+* `REMOTE_DB_HOST` / `REMOTE_DB_PORT` – change the remote endpoint if your
+  database is not bound to `127.0.0.1:5432` on the SSH host.
+* `SSH_IDENTITY_FILE` – path to a private key if you need to force a
+  non-default identity.
+* `SSH_EXTRA_OPTS` – any additional `ssh(1)` CLI flags (for example
+  `"-J bastion.example.com"`).
+
+Disable the tunnel temporarily via `USE_SSH_TUNNEL=0 make backend`. If you need
+to force a different SSH user or host, export `SSH_TARGET` explicitly before
+running the script. The tunnel stays alive while Uvicorn is running and cleans
+itself up on exit, so your local `DATABASE_URL` can remain unchanged.
+
 ### 🌐 Production deployment checklist
 
 When deploying to Hetzner (or any new host) make sure the infrastructure pieces below are in place so authentication keeps working:

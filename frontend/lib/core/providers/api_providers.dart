@@ -150,6 +150,19 @@ class AuthInterceptor extends Interceptor {
   }
 }
 
+String? _extractBackendDetail(dynamic data) {
+  if (data is Map<String, dynamic>) {
+    final detail = data['detail'];
+    if (detail is String) {
+      final trimmed = detail.trim();
+      if (trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+  }
+  return null;
+}
+
 class GlobalErrorInterceptor extends Interceptor {
   final Ref _ref;
   GlobalErrorInterceptor(this._ref);
@@ -211,13 +224,17 @@ class GlobalErrorInterceptor extends Interceptor {
     }
 
     if (status != null && status >= 500) {
+      final backendMessage = _extractBackendDetail(err.response?.data);
       debugPrint('[Dio] Server error $status: ${err.response?.data}');
       return handler.reject(
         DioException(
           requestOptions: err.requestOptions,
           response: err.response,
           type: DioExceptionType.badResponse,
-          error: 'Server error. Please try again later.',
+          error: backendMessage ??
+              (status == 503
+                  ? 'Service temporarily unavailable. Please ensure the backend dependencies are running.'
+                  : 'Server error. Please try again later.'),
         ),
       );
     }

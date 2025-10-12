@@ -16,11 +16,13 @@ Future<void> main() async {
 
   usePathUrlStrategy();
 
-  await dotenv.load(fileName: ".env").catchError((error) {
-    debugPrint(
-      'Note: .env file not found or failed to load. Using compile-time environment variables instead.',
-    );
-  });
+  if (!kIsWeb) {
+    await dotenv.load(fileName: ".env").catchError((error) {
+      debugPrint(
+        'Note: .env file not found or failed to load. Using compile-time environment variables instead.',
+      );
+    });
+  }
 
   // Initialize Stripe
   if (!kIsWeb) {
