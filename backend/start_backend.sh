@@ -34,6 +34,25 @@ if [[ ! -f "$PROJECT_ROOT/.venv/bin/activate" ]]; then
 fi
 source "$PROJECT_ROOT/.venv/bin/activate"
 
+# --- Load optional tunnel and database settings from Doppler if not already set ---
+SSH_TARGET="${SSH_TARGET:-$(doppler secrets get SSH_TARGET --project repduel --config dev_backend --plain 2>/dev/null || true)}"
+SSH_IDENTITY_FILE="${SSH_IDENTITY_FILE:-$(doppler secrets get SSH_IDENTITY_FILE --project repduel --config dev_backend --plain 2>/dev/null || true)}"
+REMOTE_DB_HOST="${REMOTE_DB_HOST:-$(doppler secrets get REMOTE_DB_HOST --project repduel --config dev_backend --plain 2>/dev/null || true)}"
+REMOTE_DB_PORT="${REMOTE_DB_PORT:-$(doppler secrets get REMOTE_DB_PORT --project repduel --config dev_backend --plain 2>/dev/null || true)}"
+LOCAL_DB_HOST="${LOCAL_DB_HOST:-$(doppler secrets get LOCAL_DB_HOST --project repduel --config dev_backend --plain 2>/dev/null || true)}"
+LOCAL_DB_PORT="${LOCAL_DB_PORT:-$(doppler secrets get LOCAL_DB_PORT --project repduel --config dev_backend --plain 2>/dev/null || true)}"
+DATABASE_URL_LOCAL="${DATABASE_URL_LOCAL:-$(doppler secrets get DATABASE_URL_LOCAL --project repduel --config dev_backend --plain 2>/dev/null || true)}"
+DATABASE_URL_REMOTE="${DATABASE_URL_REMOTE:-$(doppler secrets get DATABASE_URL_REMOTE --project repduel --config dev_backend --plain 2>/dev/null || true)}"
+# -------------------------------------------------------------------------------
+
+if [[ -z "${DATABASE_URL_LOCAL:-}" && -z "${DATABASE_URL_REMOTE:-}" ]]; then
+  echo "DATABASE_URL_LOCAL or DATABASE_URL_REMOTE must be configured in Doppler."; exit 1
+fi
+
+export DATABASE_URL_LOCAL DATABASE_URL_REMOTE
+
+TUNNEL_ACTIVE=0
+
 TUNNEL_PID=""
 
 cleanup() {
@@ -50,13 +69,9 @@ if [[ "${USE_SSH_TUNNEL:-1}" == "1" ]]; then
     echo "ssh command not found. Install OpenSSH client to use USE_SSH_TUNNEL."; exit 1
   fi
 
-  # --- Load optional tunnel settings from Doppler if not already set in the shell ---
-  SSH_TARGET="${SSH_TARGET:-$(doppler secrets get SSH_TARGET --project repduel --config dev_backend --plain 2>/dev/null || true)}"
-  REMOTE_DB_HOST="${REMOTE_DB_HOST:-$(doppler secrets get REMOTE_DB_HOST --project repduel --config dev_backend --plain 2>/dev/null || true)}"
-  REMOTE_DB_PORT="${REMOTE_DB_PORT:-$(doppler secrets get REMOTE_DB_PORT --project repduel --config dev_backend --plain 2>/dev/null || true)}"
-  LOCAL_DB_HOST="${LOCAL_DB_HOST:-$(doppler secrets get LOCAL_DB_HOST --project repduel --config dev_backend --plain 2>/dev/null || true)}"
-  LOCAL_DB_PORT="${LOCAL_DB_PORT:-$(doppler secrets get LOCAL_DB_PORT --project repduel --config dev_backend --plain 2>/dev/null || true)}"
-  # -------------------------------------------------------------------------------
+  if ! command -v nc >/dev/null 2>&1; then
+    echo "nc command not found. Install netcat (nc) for tunnel verification."; exit 1
+  fi
 
   if [[ -z "${SSH_TARGET:-}" ]]; then
     echo "SSH_TARGET is required when USE_SSH_TUNNEL=1."; exit 1
@@ -72,6 +87,8 @@ if [[ "${USE_SSH_TUNNEL:-1}" == "1" ]]; then
 
   SSH_CMD=(
     ssh
+    -o BatchMode=yes
+    -o IdentitiesOnly=yes
     -o ExitOnForwardFailure=yes
     -o ServerAliveInterval=30
     -o ServerAliveCountMax=3
@@ -98,17 +115,36 @@ if [[ "${USE_SSH_TUNNEL:-1}" == "1" ]]; then
     echo "Failed to establish SSH tunnel."; exit 1
   fi
 
-  # Hint if your DATABASE_URL still points at the old port
-  DEV_DB_URL="$(doppler secrets get DATABASE_URL --project repduel --config dev_backend --plain || true)"
-  if [[ -n "$DEV_DB_URL" ]]; then
-    if [[ "$DEV_DB_URL" == *"@127.0.0.1:5432/"* && "$LOCAL_DB_PORT" != "5432" ]]; then
-      echo "NOTE: Your dev DATABASE_URL uses 127.0.0.1:5432 but the tunnel is bound to ${LOCAL_DB_PORT}."
-      echo "      Update Doppler dev secret or set LOCAL_DB_PORT=5432 if you prefer."
-    fi
+  if ! nc -z "$LOCAL_DB_HOST" "$LOCAL_DB_PORT" >/dev/null 2>&1; then
+    echo "Tunnel failed health check on ${LOCAL_DB_HOST}:${LOCAL_DB_PORT}."
+    kill "$TUNNEL_PID" 2>/dev/null || true
+    exit 1
   fi
+
+  TUNNEL_ACTIVE=1
 fi
 
 cd "$SCRIPT_DIR"
 
-doppler run --project repduel --config dev_backend -- \
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+export TUNNEL_ACTIVE
+export REPDUEL_STRICT_DB_BOOTSTRAP=1
+
+RUN_CMD=(env)
+
+if [[ "$TUNNEL_ACTIVE" == "1" && -n "${DATABASE_URL_LOCAL:-}" ]]; then
+  RUN_CMD+=("DATABASE_URL=${DATABASE_URL_LOCAL}")
+elif [[ -n "${DATABASE_URL_REMOTE:-}" ]]; then
+  RUN_CMD+=("DATABASE_URL=${DATABASE_URL_REMOTE}")
+fi
+
+RUN_CMD+=(
+  uvicorn
+  app.main:app
+  --reload
+  --host
+  127.0.0.1
+  --port
+  8000
+)
+
+doppler run --project repduel --config dev_backend -- "${RUN_CMD[@]}"

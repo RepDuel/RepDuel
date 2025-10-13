@@ -7,11 +7,16 @@ import asyncpg
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from fastapi.staticfiles import StaticFiles
-from app.core.config import settings
+from app.db_bootstrap import init_sync
 
+init_sync()
+
+from app.core.config import settings
 from app.api.v1.api_router import api_router
+from app.db.session import async_session
 
 _fastapi_kwargs = dict(
     title="RepDuel API",
@@ -103,7 +108,8 @@ _mount_if_exists("/icons", "icons")
 static_cors_config = dict(cors_config)
 static_cors_config["allow_methods"] = ["GET", "HEAD", "OPTIONS"]
 
-static_app = StaticFiles(directory="static")
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+static_app = StaticFiles(directory=STATIC_DIR)
 app.mount("/static", CORSMiddleware(static_app, **static_cors_config), name="static")
 
 app.include_router(api_router, prefix="/api/v1")
@@ -154,6 +160,13 @@ def root():
 @app.get("/health", tags=["health"])
 def health():
     return {"status": "ok"}
+
+
+@app.get("/health/db", tags=["health"])
+async def health_db():
+    async with async_session() as session:
+        await session.execute(text("SELECT 1"))
+    return {"status": "ok", "database": "reachable"}
 
 
 @app.middleware("http")
