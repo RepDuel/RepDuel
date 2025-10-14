@@ -36,8 +36,22 @@ def _describe_dsn(dsn: str) -> str:
         return "<custom>"
 
 
+def _normalize_for_asyncpg(dsn: str) -> str:
+    """
+    asyncpg expects schemes 'postgresql://' or 'postgres://'.
+    Strip SQLAlchemy driver suffixes like '+asyncpg'.
+    """
+    if not dsn:
+        return dsn
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://")
+    dsn = dsn.replace("postgres+asyncpg://", "postgres://")
+    return dsn
+
+
 async def _attempt_connect(dsn: str) -> None:
-    conn = await asyncpg.connect(dsn, timeout=2.5)
+    # Normalize so asyncpg accepts SQLAlchemy-style DSNs.
+    dsn_for_asyncpg = _normalize_for_asyncpg(dsn)
+    conn = await asyncpg.connect(dsn_for_asyncpg, timeout=2.5)
     await conn.close()
 
 
@@ -50,6 +64,7 @@ def _pick_first(*candidates: Optional[str]) -> Optional[str]:
 
 
 async def pick_dsn() -> str:
+    # Prefer explicit "internal/local" first, then public/remote.
     local = _pick_first(
         os.getenv("DATABASE_URL_INTERNAL"),
         os.getenv("DATABASE_URL_LOCAL"),
@@ -59,6 +74,7 @@ async def pick_dsn() -> str:
         os.getenv("DATABASE_URL_REMOTE"),
     )
 
+    # Backfill if only one side provided.
     if not local:
         local = _pick_first(
             os.getenv("DATABASE_URL_LOCAL"),
@@ -108,17 +124,32 @@ async def pick_dsn() -> str:
 
 async def init_env() -> str:
     chosen = await pick_dsn()
-    os.environ["DATABASE_URL"] = chosen
+    os.environ["DATABASE_URL"] = chosen  # Keep a single canonical env var for SQLAlchemy.
     global _SELECTED_DSN
     _SELECTED_DSN = chosen
     return chosen
 
 
 def init_sync() -> str:
+    """
+    Synchronous bootstrap helper for scripts/tests.
+    Do NOT call from within a running asyncio loop (e.g. inside FastAPI app).
+    """
     global _INITIALIZED
     if _INITIALIZED:
         assert _SELECTED_DSN is not None
         return _SELECTED_DSN
+
+    try:
+        loop = asyncio.get_running_loop()
+        if loop.is_running():
+            raise RuntimeError(
+                "init_sync() cannot be called from a running event loop. "
+                "Use 'await init_env()' during app startup instead."
+            )
+    except RuntimeError:
+        # No running loop; safe to use asyncio.run
+        pass
 
     chosen = asyncio.run(init_env())
     _INITIALIZED = True

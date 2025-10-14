@@ -10,9 +10,9 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from fastapi.staticfiles import StaticFiles
-from app.db_bootstrap import init_sync
 
-init_sync()
+# ✅ Initialize DB env at startup (not at import time)
+from app.db_bootstrap import init_env
 
 from app.core.config import settings
 from app.api.v1.api_router import api_router
@@ -29,6 +29,11 @@ if _base_url:
     _fastapi_kwargs["servers"] = [{"url": _base_url.rstrip("/")}]
 
 app = FastAPI(**_fastapi_kwargs)
+
+# Run async initialization when the app starts (avoids asyncio.run() inside a running loop)
+@app.on_event("startup")
+async def _startup_init_env():
+    await init_env()
 
 def _origin(url: str | None) -> str | None:
     if not url:
@@ -206,11 +211,10 @@ def main_js():
     return Response(status_code=404)
 
 
-
-
 if os.path.exists(INDEX_FILE):
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
         if full_path.startswith(("api/", "static/", "assets/", "canvaskit/", "icons/")):
             return Response(status_code=404)
         return FileResponse(INDEX_FILE, headers={"Cache-Control": "no-cache, must-revalidate"})
+
