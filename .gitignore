@@ -46,3 +46,4 @@ __pycache__/
 
 # Other
 *.DS_Store
+backend/alembic/versions_archive/
