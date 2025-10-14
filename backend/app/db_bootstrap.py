@@ -41,9 +41,35 @@ async def _attempt_connect(dsn: str) -> None:
     await conn.close()
 
 
+def _pick_first(*candidates: Optional[str]) -> Optional[str]:
+    for candidate in candidates:
+        value = _sanitize(candidate)
+        if value:
+            return value
+    return None
+
+
 async def pick_dsn() -> str:
-    local = _sanitize(os.getenv("DATABASE_URL_LOCAL") or os.getenv("DATABASE_URL"))
-    remote = _sanitize(os.getenv("DATABASE_URL_REMOTE"))
+    local = _pick_first(
+        os.getenv("DATABASE_URL_INTERNAL"),
+        os.getenv("DATABASE_URL_LOCAL"),
+    )
+    remote = _pick_first(
+        os.getenv("DATABASE_URL"),
+        os.getenv("DATABASE_URL_REMOTE"),
+    )
+
+    if not local:
+        local = _pick_first(
+            os.getenv("DATABASE_URL_LOCAL"),
+            os.getenv("DATABASE_URL"),
+        )
+
+    if not remote:
+        remote = _pick_first(
+            os.getenv("DATABASE_URL_REMOTE"),
+            os.getenv("DATABASE_URL_INTERNAL"),
+        )
 
     last_error: Optional[Exception] = None
     strict = _strict_mode()

@@ -162,19 +162,24 @@ popd >/dev/null
 ### 🛰️ Remote Postgres access for local development
 
 If your Postgres instance lives on a remote host (for example a Hetzner VM at
-`178.156.201.92`) you can either point `DATABASE_URL` directly at that host or
-keep using `127.0.0.1` by having `backend/start_backend.sh` create an SSH
-forwarding tunnel automatically. Tunnelling is **on by default** and the script
-assumes your macOS/Linux username on the Hetzner host (`${USER}@178.156.201.92`)
-if you haven't set `SSH_TARGET`, so in many cases you can just run `make backend`:
+`178.156.201.92`), set the Doppler `dev_backend` secret `DATABASE_URL` to the
+public connection string (e.g.
+`postgresql+asyncpg://appuser:supersecret@178.156.201.92:5432/app1db`). The
+startup script derives a tunnel-friendly DSN automatically and exposes it as
+`DATABASE_URL_INTERNAL`, mirroring Render's environment variables. Tunnelling is
+**on by default** and the script assumes your macOS/Linux username on the
+Hetzner host (`${USER}@178.156.201.92`) if you haven't set `SSH_TARGET`, so in
+many cases you can just run `make backend`:
 
 ```bash
 make backend
 ```
 
 The script binds to `127.0.0.1:5433` locally to avoid clashing with an existing
-Postgres install. Update your Doppler `dev_backend` `DATABASE_URL` secret to
-match (or set `LOCAL_DB_PORT=5432` if you prefer the old port).
+Postgres install. If you prefer a different bind, adjust
+`LOCAL_DB_HOST`/`LOCAL_DB_PORT`. The generated `DATABASE_URL_INTERNAL` will
+always reflect the chosen bind while `DATABASE_URL` continues to point at the
+remote host, matching Render's `DATABASE_URL`/`DATABASE_URL_INTERNAL` pairing.
 
 Optional overrides:
 
