@@ -10,6 +10,8 @@ from urllib.parse import urlparse
 
 import asyncpg
 
+_DEFAULT_BOOTSTRAP_TIMEOUT = 10.0
+
 _LOGGER = logging.getLogger(__name__)
 _INITIALIZED = False
 _SELECTED_DSN: Optional[str] = None
@@ -17,6 +19,32 @@ _SELECTED_DSN: Optional[str] = None
 
 def _strict_mode() -> bool:
     return os.getenv("REPDUEL_STRICT_DB_BOOTSTRAP", "0") == "1"
+
+
+def _bootstrap_timeout() -> float:
+    raw_value = os.getenv("REPDUEL_DB_BOOTSTRAP_TIMEOUT")
+    if raw_value is None:
+        return _DEFAULT_BOOTSTRAP_TIMEOUT
+
+    try:
+        parsed = float(raw_value)
+    except (TypeError, ValueError):  # pragma: no cover - defensive path
+        _LOGGER.warning(
+            "Invalid REPDUEL_DB_BOOTSTRAP_TIMEOUT value '%s'; using default %.1fs.",
+            raw_value,
+            _DEFAULT_BOOTSTRAP_TIMEOUT,
+        )
+        return _DEFAULT_BOOTSTRAP_TIMEOUT
+
+    # Guard against zero/negative values that would lead to immediate failures.
+    if parsed <= 0:
+        _LOGGER.warning(
+            "REPDUEL_DB_BOOTSTRAP_TIMEOUT must be positive; using default %.1fs.",
+            _DEFAULT_BOOTSTRAP_TIMEOUT,
+        )
+        return _DEFAULT_BOOTSTRAP_TIMEOUT
+
+    return parsed
 
 
 def _sanitize(value: Optional[str]) -> Optional[str]:
@@ -51,7 +79,8 @@ def _normalize_for_asyncpg(dsn: str) -> str:
 async def _attempt_connect(dsn: str) -> None:
     # Normalize so asyncpg accepts SQLAlchemy-style DSNs.
     dsn_for_asyncpg = _normalize_for_asyncpg(dsn)
-    conn = await asyncpg.connect(dsn_for_asyncpg, timeout=2.5)
+    timeout = _bootstrap_timeout()
+    conn = await asyncpg.connect(dsn_for_asyncpg, timeout=timeout)
     await conn.close()
 
 

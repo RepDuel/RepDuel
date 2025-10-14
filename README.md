@@ -324,6 +324,8 @@ JWT_REFRESH_SECRET_KEY=superlongrandomrefreshsecret
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=30
 STATIC_PUBLIC_BASE=https://cdn.repduel.com
+# Optional: extend the connection bootstrap timeout (seconds) if you're on a slow network
+REPDUEL_DB_BOOTSTRAP_TIMEOUT=10
 
 COOKIE_DOMAIN=.repduel.com
 COOKIE_SAMESITE=None
