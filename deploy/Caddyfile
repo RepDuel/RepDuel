@@ -40,3 +40,36 @@ www.repduel.com, repduel.com {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
   }
 }
+
+api.repduel.com {
+  encode zstd gzip
+
+  @cors_allowed header Origin https://www.repduel.com https://repduel.com
+  @preflight method OPTIONS
+
+  respond @preflight 204
+
+  header @cors_allowed {
+    Access-Control-Allow-Origin "{header.Origin}"
+    Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Access-Control-Allow-Headers "Content-Type, Authorization"
+    Access-Control-Allow-Credentials "true"
+    Vary "Origin"
+    defer
+  }
+
+  reverse_proxy 127.0.0.1:9999 {
+    transport http {
+      versions h1
+    }
+  }
+
+  handle_errors {
+    header @cors_allowed {
+      Access-Control-Allow-Origin "{header.Origin}"
+      Access-Control-Allow-Credentials "true"
+      Vary "Origin"
+      defer
+    }
+  }
+}
