@@ -1,13 +1,49 @@
-# Caddy configuration for serving the Flutter Web frontend.
-#
-# This config ensures that deep links resolve to index.html, applies the
-# required CSP directives for Stripe, and adds standard
-# security headers.
-#
-# Place this file on the host and reference it when starting Caddy, e.g.:
-#   caddy run --config /etc/caddy/Caddyfile
-# Update the `root` directive if your deploy path differs from /var/www/repduel.
+# =========================
+# API (CORS + reverse proxy)
+# =========================
+api.repduel.com {
+  encode zstd gzip
 
+  # Allow only these browser origins
+  @allowed header Origin https://www.repduel.com https://repduel.com
+
+  # Preflight: 204 (will still carry the header block below because it's matched)
+  @preflight method OPTIONS
+
+  # Echo the requesting Origin and allow credentials
+  header @allowed {
+    Access-Control-Allow-Origin "{header.Origin}"
+    Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Access-Control-Allow-Headers "Content-Type, Authorization"
+    Access-Control-Allow-Credentials "true"
+    Vary "Origin"
+    defer
+  }
+
+  # Send the preflight response
+  respond @preflight 204
+
+  # Proxy to FastAPI; force HTTP/1 upstream
+  reverse_proxy 127.0.0.1:9999 {
+    transport http {
+      versions h1
+    }
+  }
+
+  # Ensure error responses also include CORS for allowed origins
+  handle_errors {
+    header @allowed {
+      Access-Control-Allow-Origin "{header.Origin}"
+      Access-Control-Allow-Credentials "true"
+      Vary "Origin"
+      defer
+    }
+  }
+}
+
+# =========================
+# Frontend (Flutter web)
+# =========================
 www.repduel.com, repduel.com {
   encode zstd gzip
   root * /var/www/repduel
@@ -22,54 +58,11 @@ www.repduel.com, repduel.com {
     file_server
   }
 
+  # Single-line CSP to avoid multiline quoting bugs
   header {
-    Content-Security-Policy "
-      default-src 'self';
-      base-uri 'self';
-      object-src 'none';
-      script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:;
-      style-src  'self' 'unsafe-inline';
-      img-src    'self' https: data:;
-      font-src   'self' data:;
-      connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com;
-      frame-src  https://js.stripe.com https://hooks.stripe.com;
-      worker-src 'self' blob:;
-    "
+    Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' data:; connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
     Referrer-Policy "strict-origin-when-cross-origin"
     X-Content-Type-Options "nosniff"
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-  }
-}
-
-api.repduel.com {
-  encode zstd gzip
-
-  @cors_allowed header Origin https://www.repduel.com https://repduel.com
-  @preflight method OPTIONS
-
-  respond @preflight 204
-
-  header @cors_allowed {
-    Access-Control-Allow-Origin "{header.Origin}"
-    Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    Access-Control-Allow-Headers "Content-Type, Authorization"
-    Access-Control-Allow-Credentials "true"
-    Vary "Origin"
-    defer
-  }
-
-  reverse_proxy 127.0.0.1:9999 {
-    transport http {
-      versions h1
-    }
-  }
-
-  handle_errors {
-    header @cors_allowed {
-      Access-Control-Allow-Origin "{header.Origin}"
-      Access-Control-Allow-Credentials "true"
-      Vary "Origin"
-      defer
-    }
   }
 }
