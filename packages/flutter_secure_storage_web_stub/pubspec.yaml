@@ -1,17 +1,14 @@
 name: flutter_secure_storage_web
-description: Wasm-safe stub web implementation of flutter_secure_storage backed by SharedPreferences.
+description: Minimal stub that disables flutter_secure_storage on the web.
 publish_to: "none"
-version: 1.2.1+stub
+version: 0.0.1+stub
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
-  flutter: ">=3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  flutter_secure_storage_platform_interface: ^1.1.2
-  shared_preferences: ^2.2.2
 
 flutter:
   plugin:

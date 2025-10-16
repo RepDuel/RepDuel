@@ -54,11 +54,10 @@ class SharedPreferencesKeyValueStore implements SecureKeyValueStore {
 
   @override
   Future<void> deleteAll() async {
-    final prefs = await _resolvePreferences();
     if (keyPrefix.isEmpty) {
-      await prefs.clear();
       return;
     }
+    final prefs = await _resolvePreferences();
     final keysToRemove = prefs
         .getKeys()
         .where((storedKey) => storedKey.startsWith(keyPrefix))
@@ -93,7 +92,6 @@ class InMemoryKeyValueStore implements SecureKeyValueStore {
   @override
   Future<void> deleteAll() async {
     if (keyPrefix.isEmpty) {
-      _store.clear();
       return;
     }
     _store.removeWhere((storedKey, _) => storedKey.startsWith(keyPrefix));

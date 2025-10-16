@@ -1,5 +1,6 @@
 // frontend/lib/core/services/secure_storage_store_factory.dart
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'
     show
         AndroidOptions,
@@ -46,4 +47,11 @@ class FlutterSecureKeyValueStore implements SecureKeyValueStore {
   Future<void> deleteAll() => _storage.deleteAll();
 }
 
-SecureKeyValueStore createSecureKeyValueStore() => FlutterSecureKeyValueStore();
+SecureKeyValueStore createSecureKeyValueStore() {
+  if (kIsWeb) {
+    return SharedPreferencesKeyValueStore(
+      keyPrefix: 'flutter_secure_storage_web:',
+    );
+  }
+  return FlutterSecureKeyValueStore();
+}

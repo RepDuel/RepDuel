@@ -372,7 +372,7 @@ packages:
       path: "../packages/flutter_secure_storage_web_stub"
       relative: true
     source: path
-    version: "1.2.1+stub"
+    version: "0.0.1+stub"
   flutter_secure_storage_windows:
     dependency: transitive
     description:
