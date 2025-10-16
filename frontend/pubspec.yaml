@@ -53,6 +53,10 @@ dev_dependencies:
   json_serializable: ^6.7.1 # For generating serialization code
   build_runner: ^2.4.6 # For running code generators like json_serializable
 
+dependency_overrides:
+  flutter_secure_storage_web:
+    path: ../packages/flutter_secure_storage_web_stub
+
 flutter:
   uses-material-design: true
 
