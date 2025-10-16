@@ -189,6 +189,45 @@ curl -i -X POST https://api.repduel.com/api/v1/users/login \
 * Python 3.10+
 * Flutter 3.x+
 * PostgreSQL (local or hosted e.g. Render)
+* [Doppler CLI](https://docs.doppler.com/docs/install-cli) (logged in or configured with a service token)
+
+### ▶️ First-time setup for `make backend` / `make frontend`
+
+After cloning the repository, run the following commands once to prepare the
+tooling that the `make` targets expect:
+
+```bash
+# Backend virtualenv + dependencies
+python3 -m venv backend/.venv
+source backend/.venv/bin/activate
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+pip install "psycopg2-binary==2.9.9"
+
+# Authenticate Doppler (choose one):
+doppler login                                   # interactive device login, or
+# export DOPPLER_TOKEN=dp.st.xxxxxx             # service token with dev access
+
+# (Optional) Pin defaults so you can omit --project/--config later
+doppler setup --project repduel --config dev_backend || true
+doppler setup --project repduel --config dev_frontend || true
+
+# Run migrations with Doppler-provided env vars (from repo root)
+doppler run --project repduel --config dev_backend -- \
+  bash -lc 'cd backend && alembic upgrade head'
+deactivate
+
+# Frontend dependencies
+( cd frontend && flutter pub get )
+```
+
+With the prerequisites in place you can launch both services from separate
+terminals:
+
+```bash
+make backend   # FastAPI dev server (requires Doppler secrets + reachable DB)
+make frontend  # Flutter web app on http://localhost:5000
+```
 
 ---
 
