@@ -16,7 +16,7 @@ services:
           object-src 'none';
           script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:;
           style-src  'self' 'unsafe-inline';
-          img-src    'self' https: data:;
+          img-src    'self' https: data: https://cdn.repduel.com;
           font-src   'self' data:;
           connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com;
           frame-src  https://js.stripe.com https://hooks.stripe.com;

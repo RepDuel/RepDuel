@@ -24,6 +24,9 @@ api.repduel.com {
   respond @preflight 204
 
   # Proxy to FastAPI; force HTTP/1 upstream
+  @static path /static/*
+  header @static Cache-Control "public, max-age=31536000, immutable"
+
   reverse_proxy 127.0.0.1:9999 {
     transport http {
       versions h1
@@ -60,7 +63,7 @@ www.repduel.com, repduel.com {
 
   # Single-line CSP to avoid multiline quoting bugs
   header {
-    Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' data:; connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
+    Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: https://cdn.repduel.com; font-src 'self' data:; connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
     Referrer-Policy "strict-origin-when-cross-origin"
     X-Content-Type-Options "nosniff"
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"

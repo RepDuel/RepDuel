@@ -1,9 +1,7 @@
 # backend/app/api/v1/users.py
 
-import os
-import shutil
 from typing import Annotated
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import stripe
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
@@ -28,6 +26,7 @@ from app.services.user_service import (
     get_user_by_username,
     update_user,
 )
+from app.utils.storage import save_image_upload
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -256,19 +255,7 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-
-    ext = os.path.splitext(file.filename)[1] if file.filename else ""
-    filename = f"{uuid4().hex}{ext}"
-    avatar_dir = os.path.join("static", "avatars")
-    os.makedirs(avatar_dir, exist_ok=True)
-
-    file_path = os.path.join(avatar_dir, filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    storage_key = f"avatars/{filename}"
+    storage_key = await save_image_upload(file, subdir="avatars")
     current_user.avatar_url = storage_key
 
     db.add(current_user)

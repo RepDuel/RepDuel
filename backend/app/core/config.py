@@ -1,6 +1,7 @@
 # backend/app/core/config.py
 
 import json
+import os
 from typing import List, Optional, Union
 
 from pydantic import AnyHttpUrl, Field, AliasChoices, PostgresDsn, field_validator, model_validator
@@ -36,6 +37,14 @@ class Settings(BaseSettings):
     )
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str
+
+    STATIC_STORAGE_DIR: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "STATIC_STORAGE_DIR",
+            "static_storage_dir",
+        ),
+    )
 
     APPLE_TEAM_ID: Optional[str] = Field(
         default=None,
@@ -128,6 +137,17 @@ class Settings(BaseSettings):
             self.STATIC_PUBLIC_BASE = str(self.STATIC_PUBLIC_BASE).rstrip("/")
         else:
             self.STATIC_PUBLIC_BASE = f"{self.BASE_URL.rstrip('/')}/static"
+
+        default_static_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "static")
+        )
+        static_dir = (self.STATIC_STORAGE_DIR or "").strip() if isinstance(self.STATIC_STORAGE_DIR, str) else None
+        if static_dir:
+            static_dir = os.path.abspath(os.path.expanduser(static_dir))
+        else:
+            static_dir = default_static_dir
+        self.STATIC_STORAGE_DIR = static_dir
+
         if not self.REFRESH_JWT_SECRET_KEY:
             self.REFRESH_JWT_SECRET_KEY = self.JWT_SECRET_KEY
         if self.COOKIE_SAMESITE:

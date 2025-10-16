@@ -1,9 +1,7 @@
 # backend/app/api/v1/routines.py
 
 from typing import List
-import os
-import shutil
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy import func, select
@@ -16,7 +14,7 @@ from app.models.user import User
 from app.schemas.routine import RoutineCreate, RoutineRead, RoutineUpdate
 from app.schemas.routine_share import RoutineImportRequest, RoutineShareRead
 from app.services import routine_service
-from app.utils.storage import build_public_url
+from app.utils.storage import build_public_url, save_image_upload
 
 router = APIRouter(prefix="/routines", tags=["Routines"])
 
@@ -31,19 +29,7 @@ async def upload_routine_image(
     file: UploadFile = File(..., alias="image"),
     _current_user: User = Depends(get_current_user),
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-
-    ext = os.path.splitext(file.filename or "")[1]
-    filename = f"{uuid4().hex}{ext}"
-    image_dir = os.path.join("static", "routine-images")
-    os.makedirs(image_dir, exist_ok=True)
-
-    file_path = os.path.join(image_dir, filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    storage_key = f"routine-images/{filename}"
+    storage_key = await save_image_upload(file, subdir="routine-images")
     public_url = build_public_url(storage_key)
     if not public_url:
         public_url = str(request.base_url).rstrip("/") + f"/static/{storage_key}"

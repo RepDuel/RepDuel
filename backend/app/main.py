@@ -113,7 +113,10 @@ _mount_if_exists("/icons", "icons")
 static_cors_config = dict(cors_config)
 static_cors_config["allow_methods"] = ["GET", "HEAD", "OPTIONS"]
 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+STATIC_DIR = getattr(settings, "STATIC_STORAGE_DIR", None)
+if not STATIC_DIR:
+    raise RuntimeError("STATIC_STORAGE_DIR must be configured")
+os.makedirs(STATIC_DIR, exist_ok=True)
 static_app = StaticFiles(directory=STATIC_DIR)
 app.mount("/static", CORSMiddleware(static_app, **static_cors_config), name="static")
 
