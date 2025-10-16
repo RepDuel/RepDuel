@@ -1,22 +1,24 @@
 # 🥇 RepDuel
 
-**RepDuel** is a gamified fitness platform for tracking workouts, competing on leaderboards, and analyzing performance. Built with a **cross-platform Flutter frontend** and a **high-performance FastAPI backend**, RepDuel is designed for lifters, athletes, and fitness enthusiasts who want accountability, progression, and community.
+**RepDuel** is a gamified fitness platform for tracking workouts, competing on leaderboards, and analyzing performance. Built with a **cross-platform Flutter frontend** and a **high-performance FastAPI backend**, RepDuel gives lifters and athletes the accountability, progression, and community needed to level up together.
 
 ---
 
-## 🧩 Tech Stack
+## 🧭 Platform Overview
 
-| Layer      | Technology                           |
-| ---------- | ------------------------------------ |
-| Frontend   | Flutter + Riverpod + GoRouter        |
-| Backend    | FastAPI + PostgreSQL + Alembic       |
-| Auth       | JWT Access + Refresh Tokens (OAuth2) |
-| Payments   | RevenueCat (iOS/Android) + Stripe    |
-| State Mgmt | Riverpod                             |
+| Area            | Details                                                                 |
+| --------------- | ------------------------------------------------------------------------ |
+| Backend         | FastAPI (Python 3.12) exposed as `app.main:app`                          |
+| Frontend        | Flutter Web (Riverpod + GoRouter) served via Caddy                       |
+| Auth            | OAuth2 password bearer with JWT access + rotating refresh tokens         |
+| Payments        | RevenueCat (mobile) + Stripe Checkout & Customer Portal (web)            |
+| Primary Domain  | `www.repduel.com`                                                        |
+| API Domain      | `https://api.repduel.com` (reverse proxied to `127.0.0.1:9999`)          |
+| Deployment Host | Hetzner VPS (`178.156.201.92`, Ubuntu 24.04 LTS, managed by `deploy` user)|
 
 ---
 
-## 📦 Monorepo Structure
+## 🧩 Monorepo Structure
 
 ```
 repduel/
@@ -41,6 +43,106 @@ repduel/
 │   ├── alembic/           # Database migrations
 │   └── requirements.txt
 └── README.md              # You are here
+```
+
+---
+
+## ⚙️ Production Operations
+
+RepDuel production traffic is routed through **Caddy**, which terminates TLS, enforces security headers (CSP, HSTS, X-Frame-Options), and proxies API requests to the FastAPI process. The backend runs under **systemd** and loads secrets through **Doppler**.
+
+### Server Environment
+
+* **Provider:** Hetzner VPS (`178.156.201.92`)
+* **OS:** Ubuntu 24.04 LTS
+* **Python:** System 3.12 (virtualenv at `/home/deploy/repduel/backend/.venv`)
+* **Firewall:** UFW open for TCP `9999`
+* **Process Manager:** `systemd` (`repduel-backend.service`)
+
+### Filesystem Layout
+
+```
+/home/deploy/
+├── repduel/
+│   ├── backend/              # FastAPI application
+│   ├── deploy/               # Caddyfile + deploy scripts
+│   └── tools/redeploy.sh     # Zero-guess redeploy script
+├── backups/
+├── render_backup.dump
+└── …
+```
+
+### Caddy
+
+* Serves the Flutter web app on `repduel.com` / `www.repduel.com`
+* Proxies API traffic on `api.repduel.com` → `127.0.0.1:9999`
+* Automatically manages TLS, CORS, CSP, and preflight `OPTIONS`
+* Config lives at `/etc/caddy/Caddyfile` (symlink to `deploy/Caddyfile`)
+
+Validation & reload commands:
+
+```bash
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo caddy fmt --overwrite /etc/caddy/Caddyfile
+sudo caddy reload --config /etc/caddy/Caddyfile
+```
+
+### Systemd Service (`/etc/systemd/system/repduel-backend.service`)
+
+```ini
+[Unit]
+Description=RepDuel FastAPI (prod)
+After=network-online.target
+
+[Service]
+User=deploy
+WorkingDirectory=/home/deploy/repduel/backend
+Environment=PORT=9999
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/env bash -lc 'exec doppler run --project repduel --config prd_backend -- /home/deploy/repduel/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 2 --proxy-headers --forwarded-allow-ips="*"'
+Restart=always
+RestartSec=3
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Useful commands:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart repduel-backend
+sudo systemctl status repduel-backend
+journalctl -u repduel-backend -n 50 --no-pager
+```
+
+### Zero-Guess Redeploy Script
+
+The `/home/deploy/repduel/tools/redeploy.sh` script pulls the latest Git changes, restarts the backend service, and reloads Caddy in one step:
+
+```bash
+ssh deploy@178.156.201.92
+/home/deploy/repduel/tools/redeploy.sh
+```
+
+### Verification Commands
+
+```bash
+# Backend health
+curl -i http://127.0.0.1:9999/health
+
+# CORS / preflight check
+curl -i -X OPTIONS https://api.repduel.com/api/v1/users/login \
+  -H "Origin: https://www.repduel.com" \
+  -H "Access-Control-Request-Method: POST"
+
+# Login flow (expected 401 with invalid credentials)
+curl -i -X POST https://api.repduel.com/api/v1/users/login \
+  -H "Origin: https://www.repduel.com" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'username=test@example.com&password=wrong'
 ```
 
 ---
