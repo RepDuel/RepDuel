@@ -1,0 +1,80 @@
+name: Flutter Platform Template Guard
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/linux/**'
+      - 'frontend/windows/**'
+      - 'frontend/cmake/**'
+      - 'frontend/tool/check_platform_templates.sh'
+      - '.github/workflows/flutter-platform-guard.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/linux/**'
+      - 'frontend/windows/**'
+      - 'frontend/cmake/**'
+      - 'frontend/tool/check_platform_templates.sh'
+      - '.github/workflows/flutter-platform-guard.yml'
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  guard:
+    name: Verify platform templates
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Cache Flutter packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            frontend/.dart_tool
+          key: ${{ runner.os }}-flutter-${{ hashFiles('frontend/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+
+      - name: Fetch Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Check platform templates
+        run: frontend/tool/check_platform_templates.sh
+
+  nightly-guard:
+    name: Verify templates against latest stable (nightly)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter (latest stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Fetch Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Check platform templates
+        run: frontend/tool/check_platform_templates.sh

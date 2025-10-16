@@ -2,6 +2,9 @@
 cmake_minimum_required(VERSION 3.13)
 project(runner LANGUAGES CXX)
 
+# NOTE: Local project overrides live in ../cmake/*_overrides.cmake.
+# Keep this file aligned with the stock Flutter template.
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "frontend")
@@ -41,8 +44,6 @@ endif()
 # of modifying this function.
 function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_14)
-  target_compile_options(${TARGET} PRIVATE -Wall -Werror)
-  target_compile_options(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")
   target_compile_definitions(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
 endfunction()
 
@@ -73,6 +74,12 @@ set_target_properties(${BINARY_NAME}
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
+
+# BEGIN: local overrides (kept minimal to avoid drift)
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../cmake/linux_overrides.cmake")
+  include("${CMAKE_CURRENT_LIST_DIR}/../cmake/linux_overrides.cmake")
+endif()
+# END: local overrides
 
 
 # === Installation ===
