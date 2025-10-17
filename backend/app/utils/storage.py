@@ -115,12 +115,47 @@ def build_public_url(key: Optional[str]) -> Optional[str]:
 
     normalized = normalize_storage_key(raw)
     if normalized:
-        base = getattr(settings, "STATIC_PUBLIC_BASE", None)
-        if not base:
-            return normalized
-        base_str = str(base).rstrip("/")
         normalized_key = normalized.lstrip("/")
-        return f"{base_str}/{normalized_key}" if normalized_key else base_str + "/"
+
+        def _candidates() -> list[str]:
+            seen: set[str] = set()
+            choices: list[str] = []
+
+            def _add(value: Optional[str]) -> None:
+                if not value:
+                    return
+                cleaned = str(value).rstrip("/")
+                if not cleaned or cleaned in seen:
+                    return
+                seen.add(cleaned)
+                choices.append(cleaned)
+
+            base_url = getattr(settings, "BASE_URL", None)
+            app_url = getattr(settings, "APP_URL", None)
+            static_base = getattr(settings, "STATIC_PUBLIC_BASE", None)
+            prefer_cdn = getattr(settings, "STATIC_PREFER_CDN", False)
+
+            if prefer_cdn:
+                _add(static_base)
+                if base_url:
+                    _add(f"{str(base_url).rstrip('/')}/static")
+                if app_url:
+                    _add(f"{str(app_url).rstrip('/')}/static")
+            else:
+                if base_url:
+                    _add(f"{str(base_url).rstrip('/')}/static")
+                if app_url:
+                    _add(f"{str(app_url).rstrip('/')}/static")
+                _add(static_base)
+
+            return choices
+
+        for base in _candidates():
+            if not normalized_key:
+                return base + "/"
+            return f"{base}/{normalized_key}"
+
+        return normalized if normalized_key else normalized + "/"
 
     if _ABSOLUTE_URL_RE.match(raw):
         return raw

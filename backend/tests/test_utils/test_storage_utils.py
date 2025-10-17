@@ -54,8 +54,16 @@ def test_normalize_storage_key_handles_absolute_local_url(monkeypatch):
 
 def test_build_public_url_rewrites_legacy_local_urls(monkeypatch):
     monkeypatch.setattr(settings, "STATIC_PUBLIC_BASE", "https://cdn.repduel.com")
+    monkeypatch.setattr(settings, "STATIC_PREFER_CDN", False)
     legacy = "http://127.0.0.1:8000/static/routine-images/example.png"
     result = build_public_url(legacy)
+    assert result == "http://testserver/static/routine-images/example.png"
+
+
+def test_build_public_url_uses_cdn_when_preferred(monkeypatch):
+    monkeypatch.setattr(settings, "STATIC_PUBLIC_BASE", "https://cdn.repduel.com")
+    monkeypatch.setattr(settings, "STATIC_PREFER_CDN", True)
+    result = build_public_url("routine-images/example.png")
     assert result == "https://cdn.repduel.com/routine-images/example.png"
 
 

@@ -16,6 +16,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("STATIC_PUBLIC_BASE", "static_public_base"),
     )
+    STATIC_PREFER_CDN: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("STATIC_PREFER_CDN", "static_prefer_cdn"),
+    )
 
     JWT_SECRET_KEY: str
     REFRESH_JWT_SECRET_KEY: Optional[str] = Field(
