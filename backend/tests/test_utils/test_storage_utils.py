@@ -39,6 +39,14 @@ def _make_upload(data: bytes, *, filename: str = "avatar.png") -> UploadFile:
     )
 
 
+@pytest.mark.parametrize(
+    "value",
+    [None, "", "   ", "/"],
+)
+def test_normalize_storage_key_returns_none_for_empty_inputs(value):
+    assert normalize_storage_key(value) is None
+
+
 def test_normalize_storage_key_strips_static_prefix(monkeypatch):
     monkeypatch.setattr(settings, "STATIC_PUBLIC_BASE", "https://cdn.repduel.com")
     result = normalize_storage_key("static/avatars/foo.png")
@@ -50,6 +58,12 @@ def test_normalize_storage_key_handles_absolute_local_url(monkeypatch):
     url = "http://127.0.0.1:8000/static/routine-images/bar.jpg"
     result = normalize_storage_key(url)
     assert result == "routine-images/bar.jpg"
+
+
+def test_normalize_storage_key_rejects_external_hosts(monkeypatch):
+    monkeypatch.setattr(settings, "STATIC_PUBLIC_BASE", "https://cdn.repduel.com")
+    external = "https://malicious.example.com/static/avatars/evil.png"
+    assert normalize_storage_key(external) is None
 
 
 def test_build_public_url_rewrites_legacy_local_urls(monkeypatch):
@@ -67,11 +81,27 @@ def test_build_public_url_uses_cdn_when_preferred(monkeypatch):
     assert result == "https://cdn.repduel.com/routine-images/example.png"
 
 
+def test_build_public_url_prefers_origin_when_not_using_cdn(monkeypatch):
+    monkeypatch.setattr(settings, "STATIC_PUBLIC_BASE", "https://cdn.repduel.com")
+    monkeypatch.setattr(settings, "BASE_URL", "https://api.repduel.com")
+    monkeypatch.setattr(settings, "APP_URL", "https://app.repduel.com")
+    monkeypatch.setattr(settings, "STATIC_PREFER_CDN", False)
+
+    result = build_public_url("avatars/example.png")
+
+    assert result == "https://api.repduel.com/static/avatars/example.png"
+
+
 def test_build_public_url_passes_through_external_host(monkeypatch):
     monkeypatch.setattr(settings, "STATIC_PUBLIC_BASE", "https://cdn.repduel.com")
     external = "https://images.example.com/photo.png"
     result = build_public_url(external)
     assert result == external
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_build_public_url_returns_none_for_empty_values(value):
+    assert build_public_url(value) is None
 
 
 def test_get_storage_path_uses_static_storage_dir(monkeypatch, tmp_path):
