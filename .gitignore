@@ -44,6 +44,12 @@ __pycache__/
 !/frontend/build/web/
 /frontend/build/web/*
 
+# Ignore Dart tool artifacts in packages
+/packages/**/.dart_tool/
+/packages/**/.packages
+/packages/**/.flutter-plugins
+/packages/**/.flutter-plugins-dependencies
+
 # Other
 *.DS_Store
 backend/alembic/versions_archive/
