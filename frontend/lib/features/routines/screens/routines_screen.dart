@@ -247,6 +247,35 @@ class RoutinesScreen extends ConsumerWidget {
     context.pushNamed('freeWorkout');
   }
 
+  Future<Map<String, String>> _fetchScenarioNames(
+      WidgetRef ref, Iterable<String> scenarioIds) async {
+    final ids = scenarioIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    if (ids.isEmpty) return const {};
+
+    final client = ref.read(publicHttpClientProvider);
+    final resolved = <String, String>{};
+
+    for (final id in ids) {
+      try {
+        final response = await client.get('/scenarios/$id/details');
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final name = (data['name'] as String?)?.trim();
+          if (name != null && name.isNotEmpty) {
+            resolved[id] = name;
+          }
+        }
+      } catch (_) {
+        // Ignore lookup failures and fall back to the ID placeholder.
+      }
+    }
+
+    return resolved;
+  }
+
   Future<Routine?> _prepareRoutineForEditing(
       BuildContext context, WidgetRef ref, Routine routine) async {
     // Already owned by the user → edit in place
@@ -275,6 +304,8 @@ class RoutinesScreen extends ConsumerWidget {
     );
 
     try {
+      final scenarioNames =
+          await _fetchScenarioNames(ref, routine.scenarios.map((s) => s.scenarioId));
       final client = ref.read(privateHttpClientProvider);
       final payload = {
         'name': routine.name,
@@ -282,8 +313,7 @@ class RoutinesScreen extends ConsumerWidget {
         'scenarios': routine.scenarios
             .map((s) => {
                   'scenario_id': s.scenarioId,
-                  // Backend expects a name; reuse id when unknown.
-                  'name': s.scenarioId,
+                  'name': scenarioNames[s.scenarioId] ?? s.scenarioId,
                   'sets': s.sets,
                   'reps': s.reps,
                 })

@@ -45,18 +45,18 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
       final r = widget.initial!;
       _nameCtrl = TextEditingController(text: r.name);
       _imagePreviewUrl = r.imageUrl;
-      _items.addAll(
-        r.scenarios.map((s) => _CustomExercise(
-              scenarioId: s.scenarioId,
-              // --- THIS IS THE FIX ---
-              // The `ScenarioSet` object 's' does not have a `scenarioName` property.
-              // Reverting to the original logic that uses `scenarioId` as a placeholder.
-              name: s.scenarioId,
-              // --- END OF FIX ---
-              sets: s.sets,
-              reps: s.reps,
-            )),
-      );
+        _items.addAll(
+          r.scenarios.map((s) => _CustomExercise(
+                scenarioId: s.scenarioId,
+                // Use the ID as a temporary label until names are fetched.
+                name: s.scenarioId,
+                sets: s.sets,
+                reps: s.reps,
+              )),
+        );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadScenarioNames(r.scenarios.map((s) => s.scenarioId));
+      });
     } else {
       _nameCtrl = TextEditingController(text: 'Custom Routine');
       _imagePreviewUrl = null;
@@ -103,6 +103,44 @@ class _CustomRoutineScreenState extends ConsumerState<CustomRoutineScreen> {
     if (_items[index].reps <= 1) return;
     setState(() =>
         _items[index] = _items[index].copyWith(reps: _items[index].reps - 1));
+  }
+
+  Future<void> _loadScenarioNames(Iterable<String> scenarioIds) async {
+    final ids = scenarioIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    if (ids.isEmpty) return;
+
+    final client = ref.read(publicHttpClientProvider);
+    final resolved = <String, String>{};
+
+    for (final id in ids) {
+      try {
+        final response = await client.get('/scenarios/$id/details');
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final name = (data['name'] as String?)?.trim();
+          if (name != null && name.isNotEmpty) {
+            resolved[id] = name;
+          }
+        }
+      } catch (_) {
+        // Ignore lookup failures and leave the placeholder in place.
+      }
+    }
+
+    if (!mounted || resolved.isEmpty) return;
+
+    setState(() {
+      for (var i = 0; i < _items.length; i++) {
+        final current = _items[i];
+        final resolvedName = resolved[current.scenarioId];
+        if (resolvedName != null && resolvedName != current.name) {
+          _items[i] = current.copyWith(name: resolvedName);
+        }
+      }
+    });
   }
 
   Future<void> _pickImage() async {
@@ -512,9 +550,9 @@ class _CustomExercise {
       required this.sets,
       required this.reps});
 
-  _CustomExercise copyWith({int? sets, int? reps}) => _CustomExercise(
+  _CustomExercise copyWith({String? name, int? sets, int? reps}) => _CustomExercise(
         scenarioId: scenarioId,
-        name: name,
+        name: name ?? this.name,
         sets: sets ?? this.sets,
         reps: reps ?? this.reps,
       );
