@@ -24,6 +24,12 @@ Future<void> main() async {
     });
   }
 
+  const backendUrlDefine = String.fromEnvironment('BACKEND_URL');
+  const publicBaseUrlDefine = String.fromEnvironment('PUBLIC_BASE_URL');
+  debugPrint("Env: --dart-define BACKEND_URL = '$backendUrlDefine'");
+  debugPrint("Env: --dart-define PUBLIC_BASE_URL = '$publicBaseUrlDefine'");
+  debugPrint('Env: resolved backendUrl = ${Env.backendUrl}');
+
   // Initialize Stripe
   if (!kIsWeb) {
     Stripe.publishableKey = Env.stripePublishableKey;

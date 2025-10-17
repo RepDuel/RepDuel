@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 String envVar(
@@ -57,6 +57,10 @@ String _defaultBackendUrl() {
     if (!(isLocalHost || isPrivateNetwork)) {
       return 'https://api.repduel.com';
     }
+  }
+
+  if (kReleaseMode) {
+    return 'https://api.repduel.com';
   }
 
   return 'http://127.0.0.1:8000';

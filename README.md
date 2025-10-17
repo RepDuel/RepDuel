@@ -451,6 +451,15 @@ flutter run -d chrome --web-port=5000
 
 * Web: `http://localhost:5000`
 * Mobile: iOS/Android emulator or physical device
+* **iOS release builds:** make sure the backend URLs are passed via `--dart-define` so the app doesn't fall back to `http://localhost`. Example:
+
+  ```bash
+  flutter run --release -d <device-id> \
+    --dart-define=BACKEND_URL=https://api.repduel.com \
+    --dart-define=PUBLIC_BASE_URL=https://api.repduel.com/static
+  ```
+
+  The Flutter bootstrap prints the resolved values at launch (look for `Env: --dart-define ...` in the logs). The default iOS `Info.plist` already whitelists HTTPS traffic to `api.repduel.com` via App Transport Security.
 
 ---
 
