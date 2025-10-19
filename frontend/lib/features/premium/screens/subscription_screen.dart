@@ -287,12 +287,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Unlock Your Full Potential',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
+                          const Align(
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Unlock Your Full Potential',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                           const SizedBox(height: 28),
@@ -331,6 +335,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                           ),
                           const SizedBox(height: 16),
                           Wrap(
+                            alignment: WrapAlignment.center,
+                            runAlignment: WrapAlignment.center,
                             spacing: 24,
                             runSpacing: 12,
                             children: [
@@ -361,40 +367,51 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Auto-renews monthly. Cancel anytime in Settings.',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 13,
-                              height: 1.4,
+                          const Align(
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Auto-renews monthly. Cancel anytime in Settings.',
+                              style: TextStyle(
+                                color: Colors.white60,
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                           if (_isIOS) ...[
                             const SizedBox(height: 24),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(2),
-                              child: TextButton(
-                                key: const Key('restore'),
-                                onPressed: (_isProcessing || isLoadingIOSPrice)
-                                    ? null
-                                    : _handleRestore,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.white70,
-                                  padding: EdgeInsets.zero,
+                            Align(
+                              alignment: Alignment.center,
+                              child: FocusTraversalOrder(
+                                order: const NumericFocusOrder(2),
+                                child: TextButton(
+                                  key: const Key('restore'),
+                                  onPressed: (_isProcessing || isLoadingIOSPrice)
+                                      ? null
+                                      : _handleRestore,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white70,
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  child: const Text('Restore Purchases'),
                                 ),
-                                child: const Text('Restore Purchases'),
                               ),
                             ),
                           ],
                           const SizedBox(height: 24),
-                          Text(
-                            _isIOS
-                                ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
-                                : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 13,
-                              height: 1.5,
+                          Align(
+                            alignment: Alignment.center,
+                            child: Text(
+                              _isIOS
+                                  ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
+                                  : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 13,
+                                height: 1.5,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ],
