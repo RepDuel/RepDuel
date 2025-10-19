@@ -24,11 +24,11 @@ class AppTheme {
 
 const List<AppTheme> appThemes = [
   AppTheme(
-    id: 'default_teal',
+    id: 'default_white',
     name: 'Default',
     isPremium: false,
     primary: Colors.white,
-    accent: Color(0xFF64FFDA),
+    accent: Colors.white,
     background: Colors.black,
     card: Color(0xFF1A1A1A),
   ),

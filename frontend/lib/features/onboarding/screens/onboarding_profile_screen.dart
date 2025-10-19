@@ -236,10 +236,10 @@ class _OnboardingProfileScreenState extends ConsumerState<OnboardingProfileScree
                       ],
                       color: Colors.white70,
                       selectedColor: Colors.black,
-                      fillColor: Colors.tealAccent,
+                      fillColor: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       borderColor: Colors.white24,
-                      selectedBorderColor: Colors.tealAccent,
+                      selectedBorderColor: Colors.white,
                       onPressed: (index) {
                         final newUnit = index == 0 ? 'kg' : 'lbs';
                         if (newUnit == _preferredUnit) return;
@@ -273,7 +273,7 @@ class _OnboardingProfileScreenState extends ConsumerState<OnboardingProfileScree
                   child: ElevatedButton(
                     onPressed: _isSaving ? null : _completeOnboarding,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.tealAccent,
+                      backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(

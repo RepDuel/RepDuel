@@ -225,10 +225,9 @@ class _SearchResultTile extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: isPending ? null : onFollowToggle,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: user.isFollowing
-                      ? Colors.white10
-                      : theme.colorScheme.primary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.white,
+                  foregroundColor:
+                      user.isFollowing ? Colors.black54 : Colors.black,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),

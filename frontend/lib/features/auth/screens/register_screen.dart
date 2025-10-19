@@ -118,7 +118,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   focusedBorder: const OutlineInputBorder(
                     borderSide:
-                        BorderSide(color: Colors.tealAccent, width: 2.0),
+                        BorderSide(color: Colors.white, width: 2.0),
                   ),
                 ),
                 validator: (value) =>
@@ -138,7 +138,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   focusedBorder: const OutlineInputBorder(
                     borderSide:
-                        BorderSide(color: Colors.tealAccent, width: 2.0),
+                        BorderSide(color: Colors.white, width: 2.0),
                   ),
                 ),
                 validator: (value) {
@@ -164,7 +164,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   focusedBorder: const OutlineInputBorder(
                     borderSide:
-                        BorderSide(color: Colors.tealAccent, width: 2.0),
+                        BorderSide(color: Colors.white, width: 2.0),
                   ),
                 ),
                 validator: (value) {
@@ -179,7 +179,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ElevatedButton(
                 onPressed: isLoading ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.tealAccent[400],
+                  backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(

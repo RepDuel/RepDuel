@@ -11,10 +11,18 @@ class AppTheme {
     return ThemeData(
       brightness: Brightness.light,
       scaffoldBackgroundColor: Colors.grey[100],
-      primaryColor: Colors.blueAccent,
+      primaryColor: Colors.white,
       colorScheme: const ColorScheme.light(
-        primary: Colors.blueAccent,
-        secondary: Colors.indigoAccent,
+        primary: Colors.white,
+        onPrimary: Colors.black,
+        secondary: Colors.white,
+        onSecondary: Colors.black,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+        ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.black,
@@ -45,10 +53,18 @@ class AppTheme {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: const Color(0xFF1E1E1E),
-      primaryColor: Colors.tealAccent,
+      primaryColor: Colors.white,
       colorScheme: const ColorScheme.dark(
-        primary: Colors.tealAccent,
-        secondary: Colors.cyanAccent,
+        primary: Colors.white,
+        onPrimary: Colors.black,
+        secondary: Colors.white,
+        onSecondary: Colors.black,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+        ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.black,
