@@ -17,16 +17,16 @@ class AppTheme {
         secondary: Colors.indigoAccent,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: GoogleFonts.roboto(
-          color: Colors.black87,
+          color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
         toolbarTextStyle: GoogleFonts.roboto(
-          color: Colors.black87,
+          color: Colors.white,
           fontSize: 16,
         ),
       ),
@@ -51,8 +51,8 @@ class AppTheme {
         secondary: Colors.cyanAccent,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFF2C2C2C),
-        elevation: 1,
+        backgroundColor: Colors.black,
+        elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: GoogleFonts.roboto(
           color: Colors.white,
