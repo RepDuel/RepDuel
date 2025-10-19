@@ -29,7 +29,7 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
   }
 
   Future<void> _pollForSubscriptionUpdate() async {
-    const maxRetries = 10;
+    const maxRetries = 30;
     const retryDelay = Duration(seconds: 2);
 
     for (int i = 0; i < maxRetries; i++) {
@@ -66,13 +66,27 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
 
     if (mounted) {
       debugPrint("Timed out waiting for subscription update.");
+
+      setState(() {
+        _statusMessage =
+            'We\'re still finalizing things. Your account has not updated yet.';
+        _isSuccess = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content:
-              Text("Payment successful! Your account will be updated shortly."),
-          duration: Duration(seconds: 5),
+          content: Text(
+            "We couldn't confirm your upgrade yet. If you completed checkout, "
+            'please wait a few minutes or contact support with your receipt.',
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 6),
         ),
       );
+
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
       context.go('/profile');
     }
   }
