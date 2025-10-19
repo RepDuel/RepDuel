@@ -226,26 +226,30 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Widget _buildBullet(String text) {
-    const accentColor = Color(0xFF2DDE98);
+    const accentColor = Color(0xFFB1B1B5);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.bolt_rounded,
-            color: accentColor,
-            size: 20,
+          Container(
+            width: 10,
+            height: 10,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: BoxDecoration(
+              color: accentColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          const SizedBox(width: 12),
-          Flexible(
+          const SizedBox(width: 14),
+          Expanded(
             child: Text(
               text,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 17,
-                height: 1.4,
+                fontSize: 16,
+                height: 1.55,
+                letterSpacing: -0.1,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -325,41 +329,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                 onPressed: _close,
                                 style: IconButton.styleFrom(
                                   foregroundColor: Colors.white,
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.06),
-                                  shape: const CircleBorder(),
                                 ),
-                                icon: const Icon(Icons.close_rounded),
+                                icon: const Icon(Icons.close_rounded, size: 20),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.06),
-                                  borderRadius: BorderRadius.circular(32),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.12),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(
-                                      Icons.workspace_premium_outlined,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Premium',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ],
+                              Text(
+                                'Premium access',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.6,
                                 ),
                               ),
                             ],
@@ -368,196 +347,163 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                           const Text(
                             'Ride the momentum.',
                             style: TextStyle(
-                              fontSize: 38,
+                              fontSize: 40,
                               fontWeight: FontWeight.w700,
-                              height: 1.15,
+                              height: 1.08,
+                              letterSpacing: -0.6,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
                           Text(
                             'Unlock RepDuel Premium for pro-level tracking and elite routines inspired by the world\'s best training teams.',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.72),
+                              color: Colors.white.withValues(alpha: 0.68),
                               fontSize: 16,
-                              height: 1.5,
+                              height: 1.45,
+                              letterSpacing: -0.1,
                             ),
+                          ),
+                          const SizedBox(height: 32),
+                          Divider(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            thickness: 0.6,
+                            height: 0,
                           ),
                           const SizedBox(height: 28),
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              color: Colors.white.withValues(alpha: 0.05),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.08),
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black54,
-                                  blurRadius: 40,
-                                  spreadRadius: -12,
-                                  offset: Offset(0, 24),
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 28),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color:
-                                            Colors.white.withValues(alpha: 0.08),
-                                      ),
-                                      child: const Icon(
-                                        Icons.equalizer_rounded,
-                                        color: Colors.white,
-                                        size: 28,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Monthly access',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 0.2,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        if (priceLabel.isNotEmpty)
-                                          Text(
-                                            priceLabel,
-                                            style: const TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 32),
-                                _buildBullet(
-                                    'Track your score history with rich, real-time progress charts.'),
-                                _buildBullet('Design unlimited custom routines without limits.'),
-                                _buildBullet(
-                                    'Support the future of RepDuel so new features land faster.'),
-                                const SizedBox(height: 32),
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(1),
-                                  child: FilledButton(
-                                    key: const Key('cta'),
-                                    onPressed:
-                                        (_isProcessing || isLoadingIOSPrice)
-                                            ? null
-                                            : _handlePurchase,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: const Color(0xFF1CD67A),
-                                      foregroundColor: Colors.black,
-                                      disabledBackgroundColor:
-                                          Colors.white.withValues(alpha: 0.1),
-                                      disabledForegroundColor:
-                                          Colors.black.withValues(alpha: 0.4),
-                                      minimumSize: const Size.fromHeight(58),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(Icons.lock_open_rounded,
-                                                size: 20),
-                                            const SizedBox(width: 10),
-                                            Text(
-                                              _ctaLabel(iosPriceLabel),
-                                              style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Wrap(
-                                  spacing: 24,
-                                  runSpacing: 12,
-                                  alignment: WrapAlignment.start,
-                                  children: [
-                                    FocusTraversalOrder(
-                                      order: const NumericFocusOrder(3),
-                                      child: TextButton(
-                                        key: const Key('privacy'),
-                                        onPressed: _openPrivacy,
-                                        style: TextButton.styleFrom(
-                                          foregroundColor:
-                                              Colors.white.withValues(alpha: 0.8),
-                                        ),
-                                        child: const Text('Privacy Policy'),
-                                      ),
-                                    ),
-                                    FocusTraversalOrder(
-                                      order: const NumericFocusOrder(4),
-                                      child: TextButton(
-                                        key: const Key('terms'),
-                                        onPressed: _openTerms,
-                                        style: TextButton.styleFrom(
-                                          foregroundColor:
-                                              Colors.white.withValues(alpha: 0.8),
-                                        ),
-                                        child: const Text('Terms of Use'),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Auto-renews monthly. Cancel anytime in Settings.',
-                                  style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 13,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                if (_isIOS) ...[
-                                  const SizedBox(height: 18),
-                                  FocusTraversalOrder(
-                                    order: const NumericFocusOrder(2),
-                                    child: TextButton(
-                                      key: const Key('restore'),
-                                      onPressed:
-                                          (_isProcessing || isLoadingIOSPrice)
-                                              ? null
-                                              : _handleRestore,
-                                      style: TextButton.styleFrom(
-                                        foregroundColor:
-                                            Colors.white.withValues(alpha: 0.7),
-                                      ),
-                                      child: const Text('Restore purchases'),
-                                    ),
-                                  ),
-                                ],
-                              ],
+                          Text(
+                            'Monthly access',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.15,
                             ),
                           ),
+                          if (priceLabel.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              priceLabel,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 32),
+                          _buildBullet(
+                              'Track your score history with rich, real-time progress charts.'),
+                          _buildBullet('Design unlimited custom routines without limits.'),
+                          _buildBullet(
+                              'Support the future of RepDuel so new features land faster.'),
+                          const SizedBox(height: 36),
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(1),
+                            child: FilledButton(
+                              key: const Key('cta'),
+                              onPressed:
+                                  (_isProcessing || isLoadingIOSPrice)
+                                      ? null
+                                      : _handlePurchase,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                                disabledBackgroundColor:
+                                    Colors.white.withValues(alpha: 0.08),
+                                disabledForegroundColor:
+                                    Colors.black.withValues(alpha: 0.45),
+                                minimumSize: const Size.fromHeight(56),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                  horizontal: 20,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                _ctaLabel(iosPriceLabel),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Wrap(
+                            spacing: 24,
+                            runSpacing: 12,
+                            alignment: WrapAlignment.start,
+                            children: [
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(3),
+                                child: TextButton(
+                                  key: const Key('privacy'),
+                                  onPressed: _openPrivacy,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor:
+                                        Colors.white.withValues(alpha: 0.72),
+                                    textStyle: const TextStyle(
+                                      fontSize: 14,
+                                      letterSpacing: -0.1,
+                                    ),
+                                  ),
+                                  child: const Text('Privacy Policy'),
+                                ),
+                              ),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(4),
+                                child: TextButton(
+                                  key: const Key('terms'),
+                                  onPressed: _openTerms,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor:
+                                        Colors.white.withValues(alpha: 0.72),
+                                    textStyle: const TextStyle(
+                                      fontSize: 14,
+                                      letterSpacing: -0.1,
+                                    ),
+                                  ),
+                                  child: const Text('Terms of Use'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Auto-renews monthly. Cancel anytime in Settings.',
+                            style: TextStyle(
+                              color: Color(0xFF8F8F93),
+                              fontSize: 13,
+                              height: 1.45,
+                              letterSpacing: -0.05,
+                            ),
+                          ),
+                          if (_isIOS) ...[
+                            const SizedBox(height: 20),
+                            FocusTraversalOrder(
+                              order: const NumericFocusOrder(2),
+                              child: TextButton(
+                                key: const Key('restore'),
+                                onPressed:
+                                    (_isProcessing || isLoadingIOSPrice)
+                                        ? null
+                                        : _handleRestore,
+                                style: TextButton.styleFrom(
+                                  foregroundColor:
+                                      Colors.white.withValues(alpha: 0.64),
+                                  textStyle: const TextStyle(
+                                    fontSize: 14,
+                                    letterSpacing: -0.1,
+                                  ),
+                                ),
+                                child: const Text('Restore purchases'),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 28),
                           Text(
                             _isIOS
@@ -567,6 +513,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                               color: Colors.white.withValues(alpha: 0.55),
                               fontSize: 13,
                               height: 1.5,
+                              letterSpacing: -0.05,
                             ),
                           ),
                         ],
