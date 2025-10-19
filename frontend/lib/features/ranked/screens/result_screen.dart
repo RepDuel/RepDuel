@@ -1,5 +1,7 @@
 // frontend/lib/features/ranked/screens/result_screen.dart
 
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -13,7 +15,6 @@ import '../../../core/providers/iap_provider.dart';
 import '../../../core/services/share_service.dart';
 import '../../../widgets/error_display.dart';
 import '../../../widgets/loading_spinner.dart';
-import '../../../widgets/paywall_lock.dart';
 import '../utils/bodyweight_benchmarks.dart';
 import '../utils/lift_progress.dart';
 import '../utils/rank_utils.dart';
@@ -525,7 +526,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                             const TextStyle(color: Colors.white, fontSize: 16),
                       ),
                       const SizedBox(height: 32),
-                      const Divider(color: Colors.white24),
+                      const Divider(color: Color(0x22FFFFFF)),
                       const SizedBox(height: 16),
                       Consumer(
                         builder: (context, ref, _) {
@@ -538,44 +539,130 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               weightMultiplier: multForScenario,
                             );
                           } else if (!Env.paymentsEnabled) {
-                            return const PaywallLock(
-                              message:
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                SizedBox(height: 16),
+                                Text(
+                                  'Premium performance insights',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
                                   'Premium charts are temporarily unavailable.',
-                              onTap: null,
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
                             );
                           } else {
-                            return PaywallLock(
-                              message:
-                                  "Upgrade to Gold to track your progress.",
-                              onTap: () async {
-                                final purchaseSuccess =
-                                    await context.push<bool>(
-                                  '/subscribe',
-                                  extra: GoRouterState.of(context).uri.toString(),
-                                );
-                                if (purchaseSuccess == true && mounted) {
-                                  await ref
-                                      .read(authProvider.notifier)
-                                      .refreshUserData();
-                                  ref.invalidate(subscriptionProvider);
-                                }
-                              },
+                            return Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 420),
+                                child: SizedBox(
+                                  height: 260,
+                                  child: ClipRect(
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        ImageFiltered(
+                                          imageFilter: ImageFilter.blur(
+                                              sigmaX: 16, sigmaY: 16),
+                                          child: Opacity(
+                                            opacity: 0.45,
+                                            child: ScoreHistoryChart(
+                                              scenarioId: widget.scenarioId,
+                                              weightMultiplier: multForScenario,
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned.fill(
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF0B0B0D)
+                                                  .withOpacity(0.55),
+                                            ),
+                                          ),
+                                        ),
+                                        Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            const Text(
+                                              'Premium performance insights',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontFamily: 'Inter',
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            const Text(
+                                              'Upgrade to Gold to unlock full analytics.',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontFamily: 'Inter',
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            TextButton(
+                                              style: TextButton.styleFrom(
+                                                backgroundColor: Colors.white,
+                                                foregroundColor: Colors.black,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 24,
+                                                  vertical: 12,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                              ),
+                                              onPressed: () async {
+                                                final purchaseSuccess =
+                                                    await context.push<bool>(
+                                                  '/subscribe',
+                                                  extra: GoRouterState.of(context)
+                                                      .uri
+                                                      .toString(),
+                                                );
+                                                if (purchaseSuccess == true && mounted) {
+                                                  await ref
+                                                      .read(authProvider.notifier)
+                                                      .refreshUserData();
+                                                  ref.invalidate(subscriptionProvider);
+                                                }
+                                              },
+                                              child: const Text(
+                                                'Upgrade to Gold',
+                                                style: TextStyle(
+                                                  fontFamily: 'Inter',
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                             );
                           }
                         },
-                      ),
-                      const SizedBox(height: 32),
-                      ElevatedButton(
-                        onPressed: () => _popUpTwo(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 14,
-                          ),
-                        ),
-                        child: const Text('Back to Menu'),
                       ),
                     ],
                   ),
@@ -600,7 +687,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   IconButton(
                     icon: _isSharing
                         ? const LoadingSpinner(size: 24)
-                        : const Icon(Icons.share),
+                        : const Icon(Icons.ios_share_outlined),
                     onPressed: _isSharing
                         ? null
                         : () => _handleShare(
@@ -633,13 +720,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   Scaffold _buildScaffold(Widget child, {List<Widget> actions = const []}) {
+    const backgroundColor = Color(0xFF0B0B0D);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Results'),
-        backgroundColor: Colors.black,
+        title: const Text(
+          'Results',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: backgroundColor,
         elevation: 0,
-        leading: BackButton(onPressed: () => _popUpTwo(context)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_outlined),
+          onPressed: () => _popUpTwo(context),
+        ),
         actions: actions,
       ),
       body: child,
