@@ -1,4 +1,4 @@
-.PHONY: backend frontend build-frontend build-ios run-ios
+.PHONY: backend frontend build-frontend build-ios run-ios test test-backend test-frontend
 
 backend:
 	cd backend && ./start_backend.sh
@@ -66,3 +66,16 @@ run-ios:
 		--dart-define=STRIPE_PUBLISHABLE_KEY=$$STRIPE_PUBLISHABLE_KEY \
 		--dart-define=STRIPE_SUCCESS_URL=$$STRIPE_SUCCESS_URL \
 		--dart-define=PAYMENTS_ENABLED=$$PAYMENTS_ENABLED'
+
+test: test-backend test-frontend
+
+test-backend:
+	cd backend && \
+	test -d .venv || python3 -m venv .venv && \
+	. .venv/bin/activate && \
+	python3 -m pip install -U pip && \
+	( pip install -r requirements-dev.txt || pip install -r requirements.txt ) && \
+	python -m pytest
+
+test-frontend:
+	cd frontend && flutter test
