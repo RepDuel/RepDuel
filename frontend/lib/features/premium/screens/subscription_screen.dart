@@ -225,37 +225,21 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     return 'Monthly subscription';
   }
 
-  Widget _buildBullet(String text) {
-    const accentColor = Color(0xFFB1B1B5);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            margin: const EdgeInsets.only(top: 6),
-            decoration: BoxDecoration(
-              color: accentColor,
-              borderRadius: BorderRadius.circular(2),
+  Widget _buildFeature(ThemeData theme, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.check, color: Colors.white, size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white,
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                height: 1.55,
-                letterSpacing: -0.1,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -302,224 +286,168 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         body: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light,
           child: SafeArea(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF0B0B0D), Color(0xFF1A1A1D)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: Center(
-                child: SingleChildScrollView(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 520),
-                    child: FocusTraversalGroup(
-                      policy: OrderedTraversalPolicy(),
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: SingleChildScrollView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      onPressed: _close,
+                      style: IconButton.styleFrom(
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'RepDuel Gold',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Unlock premium tracking and elite routines.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              IconButton(
-                                onPressed: _close,
-                                style: IconButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                ),
-                                icon: const Icon(Icons.close_rounded, size: 20),
-                              ),
-                              Text(
-                                'Premium access',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1.6,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 32),
-                          const Text(
-                            'Ride the momentum.',
-                            style: TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.w700,
-                              height: 1.08,
-                              letterSpacing: -0.6,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'Unlock RepDuel Premium for pro-level tracking and elite routines inspired by the world\'s best training teams.',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.68),
-                              fontSize: 16,
-                              height: 1.45,
-                              letterSpacing: -0.1,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          Divider(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            thickness: 0.6,
-                            height: 0,
-                          ),
-                          const SizedBox(height: 28),
                           Text(
                             'Monthly access',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: -0.15,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[400],
                             ),
                           ),
                           if (priceLabel.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Text(
                               priceLabel,
-                              style: const TextStyle(
-                                fontSize: 28,
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                color: Colors.white,
                                 fontWeight: FontWeight.w700,
-                                letterSpacing: -0.3,
                               ),
                             ),
                           ],
-                          const SizedBox(height: 32),
-                          _buildBullet(
-                              'Track your score history with rich, real-time progress charts.'),
-                          _buildBullet('Design unlimited custom routines without limits.'),
-                          _buildBullet(
-                              'Support the future of RepDuel so new features land faster.'),
-                          const SizedBox(height: 36),
-                          FocusTraversalOrder(
-                            order: const NumericFocusOrder(1),
-                            child: FilledButton(
-                              key: const Key('cta'),
-                              onPressed:
-                                  (_isProcessing || isLoadingIOSPrice)
-                                      ? null
-                                      : _handlePurchase,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black,
-                                disabledBackgroundColor:
-                                    Colors.white.withValues(alpha: 0.08),
-                                disabledForegroundColor:
-                                    Colors.black.withValues(alpha: 0.45),
-                                minimumSize: const Size.fromHeight(56),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 18,
-                                  horizontal: 20,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: Text(
-                                _ctaLabel(iosPriceLabel),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Wrap(
-                            spacing: 24,
-                            runSpacing: 12,
-                            alignment: WrapAlignment.start,
-                            children: [
-                              FocusTraversalOrder(
-                                order: const NumericFocusOrder(3),
-                                child: TextButton(
-                                  key: const Key('privacy'),
-                                  onPressed: _openPrivacy,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor:
-                                        Colors.white.withValues(alpha: 0.72),
-                                    textStyle: const TextStyle(
-                                      fontSize: 14,
-                                      letterSpacing: -0.1,
-                                    ),
-                                  ),
-                                  child: const Text('Privacy Policy'),
-                                ),
-                              ),
-                              FocusTraversalOrder(
-                                order: const NumericFocusOrder(4),
-                                child: TextButton(
-                                  key: const Key('terms'),
-                                  onPressed: _openTerms,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor:
-                                        Colors.white.withValues(alpha: 0.72),
-                                    textStyle: const TextStyle(
-                                      fontSize: 14,
-                                      letterSpacing: -0.1,
-                                    ),
-                                  ),
-                                  child: const Text('Terms of Use'),
-                                ),
-                              ),
-                            ],
-                          ),
                           const SizedBox(height: 16),
-                          const Text(
-                            'Auto-renews monthly. Cancel anytime in Settings.',
-                            style: TextStyle(
-                              color: Color(0xFF8F8F93),
-                              fontSize: 13,
-                              height: 1.45,
-                              letterSpacing: -0.05,
-                            ),
+                          Divider(color: Colors.grey[800], height: 24),
+                          const SizedBox(height: 16),
+                          _buildFeature(
+                            theme,
+                            'Track your score history with real-time progress charts.',
                           ),
-                          if (_isIOS) ...[
-                            const SizedBox(height: 20),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(2),
-                              child: TextButton(
-                                key: const Key('restore'),
-                                onPressed:
-                                    (_isProcessing || isLoadingIOSPrice)
-                                        ? null
-                                        : _handleRestore,
-                                style: TextButton.styleFrom(
-                                  foregroundColor:
-                                      Colors.white.withValues(alpha: 0.64),
-                                  textStyle: const TextStyle(
-                                    fontSize: 14,
-                                    letterSpacing: -0.1,
-                                  ),
-                                ),
-                                child: const Text('Restore purchases'),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 28),
-                          Text(
-                            _isIOS
-                                ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
-                                : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 13,
-                              height: 1.5,
-                              letterSpacing: -0.05,
-                            ),
+                          const SizedBox(height: 12),
+                          _buildFeature(
+                            theme,
+                            'Design unlimited custom routines without limits.',
+                          ),
+                          const SizedBox(height: 12),
+                          _buildFeature(
+                            theme,
+                            'Support the future of RepDuel so new features land faster.',
                           ),
                         ],
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(1),
+                      child: ElevatedButton(
+                        key: const Key('cta'),
+                        onPressed: (_isProcessing || isLoadingIOSPrice)
+                            ? null
+                            : _handlePurchase,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                        child: Text(
+                          _ctaLabel(iosPriceLabel),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Auto-renews monthly. Cancel anytime in Settings.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    if (_isIOS) ...[
+                      const SizedBox(height: 16),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(2),
+                        child: TextButton(
+                          key: const Key('restore'),
+                          onPressed: (_isProcessing || isLoadingIOSPrice)
+                              ? null
+                              : _handleRestore,
+                          child: Text(
+                            'Restore purchases',
+                            style: TextStyle(color: Colors.grey[500]),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      children: [
+                        FocusTraversalOrder(
+                          order: const NumericFocusOrder(3),
+                          child: TextButton(
+                            key: const Key('privacy'),
+                            onPressed: _openPrivacy,
+                            child: Text(
+                              'Privacy Policy',
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                          ),
+                        ),
+                        FocusTraversalOrder(
+                          order: const NumericFocusOrder(4),
+                          child: TextButton(
+                            key: const Key('terms'),
+                            onPressed: _openTerms,
+                            child: Text(
+                              'Terms of Use',
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _isIOS
+                          ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
+                          : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[500],
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
