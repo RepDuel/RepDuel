@@ -17,6 +17,12 @@ class MainScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<int>(navigationBranchIndexProvider, (previous, next) {
+      if (navigationShell.currentIndex != next) {
+        navigationShell.goBranch(next, initialLocation: true);
+      }
+    });
+
     const List<String> titles = [
       'Ranked',
       'Routines',

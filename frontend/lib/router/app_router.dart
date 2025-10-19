@@ -15,6 +15,7 @@ import '../core/config/env.dart';
 import '../core/models/routine.dart';
 import '../core/models/routine_details.dart';
 import '../core/providers/auth_provider.dart';
+import '../core/providers/navigation_provider.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
@@ -39,12 +40,23 @@ import '../presentation/scaffolds/main_scaffold.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
+const _branchInitialLocations = <String>['/ranked', '/routines', '/profile'];
+
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateStream = ref.watch(authProvider.notifier).authStateStream;
+  final launchState = ref.watch(navigationLaunchStateProvider);
+  final initialIndex = launchState.initialIndex;
+  final initialLocation =
+      (initialIndex >= 0 && initialIndex < _branchInitialLocations.length)
+          ? _branchInitialLocations[initialIndex]
+          : _branchInitialLocations[navigationDefaultBranchIndex];
+
+  // Ensure auth-driven navigation persistence stays in sync with user changes.
+  ref.watch(navigationAuthSyncProvider);
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/routines',
+    initialLocation: initialLocation,
     refreshListenable: GoRouterRefreshStream(authStateStream),
     routes: [
       // ----------------------------------------------------------------------

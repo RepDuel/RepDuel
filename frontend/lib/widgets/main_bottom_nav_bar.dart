@@ -1,9 +1,14 @@
 // frontend/lib/widgets/main_bottom_nav_bar.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class MainBottomNavBar extends StatelessWidget {
+import '../core/providers/navigation_provider.dart';
+
+class MainBottomNavBar extends ConsumerWidget {
   const MainBottomNavBar({
     super.key,
     required this.navigationShell,
@@ -11,22 +16,28 @@ class MainBottomNavBar extends StatelessWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  void _onTap(int index) {
+  void _onTap(WidgetRef ref, int index) {
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
     );
+
+    ref.read(navigationBranchIndexProvider.notifier).state = index;
+
+    final userId = ref.read(navigationUserIdProvider);
+    final persistence = ref.read(navigationPersistenceProvider);
+    unawaited(persistence.persistBranchIndex(index, userId: userId));
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return BottomNavigationBar(
       backgroundColor: Colors.black,
       selectedItemColor: Colors.white,
       unselectedItemColor: Colors.grey,
       type: BottomNavigationBarType.fixed,
       currentIndex: navigationShell.currentIndex,
-      onTap: _onTap,
+      onTap: (index) => _onTap(ref, index),
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.bar_chart),

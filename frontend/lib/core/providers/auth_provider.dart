@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meta/meta.dart';
 
 import '../api/auth_api_service.dart';
 import '../models/user.dart';
@@ -62,6 +63,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       : super(const AsyncValue.loading()) {
     _initAuth();
   }
+
+  @visibleForTesting
+  AuthNotifier.testing(
+    this._authApi,
+    this._secureStorage,
+    this._privateClient,
+  ) : super(const AsyncValue.loading());
 
   @override
   set state(AsyncValue<AuthState> newState) {

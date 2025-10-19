@@ -6,13 +6,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/config/env.dart';
+import 'core/providers/navigation_provider.dart';
+import 'core/services/navigation_state_persistence.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final sharedPreferences = await SharedPreferences.getInstance();
+  final navigationPersistence = NavigationStatePersistence(
+    sharedPreferences,
+    branchCount: navigationBranchCount,
+    defaultIndex: navigationDefaultBranchIndex,
+  );
+  final navigationLaunchState = navigationPersistence.restoreLaunchState();
 
   usePathUrlStrategy();
 
@@ -37,8 +48,12 @@ Future<void> main() async {
   }
 
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    ProviderScope(
+      overrides: [
+        navigationPersistenceProvider.overrideWithValue(navigationPersistence),
+        navigationLaunchStateProvider.overrideWithValue(navigationLaunchState),
+      ],
+      child: const MyApp(),
     ),
   );
 }
