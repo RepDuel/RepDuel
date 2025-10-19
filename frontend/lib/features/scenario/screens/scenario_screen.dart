@@ -49,8 +49,15 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     return weightInKg * (1 + reps / 30.0);
   }
 
+  void _dismissKeyboard() {
+    final focusScope = FocusScope.of(context);
+    if (!focusScope.hasPrimaryFocus && focusScope.focusedChild != null) {
+      focusScope.unfocus();
+    }
+  }
+
   Future<void> _handleSubmit(bool isBodyweight) async {
-    FocusScope.of(context).unfocus();
+    _dismissKeyboard();
     final authState = ref.read(authProvider).valueOrNull;
     if (authState?.user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -170,25 +177,22 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       data: (details) {
         final isBodyweight = details['is_bodyweight'] as bool? ?? false;
         final description = details['description'] as String?;
-        return GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (description != null)
-                    Text(description,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 16),
-                        textAlign: TextAlign.center),
-                  const SizedBox(height: 32),
-                  isBodyweight
-                      ? _buildRepsOnlyInput()
-                      : _buildWeightAndRepsInput(unitLabel),
-                ],
-              ),
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (description != null)
+                  Text(description,
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 16),
+                      textAlign: TextAlign.center),
+                const SizedBox(height: 32),
+                isBodyweight
+                    ? _buildRepsOnlyInput()
+                    : _buildWeightAndRepsInput(unitLabel),
+              ],
             ),
           ),
         );
@@ -217,46 +221,50 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       ),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_capitalize(widget.liftName)),
+    return GestureDetector(
+      onTap: _dismissKeyboard,
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_capitalize(widget.liftName)),
+          backgroundColor: Colors.black,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.table_chart_outlined),
+              tooltip: 'View thresholds',
+              onPressed: thresholds == null || thresholds.isEmpty
+                  ? null
+                  : () => _showThresholdsSheet(
+                        scenarioName: scenarioName,
+                        thresholds: thresholds,
+                        isBodyweight: isBodyweightScenario,
+                      ),
+            ),
+          ],
+        ),
         backgroundColor: Colors.black,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.table_chart_outlined),
-            tooltip: 'View thresholds',
-            onPressed: thresholds == null || thresholds.isEmpty
-                ? null
-                : () => _showThresholdsSheet(
-                      scenarioName: scenarioName,
-                      thresholds: thresholds,
-                      isBodyweight: isBodyweightScenario,
-                    ),
-          ),
-        ],
-      ),
-      backgroundColor: Colors.black,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 150),
-        child: _isSubmitting
-            ? const Center(
-                key: ValueKey('scenario-submitting'),
-                child: LoadingSpinner(),
-              )
-            : KeyedSubtree(
-                key: const ValueKey('scenario-content'),
-                child: bodyContent,
-              ),
-      ),
-      bottomNavigationBar: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 150),
-        child: _isSubmitting
-            ? const SizedBox.shrink(key: ValueKey('scenario-bottom-hidden'))
-            : KeyedSubtree(
-                key: const ValueKey('scenario-bottom-button'),
-                child: bottomBar,
-              ),
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 150),
+          child: _isSubmitting
+              ? const Center(
+                  key: ValueKey('scenario-submitting'),
+                  child: LoadingSpinner(),
+                )
+              : KeyedSubtree(
+                  key: const ValueKey('scenario-content'),
+                  child: bodyContent,
+                ),
+        ),
+        bottomNavigationBar: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 150),
+          child: _isSubmitting
+              ? const SizedBox.shrink(key: ValueKey('scenario-bottom-hidden'))
+              : KeyedSubtree(
+                  key: const ValueKey('scenario-bottom-button'),
+                  child: bottomBar,
+                ),
+        ),
       ),
     );
   }
@@ -394,6 +402,9 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
           child: TextField(
             controller: _repsController,
             keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: _dismissKeyboard,
+            onSubmitted: (_) => _dismissKeyboard(),
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white, fontSize: 24),
             decoration: InputDecoration(
@@ -432,8 +443,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     );
   }
 
-  Widget _buildInputFieldWithLabel(
-      {required TextEditingController controller, required String label}) {
+  Widget _buildInputFieldWithLabel({
+    required TextEditingController controller,
+    required String label,
+  }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -443,6 +456,9 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
         TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textInputAction: TextInputAction.done,
+          onEditingComplete: _dismissKeyboard,
+          onSubmitted: (_) => _dismissKeyboard(),
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.white, fontSize: 20),
           decoration: InputDecoration(

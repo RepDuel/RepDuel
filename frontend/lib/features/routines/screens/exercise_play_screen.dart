@@ -265,7 +265,10 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
       liftStandards: liftStandards,
     );
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => _dismissKeyboard(context),
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,7 +310,10 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
             itemCount: widget.sets,
             itemBuilder: (context, index) {
               final repsInput = _buildInputField(
-                  controller: _repControllers[index], label: 'Reps');
+                context: context,
+                controller: _repControllers[index],
+                label: 'Reps',
+              );
 
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -332,6 +338,7 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
                       Expanded(
                         flex: 3,
                         child: _buildWeightField(
+                          context: context,
                           controller: _weightControllers[index],
                           unitLabel: weightLabel,
                         ),
@@ -385,14 +392,28 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
               minimumSize: const Size(double.infinity, 50)),
         ),
       ),
-    );
+    ),
+  );
   }
 
-  Widget _buildInputField(
-      {required TextEditingController controller, required String label}) {
+  void _dismissKeyboard(BuildContext context) {
+    final focusScope = FocusScope.of(context);
+    if (!focusScope.hasPrimaryFocus && focusScope.focusedChild != null) {
+      focusScope.unfocus();
+    }
+  }
+
+  Widget _buildInputField({
+    required BuildContext context,
+    required TextEditingController controller,
+    required String label,
+  }) {
     return TextField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textInputAction: TextInputAction.done,
+      onEditingComplete: () => _dismissKeyboard(context),
+      onSubmitted: (_) => _dismissKeyboard(context),
       textAlign: TextAlign.center,
       style: const TextStyle(color: Colors.white, fontSize: 18),
       decoration: InputDecoration(
@@ -408,11 +429,17 @@ class _ExercisePlayScreenState extends ConsumerState<ExercisePlayScreen> {
     );
   }
 
-  Widget _buildWeightField(
-      {required TextEditingController controller, required String unitLabel}) {
+  Widget _buildWeightField({
+    required BuildContext context,
+    required TextEditingController controller,
+    required String unitLabel,
+  }) {
     return TextField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textInputAction: TextInputAction.done,
+      onEditingComplete: () => _dismissKeyboard(context),
+      onSubmitted: (_) => _dismissKeyboard(context),
       textAlign: TextAlign.center,
       style: const TextStyle(color: Colors.white, fontSize: 18),
       decoration: InputDecoration(
