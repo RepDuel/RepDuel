@@ -38,6 +38,7 @@ dependencies:
   riverpod: ^2.6.1
   purchases_flutter: ^9.3.0
   flutter_stripe: ^12.0.2
+  google_fonts: ^6.2.1
 
   # --- NEW DEPENDENCIES FOR SHARING ---
   share_plus: ^11.1.0
