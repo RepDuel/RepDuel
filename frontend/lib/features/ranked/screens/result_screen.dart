@@ -349,8 +349,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               finalScoreDisplay = widget.finalScore;
               comparisonScoreDisplay = scoreForRankCalcKg;
             } else {
-              final standardsDisplay = _packToDisplay(
-                  standardsKg, weightMultiplier);
+              final standardsDisplay =
+                  _packToDisplay(standardsKg, weightMultiplier);
               standardsDisplay.forEach((rank, node) {
                 final totalKg =
                     (standardsKg[rank]?['total'] as num?)?.toDouble();
@@ -390,10 +390,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 _buildScaffold(
                   Center(
                     child: ErrorDisplay(
-                      message:
-                          'No benchmarks available for this scenario yet.',
-                      onRetry: () => ref.refresh(
-                          scenarioDetailsProvider(widget.scenarioId)),
+                      message: 'No benchmarks available for this scenario yet.',
+                      onRetry: () => ref
+                          .refresh(scenarioDetailsProvider(widget.scenarioId)),
                     ),
                   ),
                 ),
@@ -407,8 +406,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             );
 
             final rankColor = getRankColor(lp.matchedRank);
-            final currentRankIndex = kRankOrder
-                .indexWhere((rank) => rank.toLowerCase() == lp.matchedRank.toLowerCase());
+            final currentRankIndex = kRankOrder.indexWhere(
+                (rank) => rank.toLowerCase() == lp.matchedRank.toLowerCase());
             final String? previousRank;
             final String? nextRank;
 
@@ -416,8 +415,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               previousRank = null;
               nextRank = kRankOrder.isNotEmpty ? kRankOrder.first : null;
             } else {
-              previousRank =
-                  currentRankIndex > 0 ? kRankOrder[currentRankIndex - 1] : null;
+              previousRank = currentRankIndex > 0
+                  ? kRankOrder[currentRankIndex - 1]
+                  : null;
               nextRank = currentRankIndex < kRankOrder.length - 1
                   ? kRankOrder[currentRankIndex + 1]
                   : null;
@@ -565,7 +565,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           } else {
                             return Center(
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 420),
+                                constraints:
+                                    const BoxConstraints(maxWidth: 420),
                                 child: SizedBox(
                                   height: 260,
                                   child: ClipRect(
@@ -587,7 +588,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                                           child: DecoratedBox(
                                             decoration: BoxDecoration(
                                               color: const Color(0xFF0B0B0D)
-                                                  .withOpacity(0.55),
+                                                  .withValues(alpha: 0.55),
                                             ),
                                           ),
                                         ),
@@ -634,15 +635,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                                                 final purchaseSuccess =
                                                     await context.push<bool>(
                                                   '/subscribe',
-                                                  extra: GoRouterState.of(context)
-                                                      .uri
-                                                      .toString(),
+                                                  extra:
+                                                      GoRouterState.of(context)
+                                                          .uri
+                                                          .toString(),
                                                 );
-                                                if (purchaseSuccess == true && mounted) {
+                                                if (purchaseSuccess == true &&
+                                                    mounted) {
                                                   await ref
-                                                      .read(authProvider.notifier)
+                                                      .read(
+                                                          authProvider.notifier)
                                                       .refreshUserData();
-                                                  ref.invalidate(subscriptionProvider);
+                                                  ref.invalidate(
+                                                      subscriptionProvider);
                                                 }
                                               },
                                               child: const Text(
