@@ -220,6 +220,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         fontSize: 18,
         height: 1.5,
       ),
+      textAlign: TextAlign.center,
     );
   }
 
@@ -282,122 +283,130 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    FocusTraversalGroup(
-                      policy: OrderedTraversalPolicy(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Unlock Your Full Potential',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
+                    Align(
+                      alignment: Alignment.center,
+                      child: FocusTraversalGroup(
+                        policy: OrderedTraversalPolicy(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Unlock Your Full Potential',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                          ),
-                          const SizedBox(height: 28),
-                          _buildBullet(
-                              'Track your score history with progress charts'),
-                          const SizedBox(height: 14),
-                          _buildBullet('Unlimited custom routines'),
-                          const SizedBox(height: 14),
-                          _buildBullet('Support future development'),
-                          const SizedBox(height: 32),
-                          FocusTraversalOrder(
-                            order: const NumericFocusOrder(1),
-                            child: FilledButton(
-                              key: const Key('cta'),
-                              onPressed: (_isProcessing || isLoadingIOSPrice)
-                                  ? null
-                                  : _handlePurchase,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black,
-                                disabledBackgroundColor: Colors.white24,
-                                disabledForegroundColor: Colors.black54,
-                                minimumSize: const Size.fromHeight(56),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                            const SizedBox(height: 28),
+                            _buildBullet(
+                                'Track your score history with progress charts'),
+                            const SizedBox(height: 14),
+                            _buildBullet('Unlimited custom routines'),
+                            const SizedBox(height: 14),
+                            _buildBullet('Support future development'),
+                            const SizedBox(height: 32),
+                            FocusTraversalOrder(
+                              order: const NumericFocusOrder(1),
+                              child: FilledButton(
+                                key: const Key('cta'),
+                                onPressed: (_isProcessing || isLoadingIOSPrice)
+                                    ? null
+                                    : _handlePurchase,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black,
+                                  disabledBackgroundColor: Colors.white24,
+                                  disabledForegroundColor: Colors.black54,
+                                  minimumSize: const Size.fromHeight(56),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: Text(
+                                  _ctaLabel(iosPriceLabel),
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                              child: Text(
-                                _ctaLabel(iosPriceLabel),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 24,
-                            runSpacing: 12,
-                            children: [
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 24,
+                              runSpacing: 12,
+                              alignment: WrapAlignment.center,
+                              runAlignment: WrapAlignment.center,
+                              children: [
+                                FocusTraversalOrder(
+                                  order: const NumericFocusOrder(3),
+                                  child: TextButton(
+                                    key: const Key('privacy'),
+                                    onPressed: _openPrivacy,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    child: const Text('Privacy Policy'),
+                                  ),
+                                ),
+                                FocusTraversalOrder(
+                                  order: const NumericFocusOrder(4),
+                                  child: TextButton(
+                                    key: const Key('terms'),
+                                    onPressed: _openTerms,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    child: const Text('Terms of Use'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Auto-renews monthly. Cancel anytime in Settings.',
+                              style: TextStyle(
+                                color: Colors.white60,
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            if (_isIOS) ...[
+                              const SizedBox(height: 24),
                               FocusTraversalOrder(
-                                order: const NumericFocusOrder(3),
+                                order: const NumericFocusOrder(2),
                                 child: TextButton(
-                                  key: const Key('privacy'),
-                                  onPressed: _openPrivacy,
+                                  key: const Key('restore'),
+                                  onPressed: (_isProcessing || isLoadingIOSPrice)
+                                      ? null
+                                      : _handleRestore,
                                   style: TextButton.styleFrom(
-                                    foregroundColor: Colors.white,
+                                    foregroundColor: Colors.white70,
                                     padding: EdgeInsets.zero,
                                   ),
-                                  child: const Text('Privacy Policy'),
-                                ),
-                              ),
-                              FocusTraversalOrder(
-                                order: const NumericFocusOrder(4),
-                                child: TextButton(
-                                  key: const Key('terms'),
-                                  onPressed: _openTerms,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  child: const Text('Terms of Use'),
+                                  child: const Text('Restore Purchases'),
                                 ),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Auto-renews monthly. Cancel anytime in Settings.',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 13,
-                              height: 1.4,
-                            ),
-                          ),
-                          if (_isIOS) ...[
                             const SizedBox(height: 24),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(2),
-                              child: TextButton(
-                                key: const Key('restore'),
-                                onPressed: (_isProcessing || isLoadingIOSPrice)
-                                    ? null
-                                    : _handleRestore,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.white70,
-                                  padding: EdgeInsets.zero,
-                                ),
-                                child: const Text('Restore Purchases'),
+                            Text(
+                              _isIOS
+                                  ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
+                                  : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 13,
+                                height: 1.5,
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
-                          const SizedBox(height: 24),
-                          Text(
-                            _isIOS
-                                ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
-                                : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 13,
-                              height: 1.5,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
