@@ -204,23 +204,54 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       return 'Unavailable right now';
     }
     if (kIsWeb) {
-      return r'Upgrade — $4.99/month';
+      return 'Upgrade now';
     }
     if (_isIOS && iosPriceLabel.isNotEmpty) {
-      return 'Upgrade — $iosPriceLabel';
+      return 'Upgrade now';
     }
-    return 'Upgrade';
+    return 'Upgrade now';
+  }
+
+  String _priceLabel(String iosPriceLabel) {
+    if (!Env.paymentsEnabled && widget.onSubscribe == null) {
+      return 'Temporarily unavailable';
+    }
+    if (kIsWeb) {
+      return '${String.fromCharCode(0x0024)}4.99/month';
+    }
+    if (_isIOS && iosPriceLabel.isNotEmpty) {
+      return iosPriceLabel;
+    }
+    return 'Monthly subscription';
   }
 
   Widget _buildBullet(String text) {
-    return Text(
-      '• $text',
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 18,
-        height: 1.5,
+    const accentColor = Color(0xFF2DDE98);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.bolt_rounded,
+            color: accentColor,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
-      textAlign: TextAlign.center,
     );
   }
 
@@ -258,158 +289,290 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       ),
     );
 
+    final priceLabel = _priceLabel(iosPriceLabel);
+
     return Theme(
       data: themedata,
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: _close,
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: const Text('Close'),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    Align(
-                      alignment: Alignment.center,
-                      child: FocusTraversalGroup(
-                        policy: OrderedTraversalPolicy(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Unlock Your Full Potential',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                                height: 1.2,
+        body: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light,
+          child: SafeArea(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0B0B0D), Color(0xFF1A1A1D)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: Center(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: FocusTraversalGroup(
+                      policy: OrderedTraversalPolicy(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                onPressed: _close,
+                                style: IconButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor:
+                                      Colors.white.withValues(alpha: 0.06),
+                                  shape: const CircleBorder(),
+                                ),
+                                icon: const Icon(Icons.close_rounded),
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 28),
-                            _buildBullet(
-                                'Track your score history with progress charts'),
-                            const SizedBox(height: 14),
-                            _buildBullet('Unlimited custom routines'),
-                            const SizedBox(height: 14),
-                            _buildBullet('Support future development'),
-                            const SizedBox(height: 32),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1),
-                              child: FilledButton(
-                                key: const Key('cta'),
-                                onPressed: (_isProcessing || isLoadingIOSPrice)
-                                    ? null
-                                    : _handlePurchase,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.black,
-                                  disabledBackgroundColor: Colors.white24,
-                                  disabledForegroundColor: Colors.black54,
-                                  minimumSize: const Size.fromHeight(56),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(32),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.12),
                                   ),
                                 ),
-                                child: Text(
-                                  _ctaLabel(iosPriceLabel),
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Wrap(
-                              spacing: 24,
-                              runSpacing: 12,
-                              alignment: WrapAlignment.center,
-                              runAlignment: WrapAlignment.center,
-                              children: [
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(3),
-                                  child: TextButton(
-                                    key: const Key('privacy'),
-                                    onPressed: _openPrivacy,
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.white,
-                                      padding: EdgeInsets.zero,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.workspace_premium_outlined,
+                                      color: Colors.white,
+                                      size: 18,
                                     ),
-                                    child: const Text('Privacy Policy'),
-                                  ),
-                                ),
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(4),
-                                  child: TextButton(
-                                    key: const Key('terms'),
-                                    onPressed: _openTerms,
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.white,
-                                      padding: EdgeInsets.zero,
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Premium',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5,
+                                      ),
                                     ),
-                                    child: const Text('Terms of Use'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Auto-renews monthly. Cancel anytime in Settings.',
-                              style: TextStyle(
-                                color: Colors.white60,
-                                fontSize: 13,
-                                height: 1.4,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            if (_isIOS) ...[
-                              const SizedBox(height: 24),
-                              FocusTraversalOrder(
-                                order: const NumericFocusOrder(2),
-                                child: TextButton(
-                                  key: const Key('restore'),
-                                  onPressed: (_isProcessing || isLoadingIOSPrice)
-                                      ? null
-                                      : _handleRestore,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.white70,
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  child: const Text('Restore Purchases'),
+                                  ],
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 24),
-                            Text(
-                              _isIOS
-                                  ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
-                                  : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 13,
-                                height: 1.5,
-                              ),
-                              textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 32),
+                          const Text(
+                            'Ride the momentum.',
+                            style: TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.w700,
+                              height: 1.15,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Unlock RepDuel Premium for pro-level tracking and elite routines inspired by the world\'s best training teams.',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.72),
+                              fontSize: 16,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              color: Colors.white.withValues(alpha: 0.05),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.08),
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black54,
+                                  blurRadius: 40,
+                                  spreadRadius: -12,
+                                  offset: Offset(0, 24),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 28),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color:
+                                            Colors.white.withValues(alpha: 0.08),
+                                      ),
+                                      child: const Icon(
+                                        Icons.equalizer_rounded,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Monthly access',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        if (priceLabel.isNotEmpty)
+                                          Text(
+                                            priceLabel,
+                                            style: const TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 32),
+                                _buildBullet(
+                                    'Track your score history with rich, real-time progress charts.'),
+                                _buildBullet('Design unlimited custom routines without limits.'),
+                                _buildBullet(
+                                    'Support the future of RepDuel so new features land faster.'),
+                                const SizedBox(height: 32),
+                                FocusTraversalOrder(
+                                  order: const NumericFocusOrder(1),
+                                  child: FilledButton(
+                                    key: const Key('cta'),
+                                    onPressed:
+                                        (_isProcessing || isLoadingIOSPrice)
+                                            ? null
+                                            : _handlePurchase,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1CD67A),
+                                      foregroundColor: Colors.black,
+                                      disabledBackgroundColor:
+                                          Colors.white.withValues(alpha: 0.1),
+                                      disabledForegroundColor:
+                                          Colors.black.withValues(alpha: 0.4),
+                                      minimumSize: const Size.fromHeight(58),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.lock_open_rounded,
+                                                size: 20),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              _ctaLabel(iosPriceLabel),
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Wrap(
+                                  spacing: 24,
+                                  runSpacing: 12,
+                                  alignment: WrapAlignment.start,
+                                  children: [
+                                    FocusTraversalOrder(
+                                      order: const NumericFocusOrder(3),
+                                      child: TextButton(
+                                        key: const Key('privacy'),
+                                        onPressed: _openPrivacy,
+                                        style: TextButton.styleFrom(
+                                          foregroundColor:
+                                              Colors.white.withValues(alpha: 0.8),
+                                        ),
+                                        child: const Text('Privacy Policy'),
+                                      ),
+                                    ),
+                                    FocusTraversalOrder(
+                                      order: const NumericFocusOrder(4),
+                                      child: TextButton(
+                                        key: const Key('terms'),
+                                        onPressed: _openTerms,
+                                        style: TextButton.styleFrom(
+                                          foregroundColor:
+                                              Colors.white.withValues(alpha: 0.8),
+                                        ),
+                                        child: const Text('Terms of Use'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Auto-renews monthly. Cancel anytime in Settings.',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 13,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                if (_isIOS) ...[
+                                  const SizedBox(height: 18),
+                                  FocusTraversalOrder(
+                                    order: const NumericFocusOrder(2),
+                                    child: TextButton(
+                                      key: const Key('restore'),
+                                      onPressed:
+                                          (_isProcessing || isLoadingIOSPrice)
+                                              ? null
+                                              : _handleRestore,
+                                      style: TextButton.styleFrom(
+                                        foregroundColor:
+                                            Colors.white.withValues(alpha: 0.7),
+                                      ),
+                                      child: const Text('Restore purchases'),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          Text(
+                            _isIOS
+                                ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
+                                : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 13,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
