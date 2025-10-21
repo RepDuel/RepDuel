@@ -1,35 +1,20 @@
 # backend/tests/test_api/test_scores_api.py
 
 import asyncio
-import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Callable
 from uuid import UUID, uuid4
 
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
-os.environ.setdefault("APP_URL", "http://testserver")
-os.environ.setdefault("BASE_URL", "http://testserver")
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://user:pass@localhost/db")
-os.environ.setdefault("JWT_SECRET_KEY", "secret")
-os.environ.setdefault("REVENUECAT_WEBHOOK_AUTH_TOKEN", "token")
-os.environ.setdefault("STRIPE_SECRET_KEY", "sk_test")
-os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test")
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-STATIC_DIR = PROJECT_ROOT / "static"
-_created_static = False
-if not STATIC_DIR.exists():
-    STATIC_DIR.mkdir()
-    _created_static = True
-
+from tests.test_support.app_setup import (
+    SessionFactory,
+    api_client,
+    setup_test_app,
+    teardown_test_app,
+)
 from app.api.v1.auth import get_current_user  # noqa: E402
-from app.api.v1.deps import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.personal_best_event import PersonalBestEvent  # noqa: E402
 from app.models.scenario import Scenario  # noqa: E402
@@ -46,72 +31,6 @@ class AuthUser:
     username: str
 
 
-class AsyncSessionWrapper:
-    def __init__(self, sync_session: Session) -> None:
-        self._sync_session = sync_session
-
-    async def __aenter__(self) -> "AsyncSessionWrapper":
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb) -> None:
-        if self._sync_session.in_transaction():
-            self._sync_session.rollback()
-        self._sync_session.close()
-
-    async def execute(self, statement):
-        return self._sync_session.execute(statement)
-
-    async def get(self, model, ident):
-        return self._sync_session.get(model, ident)
-
-    def add(self, instance) -> None:
-        self._sync_session.add(instance)
-
-    async def commit(self) -> None:
-        self._sync_session.commit()
-
-    async def refresh(self, instance) -> None:
-        self._sync_session.refresh(instance)
-
-    async def flush(self) -> None:
-        self._sync_session.flush()
-
-    async def delete(self, instance) -> None:
-        self._sync_session.delete(instance)
-
-    async def rollback(self) -> None:
-        self._sync_session.rollback()
-
-
-SessionFactory = Callable[[], AsyncSessionWrapper]
-
-
-def _create_tables(engine: Engine) -> None:
-    Scenario.__table__.create(bind=engine)
-    User.__table__.create(bind=engine)
-    UserXP.__table__.create(bind=engine)
-    XPEvent.__table__.create(bind=engine)
-    Score.__table__.create(bind=engine)
-    PersonalBestEvent.__table__.create(bind=engine)
-
-
-async def _setup_test_app() -> tuple[SessionFactory, Engine]:
-    app.dependency_overrides.clear()
-    engine = create_engine("sqlite:///:memory:")
-    _create_tables(engine)
-    sync_maker = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-
-    def factory() -> AsyncSessionWrapper:
-        return AsyncSessionWrapper(sync_maker())
-
-    async def override_get_db():
-        async with factory() as session:
-            yield session
-
-    app.dependency_overrides[get_db] = override_get_db
-    return factory, engine
-
-
 async def _set_current_user(user: AuthUser) -> None:
     async def override_current_user() -> AuthUser:
         return user
@@ -119,14 +38,22 @@ async def _set_current_user(user: AuthUser) -> None:
     app.dependency_overrides[get_current_user] = override_current_user
 
 
+_TABLES = [
+    Scenario.__table__,
+    User.__table__,
+    UserXP.__table__,
+    XPEvent.__table__,
+    Score.__table__,
+    PersonalBestEvent.__table__,
+]
+
+
+def _setup_test_app() -> tuple[SessionFactory, Engine]:
+    return setup_test_app(_TABLES)
+
+
 async def _teardown(engine: Engine) -> None:
-    app.dependency_overrides.clear()
-    engine.dispose()
-    if _created_static and STATIC_DIR.exists():
-        try:
-            STATIC_DIR.rmdir()
-        except OSError:
-            pass
+    await teardown_test_app(engine)
 
 
 async def _create_user(session_maker: SessionFactory, username: str, *, weight: float) -> AuthUser:
@@ -191,7 +118,7 @@ async def _create_existing_score(
 
 def test_volume_xp_awarded_for_score() -> None:
     async def run_test() -> None:
-        session_maker, engine = await _setup_test_app()
+        session_maker, engine = _setup_test_app()
         try:
             user = await _create_user(session_maker, "volume_user", weight=90.0)
             await _create_scenario(session_maker, "test_strength")
@@ -205,8 +132,7 @@ def test_volume_xp_awarded_for_score() -> None:
             )
 
             await _set_current_user(user)
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            async with api_client() as client:
                 response = await client.post(
                     "/api/v1/scores/scenario/test_strength/",
                     json={
@@ -238,14 +164,13 @@ def test_volume_xp_awarded_for_score() -> None:
 
 def test_personal_best_awards_bonus_xp() -> None:
     async def run_test() -> None:
-        session_maker, engine = await _setup_test_app()
+        session_maker, engine = _setup_test_app()
         try:
             user = await _create_user(session_maker, "pr_user", weight=90.0)
             await _create_scenario(session_maker, "test_pr")
 
             await _set_current_user(user)
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            async with api_client() as client:
                 response = await client.post(
                     "/api/v1/scores/scenario/test_pr/",
                     json={
@@ -277,13 +202,12 @@ def test_personal_best_awards_bonus_xp() -> None:
 
 def test_create_score_requires_authentication() -> None:
     async def run_test() -> None:
-        session_maker, engine = await _setup_test_app()
+        session_maker, engine = _setup_test_app()
         try:
             await _create_user(session_maker, "unauth_user", weight=75.0)
             await _create_scenario(session_maker, "test_auth")
 
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            async with api_client() as client:
                 response = await client.post(
                     "/api/v1/scores/scenario/test_auth/",
                     json={
@@ -301,7 +225,7 @@ def test_create_score_requires_authentication() -> None:
 
 def test_delete_scores_requires_owner() -> None:
     async def run_test() -> None:
-        session_maker, engine = await _setup_test_app()
+        session_maker, engine = _setup_test_app()
         try:
             owner = await _create_user(session_maker, "deleter", weight=85.0)
             other = await _create_user(session_maker, "other", weight=90.0)
@@ -316,14 +240,13 @@ def test_delete_scores_requires_owner() -> None:
 
             # Attempt deletion as another user should fail.
             await _set_current_user(other)
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            async with api_client() as client:
                 forbidden = await client.delete(f"/api/v1/scores/user/{owner.id}")
             assert forbidden.status_code == 403
 
             # Owner can delete their own scores.
             await _set_current_user(owner)
-            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            async with api_client() as client:
                 success = await client.delete(f"/api/v1/scores/user/{owner.id}")
             assert success.status_code == 204
 

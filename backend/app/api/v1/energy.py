@@ -2,8 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -77,20 +76,27 @@ async def get_energy_history(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/leaderboard", response_model=list[EnergyLeaderboardEntry])
-async def get_energy_leaderboard(db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.is_active == True)
+async def get_energy_leaderboard(
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    stmt = (
+        select(User)
+        .where(User.is_active.is_(True))
+        .order_by(
+            User.energy.desc().nullslast(),
+            User.updated_at.desc().nullslast(),
+            User.id.asc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    )
     result = await db.execute(stmt)
     users = result.scalars().all()
 
-    users.sort(
-        key=lambda u: (
-            -(u.energy or 0),
-            u.updated_at if isinstance(u.updated_at, datetime) else datetime.min,
-        )
-    )
-
     entries = []
-    for index, user in enumerate(users, start=1):
+    for index, user in enumerate(users, start=offset + 1):
         total_energy = int(round(user.energy or 0))
         final_rank = _rank_from_energy(total_energy)
         entries.append(
