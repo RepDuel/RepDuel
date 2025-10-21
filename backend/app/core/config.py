@@ -42,6 +42,32 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str
 
+    CELERY_BROKER_URL: str = Field(
+        default="memory://",
+        validation_alias=AliasChoices("CELERY_BROKER_URL", "celery_broker_url"),
+    )
+    CELERY_RESULT_BACKEND: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "CELERY_RESULT_BACKEND",
+            "celery_result_backend",
+        ),
+    )
+    CELERY_TASK_DEFAULT_QUEUE: str = Field(
+        default="repduel",
+        validation_alias=AliasChoices(
+            "CELERY_TASK_DEFAULT_QUEUE",
+            "celery_task_default_queue",
+        ),
+    )
+    CELERY_TASK_ALWAYS_EAGER: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "CELERY_TASK_ALWAYS_EAGER",
+            "celery_task_always_eager",
+        ),
+    )
+
     STATIC_STORAGE_DIR: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices(
@@ -162,6 +188,8 @@ class Settings(BaseSettings):
             self.XP_CURVE_BASE = 1
         if self.COOKIE_DOMAIN:
             self.COOKIE_DOMAIN = self.COOKIE_DOMAIN.strip()
+        if self.CELERY_TASK_DEFAULT_QUEUE:
+            self.CELERY_TASK_DEFAULT_QUEUE = self.CELERY_TASK_DEFAULT_QUEUE.strip() or "repduel"
         return self
 
 

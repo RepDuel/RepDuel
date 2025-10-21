@@ -11,7 +11,7 @@ from app.models.routine import Routine
 from app.models.routine_submission import RoutineScenarioSubmission, RoutineSubmission
 from app.models.user import User
 from app.schemas.routine_submission import RoutineSubmissionCreate
-from app.services.quest_service import record_workout_completion
+from app.tasks.quest_tasks import enqueue_routine_submission_event
 from app.utils.datetime import ensure_aware_utc
 
 
@@ -94,10 +94,9 @@ async def create_routine_submission(
     db.add(routine_submission)
     await db.commit()
     await db.refresh(routine_submission)
-    await record_workout_completion(
-        db,
-        current_user.id,
-        duration_minutes=routine_submission_data.duration,
-        completed_at=completion_ts,
+    enqueue_routine_submission_event(
+        user_id=current_user.id,
+        submission_id=routine_submission.id,
+        occurred_at=completion_ts,
     )
     return routine_submission

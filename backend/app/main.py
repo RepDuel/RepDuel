@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 # ✅ Initialize DB env at startup (not at import time)
 from app.db_bootstrap import init_env
 
+from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.api.v1.api_router import api_router
 from app.db.session import async_session
@@ -175,6 +176,47 @@ async def health_db():
     async with async_session() as session:
         await session.execute(text("SELECT 1"))
     return {"status": "ok", "database": "reachable"}
+
+
+def _queue_depth(snapshot: dict[str, list] | None) -> int:
+    if not snapshot:
+        return 0
+    return sum(len(tasks or []) for tasks in snapshot.values())
+
+
+@app.get("/health/queue", tags=["health"])
+def health_queue():
+    if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+        return {"status": "eager", "queue_depth": 0, "workers": []}
+    try:
+        inspector = celery_app.control.inspect(timeout=1)
+    except Exception as exc:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "error", "detail": "unable to reach celery control", "error": str(exc)},
+        )
+    if inspector is None:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "unavailable", "queue_depth": None, "workers": []},
+        )
+    try:
+        stats = inspector.stats() or {}
+    except Exception:
+        stats = {}
+    try:
+        active = inspector.active() or {}
+        reserved = inspector.reserved() or {}
+        scheduled = inspector.scheduled() or {}
+    except Exception:
+        active = reserved = scheduled = {}
+    depth = _queue_depth(active) + _queue_depth(reserved) + _queue_depth(scheduled)
+    status_label = "ok" if stats else "degraded"
+    return {
+        "status": status_label,
+        "queue_depth": depth,
+        "workers": list(stats.keys()),
+    }
 
 
 @app.middleware("http")
