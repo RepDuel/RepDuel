@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -247,6 +247,8 @@ async def create_score_for_scenario(
 async def get_leaderboard(
     scenario_id: str,
     db: AsyncSession = Depends(get_db),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     subquery = (
         select(Score.user_id, func.max(Score.score_value).label("max_score"))
@@ -264,7 +266,13 @@ async def get_leaderboard(
             & (Score.score_value == subquery.c.max_score),
         )
         .where(Score.scenario_id == scenario_id)
-        .order_by(Score.score_value.desc())
+        .order_by(
+            Score.score_value.desc(),
+            Score.created_at.desc(),
+            Score.id.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
     )
 
     result = await db.execute(stmt)
