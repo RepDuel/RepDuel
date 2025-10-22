@@ -24,6 +24,7 @@ from app.utils.storage import (
     get_storage_path,
     normalize_storage_key,
     save_image_upload,
+    _detect_image_format,
 )
 
 _PNG_BYTES = base64.b64decode(
@@ -37,6 +38,23 @@ def _make_upload(data: bytes, *, filename: str = "avatar.png") -> UploadFile:
         file=BytesIO(data),
         headers=Headers({"content-type": "image/png"}),
     )
+
+
+@pytest.mark.parametrize(
+    "data, expected",
+    [
+        (b"\xff\xd8\xff", "jpeg"),
+        (b"\x89PNG\r\n\x1a\n", "png"),
+        (b"GIF87a", "gif"),
+        (b"BM", "bmp"),
+        (b"II*\x00", "tiff"),
+        (b"RIFF1234WEBP", "webp"),
+        (b"", None),
+        (b"not an image", None),
+    ],
+)
+def test_detect_image_format_matches_known_signatures(data, expected):
+    assert _detect_image_format(data) == expected
 
 
 @pytest.mark.parametrize(

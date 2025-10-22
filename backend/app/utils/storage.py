@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import imghdr
 import os
 import re
 from typing import Optional
@@ -26,6 +25,36 @@ _ALLOWED_IMAGE_EXTENSIONS = {
     "tiff": ".tiff",
     "webp": ".webp",
 }
+
+
+def _detect_image_format(data: bytes) -> Optional[str]:
+    """Return the lowercase image format for ``data`` or ``None``.
+
+    The implementation mirrors ``imghdr.what`` for the formats we support while
+    avoiding the deprecated :mod:`imghdr` module. Only a subset of the header is
+    required to identify the format, so the function gracefully handles inputs
+    shorter than the expected signature length.
+    """
+
+    if len(data) >= 3 and data[:3] == b"\xff\xd8\xff":
+        return "jpeg"
+
+    if len(data) >= 8 and data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "png"
+
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "gif"
+
+    if len(data) >= 2 and data[:2] == b"BM":
+        return "bmp"
+
+    if len(data) >= 4 and data[:4] in (b"II*\x00", b"MM\x00*"):
+        return "tiff"
+
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+
+    return None
 
 
 def _allowed_storage_netlocs() -> set[str]:
@@ -226,7 +255,7 @@ async def save_image_upload(
         await file.close()
         raise HTTPException(status_code=413, detail="File too large")
 
-    detected = imghdr.what(None, header)
+    detected = _detect_image_format(header)
     if not detected:
         await file.close()
         raise HTTPException(status_code=400, detail="Invalid image file")
