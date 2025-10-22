@@ -74,7 +74,7 @@ test-backend:
 	test -d .venv || python3 -m venv .venv && \
 	. .venv/bin/activate && \
 	python3 -m pip install -U pip && \
-	( pip install -r requirements-dev.txt || pip install -r requirements.txt ) && \
+	if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; else pip install -r requirements.txt; fi && \
 	python -m pytest
 
 test-frontend:
