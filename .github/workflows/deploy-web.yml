@@ -1,9 +1,16 @@
 name: Deploy Web
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-deploy:
@@ -43,8 +50,16 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.22.0"
+          flutter-version: "3.35.6"
           channel: "stable"
+          cache: true
+
+      - name: Flutter/Dart versions
+        run: |
+          set -eo pipefail
+          flutter --version
+          dart --version
+          flutter config --no-analytics --no-cli-animations
 
       - name: Cache Flutter packages
         uses: actions/cache@v4
@@ -55,6 +70,30 @@ jobs:
           key: ${{ runner.os }}-flutter-${{ hashFiles('frontend/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-flutter-
+
+      - name: Validate SDK constraints vs toolchain
+        run: |
+          set -euo pipefail
+          DART_MIN=$(grep -A1 '^environment:' -n frontend/pubspec.yaml | grep 'sdk:' | sed -E 's/.*">=([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          DART_VER=$(dart --version 2>&1 | awk '{print $4}')
+          export DART_MIN DART_VER
+          python - <<'PY'
+import os
+
+def parse(version: str) -> tuple[int, ...]:
+    parts = version.split('.')
+    if len(parts) < 3:
+        parts += ['0'] * (3 - len(parts))
+    return tuple(int(p) for p in parts)
+
+dart_min = parse(os.environ['DART_MIN'])
+dart_ver = parse(os.environ['DART_VER'])
+
+if dart_ver < dart_min:
+    raise SystemExit(f"Toolchain too old: Dart {os.environ['DART_VER']} < required {os.environ['DART_MIN']}")
+
+print(f"OK: Dart {os.environ['DART_VER']} >= {os.environ['DART_MIN']}")
+PY
 
       - name: Get Flutter dependencies
         working-directory: frontend
@@ -100,18 +139,19 @@ jobs:
           test -f deploy/public/index.html
           ! grep -R "127.0.0.1:8000" -n deploy/public || (echo "Found localhost leak" && exit 1)
           ! grep -R "http://localhost" -n deploy/public || (echo "Found localhost leak" && exit 1)
-          python -c "from pathlib import Path; import re; base = Path('deploy/public'); service_worker = base / 'flutter_service_worker.js'; \
-            if not service_worker.exists(): raise SystemExit('flutter_service_worker.js missing'); \
-            text = service_worker.read_text(); \
-            match = re.search(r'\"main\\.dart\\.js\"\\s*:\\s*\"([0-9a-f]{8,})\"', text); \
-            if not match: raise SystemExit('main.dart.js hash missing in service worker'); \
-            if not (base / 'main.dart.js').exists(): raise SystemExit('main.dart.js missing')"
+          python -c "from pathlib import Path; import re; base = Path('deploy/public'); sw = base / 'flutter_service_worker.js'; \
+            (sw.exists() or (_ for _ in ()).throw(SystemExit('flutter_service_worker.js missing'))); \
+            text = sw.read_text(); \
+            (re.search(r'\"main\\.dart\\.js\"\\s*:\\s*\"([0-9a-f]{8,})\"', text) or (_ for _ in ()).throw(SystemExit('main.dart.js hash missing in service worker'))); \
+            ((base / 'main.dart.js').exists() or (_ for _ in ()).throw(SystemExit('main.dart.js missing')))"
 
       # --- Deploy to Render ---
       - name: Trigger Render Deploy
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
+        run: |
+          set -eo pipefail
+          curl -fsS -m 20 -X POST "$RENDER_DEPLOY_HOOK"
 
       # --- Smoke probe (post-deploy) ---
       - name: Smoke check
