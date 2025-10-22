@@ -100,20 +100,12 @@ jobs:
           test -f deploy/public/index.html
           ! grep -R "127.0.0.1:8000" -n deploy/public || (echo "Found localhost leak" && exit 1)
           ! grep -R "http://localhost" -n deploy/public || (echo "Found localhost leak" && exit 1)
-          python - <<'PY'
-from pathlib import Path
-import re
-base = Path("deploy/public")
-service_worker = base / "flutter_service_worker.js"
-if not service_worker.exists():
-    raise SystemExit("flutter_service_worker.js missing")
-text = service_worker.read_text()
-match = re.search(r'"main\\.dart\\.js"\s*:\s*"([0-9a-f]{8,})"', text)
-if not match:
-    raise SystemExit("main.dart.js hash missing in service worker")
-if not (base / "main.dart.js").exists():
-    raise SystemExit("main.dart.js missing")
-PY
+          python -c "from pathlib import Path; import re; base = Path('deploy/public'); service_worker = base / 'flutter_service_worker.js'; \
+            if not service_worker.exists(): raise SystemExit('flutter_service_worker.js missing'); \
+            text = service_worker.read_text(); \
+            match = re.search(r'\"main\\.dart\\.js\"\\s*:\\s*\"([0-9a-f]{8,})\"', text); \
+            if not match: raise SystemExit('main.dart.js hash missing in service worker'); \
+            if not (base / 'main.dart.js').exists(): raise SystemExit('main.dart.js missing')"
 
       # --- Deploy to Render ---
       - name: Trigger Render Deploy
