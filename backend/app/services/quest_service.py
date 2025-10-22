@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Iterable, Sequence
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -21,6 +21,7 @@ from app.models.quest import (
     UserQuest,
 )
 from app.models.daily_workout_aggregate import DailyWorkoutAggregate
+from app.models.routine_submission import RoutineSubmission
 from app.services.level_service import award_xp
 from app.utils.datetime import ensure_optional_aware_utc
 
@@ -239,98 +240,6 @@ async def get_user_quests(
     return quests
 
 
-async def add_progress(
-    db: AsyncSession,
-    user_id: UUID,
-    metric: QuestMetric,
-    amount: int,
-    *,
-    now: datetime | None = None,
-) -> Sequence[UserQuest]:
-    if amount <= 0:
-        return []
-
-    timestamp = now or _utc_now()
-    await _ensure_user_quests(db, user_id, timestamp)
-    result = await db.execute(
-        select(UserQuest)
-        .join(UserQuest.template)
-        .options(selectinload(UserQuest.template))
-        .where(
-            and_(
-                UserQuest.user_id == user_id,
-                QuestTemplate.metric == metric.value,
-            )
-        )
-    )
-    quests = list(result.scalars().all())
-
-    changed = False
-    for quest in quests:
-        if quest.status in (
-            QuestStatus.CLAIMED.value,
-            QuestStatus.EXPIRED.value,
-        ):
-            continue
-        if quest.available_from and timestamp < _as_utc(quest.available_from):
-            continue
-        expires_at = _as_utc(quest.expires_at)
-        if expires_at and timestamp >= expires_at:
-            continue
-        template = quest.template
-        if template and template.code in WORKOUT_SINGLE_SESSION_CODES:
-            continue
-        required = max(0, quest.required_value)
-        new_value = quest.progress_value + amount
-        if required > 0:
-            new_value = min(required, new_value)
-        if new_value != quest.progress_value:
-            quest.progress_value = new_value
-            quest.last_progress_at = timestamp
-            quest.updated_at = timestamp
-            changed = True
-    if changed:
-        await db.flush()
-    await _sync_quests(db, quests, timestamp)
-    return quests
-
-
-async def record_workout_completion(
-    db: AsyncSession,
-    user_id: UUID,
-    *,
-    duration_minutes: float | int | None,
-    completed_at: datetime | None = None,
-    now: datetime | None = None,
-) -> None:
-    timestamp = _as_utc(completed_at) or now or _utc_now()
-    await add_progress(
-        db,
-        user_id,
-        QuestMetric.WORKOUTS_COMPLETED,
-        1,
-        now=timestamp,
-    )
-    if duration_minutes is None:
-        return
-    minutes = int(round(max(0.0, float(duration_minutes))))
-    if minutes <= 0:
-        return
-    await add_progress(
-        db,
-        user_id,
-        QuestMetric.ACTIVE_MINUTES,
-        minutes,
-        now=timestamp,
-    )
-    await _update_workout_quests_from_session(
-        db,
-        user_id,
-        minutes=minutes,
-        completed_at=timestamp,
-    )
-
-
 async def _get_daily_aggregate(
     db: AsyncSession, user_id: UUID, day_start: datetime
 ) -> DailyWorkoutAggregate | None:
@@ -350,7 +259,8 @@ async def _upsert_daily_aggregate(
     user_id: UUID,
     *,
     day_start: datetime,
-    minutes: int,
+    longest_session_minutes: int,
+    qualified: bool,
     timestamp: datetime,
 ) -> DailyWorkoutAggregate:
     aggregate = await _get_daily_aggregate(db, user_id, day_start)
@@ -358,45 +268,158 @@ async def _upsert_daily_aggregate(
         aggregate = DailyWorkoutAggregate(
             user_id=user_id,
             day=day_start,
-            longest_session_minutes=minutes,
-            qualified_30=minutes >= QUALIFYING_MINUTES,
+            longest_session_minutes=longest_session_minutes,
+            qualified_30=qualified,
             created_at=timestamp,
             updated_at=timestamp,
         )
         db.add(aggregate)
-        await db.flush()
-        return aggregate
-
-    changed = False
-    if minutes > aggregate.longest_session_minutes:
-        aggregate.longest_session_minutes = minutes
-        changed = True
-    if minutes >= QUALIFYING_MINUTES and not aggregate.qualified_30:
-        aggregate.qualified_30 = True
-        changed = True
-    if changed:
-        aggregate.updated_at = timestamp
-        await db.flush()
+    else:
+        if (
+            aggregate.longest_session_minutes != longest_session_minutes
+            or aggregate.qualified_30 != qualified
+        ):
+            aggregate.longest_session_minutes = longest_session_minutes
+            aggregate.qualified_30 = qualified
+            aggregate.updated_at = timestamp
+    await db.flush()
     return aggregate
 
 
-async def _update_workout_quests_from_session(
+async def _recalculate_daily_aggregate(
     db: AsyncSession,
     user_id: UUID,
     *,
-    minutes: int,
-    completed_at: datetime,
-) -> None:
-    day_start = _start_of_day(completed_at)
-    aggregate = await _upsert_daily_aggregate(
+    day_start: datetime,
+    timestamp: datetime,
+) -> DailyWorkoutAggregate | None:
+    day_end = day_start + timedelta(days=1)
+    query = (
+        select(
+            func.coalesce(func.max(RoutineSubmission.duration), 0.0),
+            func.max(
+                case(
+                    (RoutineSubmission.duration >= QUALIFYING_MINUTES, 1),
+                    else_=0,
+                )
+            ),
+        )
+        .where(RoutineSubmission.user_id == user_id)
+        .where(RoutineSubmission.completion_timestamp >= day_start)
+        .where(RoutineSubmission.completion_timestamp < day_end)
+    )
+    result = await db.execute(query)
+    row = result.first()
+    if row is None:
+        return await _get_daily_aggregate(db, user_id, day_start)
+    max_duration, qualified_flag = row
+    longest_minutes = int(round(float(max_duration or 0.0)))
+    qualified = bool(qualified_flag) or longest_minutes >= QUALIFYING_MINUTES
+    return await _upsert_daily_aggregate(
         db,
         user_id,
         day_start=day_start,
-        minutes=minutes,
-        timestamp=completed_at,
+        longest_session_minutes=longest_minutes,
+        qualified=qualified,
+        timestamp=timestamp,
     )
 
-    await _ensure_user_quests(db, user_id, completed_at)
+
+async def _aggregate_submission_metrics(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    start: datetime,
+    end: datetime | None,
+) -> tuple[int, int]:
+    query = (
+        select(
+            func.coalesce(func.count(RoutineSubmission.id), 0),
+            func.coalesce(func.sum(RoutineSubmission.duration), 0.0),
+        )
+        .where(RoutineSubmission.user_id == user_id)
+        .where(RoutineSubmission.completion_timestamp >= start)
+    )
+    if end is not None:
+        query = query.where(RoutineSubmission.completion_timestamp < end)
+    result = await db.execute(query)
+    row = result.first()
+    if row is None:
+        return 0, 0
+    count, total_minutes = row
+    return int(count or 0), int(round(float(total_minutes or 0.0)))
+
+
+async def _refresh_metric_quests_from_history(
+    db: AsyncSession,
+    user_id: UUID,
+    metric: QuestMetric,
+    now: datetime,
+) -> None:
+    await _ensure_user_quests(db, user_id, now)
+    result = await db.execute(
+        select(UserQuest)
+        .join(UserQuest.template)
+        .options(selectinload(UserQuest.template))
+        .where(
+            and_(
+                UserQuest.user_id == user_id,
+                QuestTemplate.metric == metric.value,
+            )
+        )
+    )
+    quests = list(result.scalars().all())
+    if not quests:
+        return
+
+    stats_cache: dict[tuple[datetime, datetime | None], tuple[int, int]] = {}
+    changed = False
+    for quest in quests:
+        template = quest.template
+        if template is None:
+            await db.refresh(quest, attribute_names=["template"])
+            template = quest.template
+        if template is None:
+            continue
+        if template.code in WORKOUT_SINGLE_SESSION_CODES:
+            continue
+
+        key = (quest.cycle_start, quest.cycle_end)
+        if key not in stats_cache:
+            stats_cache[key] = await _aggregate_submission_metrics(
+                db,
+                user_id,
+                start=quest.cycle_start,
+                end=quest.cycle_end,
+            )
+        count, minutes = stats_cache[key]
+        required = max(0, quest.required_value)
+        raw_progress = count if metric is QuestMetric.WORKOUTS_COMPLETED else minutes
+        progress = min(required, raw_progress) if required > 0 else raw_progress
+        if progress != quest.progress_value:
+            quest.progress_value = progress
+            quest.last_progress_at = now
+            quest.updated_at = now
+            changed = True
+
+    if changed:
+        await db.flush()
+    await _sync_quests(db, quests, now)
+
+
+async def _refresh_workout_quests(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    completed_at: datetime,
+    now: datetime,
+) -> None:
+    day_start = _start_of_day(completed_at)
+    aggregate = await _get_daily_aggregate(db, user_id, day_start)
+    if aggregate is None:
+        return
+
+    await _ensure_user_quests(db, user_id, now)
     result = await db.execute(
         select(UserQuest)
         .join(UserQuest.template)
@@ -447,12 +470,64 @@ async def _update_workout_quests_from_session(
         if quest.progress_value != progress:
             quest.progress_value = progress
             quest.last_progress_at = completed_at
-            quest.updated_at = completed_at
+            quest.updated_at = now
             changed = True
 
     if changed:
         await db.flush()
-    await _sync_quests(db, quests, completed_at)
+    await _sync_quests(db, quests, now)
+
+
+async def process_routine_submission_event(
+    db: AsyncSession,
+    *,
+    submission_id: UUID,
+    user_id: UUID | None = None,
+    now: datetime | None = None,
+) -> None:
+    """Recompute quest state for a workout submission."""
+
+    timestamp = now or _utc_now()
+    result = await db.execute(
+        select(RoutineSubmission).where(RoutineSubmission.id == submission_id)
+    )
+    submission = result.scalars().first()
+    if submission is None:
+        return
+
+    submission_user_id = submission.user_id
+    if user_id and user_id != submission_user_id:
+        submission_user_id = submission.user_id
+
+    completion_ts = _as_utc(submission.completion_timestamp) or timestamp
+    day_start = _start_of_day(completion_ts)
+
+    await _ensure_user_quests(db, submission_user_id, timestamp)
+    await _recalculate_daily_aggregate(
+        db,
+        submission_user_id,
+        day_start=day_start,
+        timestamp=timestamp,
+    )
+    await _refresh_metric_quests_from_history(
+        db,
+        submission_user_id,
+        QuestMetric.WORKOUTS_COMPLETED,
+        timestamp,
+    )
+    await _refresh_metric_quests_from_history(
+        db,
+        submission_user_id,
+        QuestMetric.ACTIVE_MINUTES,
+        timestamp,
+    )
+    await _refresh_workout_quests(
+        db,
+        submission_user_id,
+        completed_at=completion_ts,
+        now=timestamp,
+    )
+    await db.commit()
 
 
 async def claim_user_quest(
@@ -501,7 +576,6 @@ __all__ = [
     "QuestTemplate",
     "UserQuest",
     "get_user_quests",
-    "add_progress",
-    "record_workout_completion",
+    "process_routine_submission_event",
     "claim_user_quest",
 ]
