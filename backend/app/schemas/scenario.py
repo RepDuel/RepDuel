@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.schemas.bodyweight_calibration import BodyweightCalibrationRead
 
@@ -21,7 +21,7 @@ class ScenarioUpdate(ScenarioBase):
 
 class ScenarioInDBBase(ScenarioBase):
     id: int
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Scenario(ScenarioInDBBase):
@@ -32,7 +32,7 @@ class ScenarioOut(ScenarioInDBBase):
     id: str
     name: str
     description: str | None = None
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ScenarioRead(BaseModel):
@@ -47,5 +47,4 @@ class ScenarioRead(BaseModel):
     equipment: List[str]
     calibration: Optional[BodyweightCalibrationRead] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

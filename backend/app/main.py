@@ -1,6 +1,7 @@
 # backend/app/main.py
 
 import os
+from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
 import asyncpg
@@ -25,16 +26,19 @@ _fastapi_kwargs = dict(
     description="Backend for the RepDuel app",
 )
 
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):  # pragma: no cover - exercised via app startup
+    # Run async initialization when the app starts (avoids asyncio.run() inside a running loop)
+    await init_env()
+    yield
+
+
 _base_url = getattr(settings, "BASE_URL", "").strip()
 if _base_url:
     _fastapi_kwargs["servers"] = [{"url": _base_url.rstrip("/")}]
 
-app = FastAPI(**_fastapi_kwargs)
-
-# Run async initialization when the app starts (avoids asyncio.run() inside a running loop)
-@app.on_event("startup")
-async def _startup_init_env():
-    await init_env()
+app = FastAPI(lifespan=_lifespan, **_fastapi_kwargs)
 
 def _origin(url: str | None) -> str | None:
     if not url:
