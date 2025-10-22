@@ -10,6 +10,7 @@ import 'package:repduel/features/routines/screens/add_exercise_screen.dart';
 import 'package:repduel/features/routines/screens/exercise_play_screen.dart';
 import 'package:repduel/features/scenario/screens/scenario_screen.dart';
 import 'package:repduel/features/routines/screens/summary_screen.dart';
+import 'package:repduel/features/landing/screens/landing_page_screen.dart';
 
 import '../core/config/env.dart';
 import '../core/models/routine.dart';
@@ -46,10 +47,13 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authStateStream = ref.watch(authProvider.notifier).authStateStream;
   final launchState = ref.watch(navigationLaunchStateProvider);
   final initialIndex = launchState.initialIndex;
-  final initialLocation =
+  final branchInitialLocation =
       (initialIndex >= 0 && initialIndex < _branchInitialLocations.length)
           ? _branchInitialLocations[initialIndex]
           : _branchInitialLocations[navigationDefaultBranchIndex];
+
+  final initialLocation =
+      launchState.lastUserId != null ? branchInitialLocation : '/';
 
   // Ensure auth-driven navigation persistence stays in sync with user changes.
   ref.watch(navigationAuthSyncProvider);
@@ -59,6 +63,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: initialLocation,
     refreshListenable: GoRouterRefreshStream(authStateStream),
     routes: [
+      // Marketing landing page at repduel.com
+      GoRoute(
+        path: '/',
+        name: 'landing',
+        builder: (context, state) => const LandingPageScreen(),
+      ),
       // ----------------------------------------------------------------------
       // Bottom-tab shell
       // ----------------------------------------------------------------------
@@ -442,7 +452,7 @@ class _SubscriptionsDisabledView extends StatelessWidget {
 }
 
 bool _isPublicRoute(String path) {
-  const publicRoutes = {'/login', '/register'};
+  const publicRoutes = {'/', '/login', '/register'};
   if (publicRoutes.contains(path)) {
     return true;
   }

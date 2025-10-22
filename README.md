@@ -145,6 +145,12 @@ curl -i -X POST https://api.repduel.com/api/v1/users/login \
   -d 'username=test@example.com&password=wrong'
 ```
 
+### Marketing landing page (repduel.com)
+
+- The `/` route now renders a citadel.com-inspired marketing experience implemented in `frontend/lib/features/landing/screens/landing_page_screen.dart`.
+- Preview locally with `cd frontend && flutter run -d chrome --web-renderer canvaskit` (requires the Flutter SDK).
+- Deployment is handled by the existing **Deploy Web** workflow; see `docs/landing-page.md` for the full playbook and fallback server steps.
+
 ---
 
 ## 🚀 Key Features

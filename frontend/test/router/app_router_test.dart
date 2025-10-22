@@ -94,7 +94,7 @@ void main() {
       container.dispose();
     });
 
-    test('falls back to routines when no persisted branch exists', () {
+    test('falls back to landing page when no persisted branch exists', () {
       final launchState = persistence.restoreLaunchState();
 
       final container = createContainer(
@@ -106,7 +106,7 @@ void main() {
       final initialLocation =
           router.routeInformationProvider.value.uri.toString();
 
-      expect(initialLocation, '/routines');
+      expect(initialLocation, '/');
       expect(container.read(navigationBranchIndexProvider),
           navigationDefaultBranchIndex);
 
