@@ -78,22 +78,26 @@ jobs:
           DART_VER=$(dart --version 2>&1 | awk '{print $4}')
           export DART_MIN DART_VER
           python - <<'PY'
-import os
+            import os
 
-def parse(version: str) -> tuple[int, ...]:
-    parts = version.split('.')
-    if len(parts) < 3:
-        parts += ['0'] * (3 - len(parts))
-    return tuple(int(p) for p in parts)
+            def parse(version: str) -> tuple[int, ...]:
+                parts = version.split('.')
+                if len(parts) < 3:
+                    parts += ['0'] * (3 - len(parts))
+                return tuple(int(p) for p in parts)
 
-dart_min = parse(os.environ['DART_MIN'])
-dart_ver = parse(os.environ['DART_VER'])
+            dart_min = parse(os.environ['DART_MIN'])
+            dart_ver = parse(os.environ['DART_VER'])
 
-if dart_ver < dart_min:
-    raise SystemExit(f"Toolchain too old: Dart {os.environ['DART_VER']} < required {os.environ['DART_MIN']}")
+            if dart_ver < dart_min:
+                raise SystemExit(
+                    f"Toolchain too old: Dart {os.environ['DART_VER']} < required {os.environ['DART_MIN']}"
+                )
 
-print(f"OK: Dart {os.environ['DART_VER']} >= {os.environ['DART_MIN']}")
-PY
+            print(
+                f"OK: Dart {os.environ['DART_VER']} >= {os.environ['DART_MIN']}"
+            )
+          PY
 
       - name: Get Flutter dependencies
         working-directory: frontend
