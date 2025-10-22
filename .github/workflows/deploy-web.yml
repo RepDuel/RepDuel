@@ -77,27 +77,22 @@ jobs:
           DART_MIN=$(grep -A1 '^environment:' -n frontend/pubspec.yaml | grep 'sdk:' | sed -E 's/.*">=([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
           DART_VER=$(dart --version 2>&1 | awk '{print $4}')
           export DART_MIN DART_VER
-          python - <<'PY'
-            import os
+          python -c 'import os
 
-            def parse(version: str) -> tuple[int, ...]:
-                parts = version.split('.')
-                if len(parts) < 3:
-                    parts += ['0'] * (3 - len(parts))
-                return tuple(int(p) for p in parts)
 
-            dart_min = parse(os.environ['DART_MIN'])
-            dart_ver = parse(os.environ['DART_VER'])
+def parse(version: str) -> tuple[int, ...]:
+    parts = version.split(".")
+    parts += ["0"] * (3 - len(parts))
+    return tuple(int(p) for p in parts)
 
-            if dart_ver < dart_min:
-                raise SystemExit(
-                    f"Toolchain too old: Dart {os.environ['DART_VER']} < required {os.environ['DART_MIN']}"
-                )
 
-            print(
-                f"OK: Dart {os.environ['DART_VER']} >= {os.environ['DART_MIN']}"
-            )
-          PY
+dart_min_raw = os.environ["DART_MIN"]
+dart_ver_raw = os.environ["DART_VER"]
+
+
+if parse(dart_ver_raw) < parse(dart_min_raw):
+    raise SystemExit(f"Toolchain too old: Dart {dart_ver_raw} < required {dart_min_raw}")
+print(f"OK: Dart {dart_ver_raw} >= {dart_min_raw}")'
 
       - name: Get Flutter dependencies
         working-directory: frontend
