@@ -45,7 +45,7 @@ final navigationBranchIndexProvider = StateProvider<int>((ref) {
 final navigationAuthSyncProvider = Provider<void>((ref) {
   final persistence = ref.watch(navigationPersistenceProvider);
 
-  String? _extractUserId(AsyncValue<AuthState> value) =>
+  String? extractUserId(AsyncValue<AuthState> value) =>
       value.valueOrNull?.user?.id;
 
   ref.listen<AsyncValue<AuthState>>(authProvider, (previous, next) {
@@ -53,8 +53,8 @@ final navigationAuthSyncProvider = Provider<void>((ref) {
       return;
     }
 
-    final prevUserId = previous == null ? null : _extractUserId(previous);
-    final nextUserId = _extractUserId(next);
+    final prevUserId = previous == null ? null : extractUserId(previous);
+    final nextUserId = extractUserId(next);
 
     if (prevUserId == nextUserId && nextUserId != null) {
       return;

@@ -31,7 +31,7 @@ void main() {
       );
     });
 
-    ProviderContainer _createContainer({
+    ProviderContainer createContainer({
       required NavigationLaunchState launchState,
       required AuthState authState,
     }) {
@@ -79,7 +79,7 @@ void main() {
       await persistence.persistBranchIndex(2, userId: user.id);
       final launchState = persistence.restoreLaunchState();
 
-      final container = _createContainer(
+      final container = createContainer(
         launchState: launchState,
         authState: AuthState(user: user, token: 'token-abc'),
       );
@@ -97,7 +97,7 @@ void main() {
     test('falls back to routines when no persisted branch exists', () {
       final launchState = persistence.restoreLaunchState();
 
-      final container = _createContainer(
+      final container = createContainer(
         launchState: launchState,
         authState: AuthState.initial(),
       );
