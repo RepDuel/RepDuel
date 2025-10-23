@@ -157,7 +157,7 @@ class _BlurredOrb extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
-              colors: [color, color.withOpacity(0)],
+              colors: [color, color.withValues(alpha: 0)],
             ),
           ),
         ),
@@ -191,8 +191,8 @@ class _LandingNavigationBar extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                color: Colors.white.withValues(alpha: 0.03),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                 borderRadius: BorderRadius.circular(28),
               ),
               padding: EdgeInsets.symmetric(
@@ -230,7 +230,7 @@ class _LandingNavigationBar extends StatelessWidget {
                       OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
                             vertical: 14,
@@ -324,7 +324,7 @@ class _BrandMark extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF4C7CFF).withOpacity(0.45),
+                color: const Color(0xFF4C7CFF).withValues(alpha: 0.45),
                 blurRadius: 24,
                 offset: const Offset(0, 12),
               ),
@@ -375,7 +375,7 @@ class _NavButton extends StatelessWidget {
         child: Text(
           label,
           style: Theme.of(context).textTheme.labelLarge!.copyWith(
-            color: Colors.white.withOpacity(0.86),
+            color: Colors.white.withValues(alpha: 0.86),
             fontSize: 15,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.2,
@@ -433,7 +433,7 @@ class _HeroSection extends StatelessWidget {
             'RepDuel is building a collaborative platform for strength communities. '
             'Plan training cycles, log sessions, and review progress together without juggling spreadsheets.',
             style: textTheme.bodyLarge!.copyWith(
-              color: Colors.white.withOpacity(0.78),
+              color: Colors.white.withValues(alpha: 0.78),
               fontSize: isCompact ? 16 : 18,
             ),
           ),
@@ -471,7 +471,7 @@ class _HeroSection extends StatelessWidget {
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withOpacity(0.32)),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.32)),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 26,
                     vertical: 18,
@@ -545,13 +545,13 @@ class _Pill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.18)),
-        color: Colors.white.withOpacity(0.04),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        color: Colors.white.withValues(alpha: 0.04),
       ),
       child: Text(
         text,
         style: textTheme.labelSmall!.copyWith(
-          color: Colors.white.withOpacity(0.8),
+          color: Colors.white.withValues(alpha: 0.8),
           fontSize: 13,
           letterSpacing: 0.4,
         ),
@@ -580,8 +580,8 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        color: Colors.white.withOpacity(0.03),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: Colors.white.withValues(alpha: 0.03),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -599,7 +599,7 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             style: textTheme.bodyMedium!.copyWith(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               height: 1.5,
             ),
           ),
@@ -636,7 +636,7 @@ class _AboutSection extends StatelessWidget {
             'RepDuel brings scheduling, feedback, and leaderboards into a single workspace so teams can stay connected '
             'wherever they train. We focus on clarity, dependable data, and helping coaches support every athlete.',
             style: textTheme.bodyLarge!.copyWith(
-              color: Colors.white.withOpacity(0.74),
+              color: Colors.white.withValues(alpha: 0.74),
               fontSize: 17,
             ),
           ),
@@ -688,11 +688,11 @@ class _PrincipleCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        color: Colors.white.withOpacity(0.02),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: Colors.white.withValues(alpha: 0.02),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.35),
+            color: Colors.black.withValues(alpha: 0.35),
             blurRadius: 24,
             offset: const Offset(0, 18),
           ),
@@ -728,7 +728,7 @@ class _PrincipleCard extends StatelessWidget {
           Text(
             copy,
             style: textTheme.bodyMedium!.copyWith(
-              color: Colors.white.withOpacity(0.68),
+              color: Colors.white.withValues(alpha: 0.68),
               height: 1.6,
             ),
           ),
@@ -772,7 +772,7 @@ class _TechnologySection extends StatelessWidget {
                       'Our tools capture reps, loads, and notes in real time so staff can make confident decisions. '
                       'We emphasise reliability, transparent data, and easy exports for the partners who trust us.',
                       style: textTheme.bodyLarge!.copyWith(
-                        color: Colors.white.withOpacity(0.74),
+                        color: Colors.white.withValues(alpha: 0.74),
                         fontSize: 16.5,
                       ),
                     ),
@@ -849,7 +849,7 @@ class _GradientPanel extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -865,7 +865,7 @@ class _GradientPanel extends StatelessWidget {
           Text(
             body,
             style: textTheme.bodyMedium!.copyWith(
-              color: Colors.white.withOpacity(0.75),
+              color: Colors.white.withValues(alpha: 0.75),
               height: 1.6,
             ),
           ),
@@ -897,8 +897,8 @@ class _CapabilityCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        color: Colors.white.withOpacity(0.03),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: Colors.white.withValues(alpha: 0.03),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -928,7 +928,7 @@ class _CapabilityCard extends StatelessWidget {
           Text(
             description,
             style: textTheme.bodyMedium!.copyWith(
-              color: Colors.white.withOpacity(0.72),
+              color: Colors.white.withValues(alpha: 0.72),
               height: 1.6,
             ),
           ),
@@ -964,10 +964,10 @@ class _CultureSection extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 32,
                   offset: const Offset(0, 24),
                 ),
@@ -990,7 +990,7 @@ class _CultureSection extends StatelessWidget {
                   'We are a small, remote-first group of engineers, coaches, and designers working with early partners to shape '
                   'RepDuel. We value curiosity, clear communication, and thoughtful iteration that supports long-term progress.',
                   style: textTheme.bodyLarge!.copyWith(
-                    color: Colors.white.withOpacity(0.75),
+                    color: Colors.white.withValues(alpha: 0.75),
                     fontSize: 16,
                   ),
                 ),
@@ -1053,7 +1053,7 @@ class _CultureHighlight extends StatelessWidget {
           Text(
             subtitle,
             style: textTheme.bodyMedium!.copyWith(
-              color: Colors.white.withOpacity(0.72),
+              color: Colors.white.withValues(alpha: 0.72),
             ),
           ),
         ],
@@ -1091,10 +1091,10 @@ class _CallToActionSection extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.38),
+              color: Colors.black.withValues(alpha: 0.38),
               blurRadius: 40,
               offset: const Offset(0, 26),
             ),
@@ -1118,7 +1118,7 @@ class _CallToActionSection extends StatelessWidget {
               'Schedule a walkthrough with our team. We will learn about your training environment and map a rollout that matches your timeline.',
               textAlign: isCompact ? TextAlign.start : TextAlign.center,
               style: textTheme.bodyLarge!.copyWith(
-                color: Colors.white.withOpacity(0.76),
+                color: Colors.white.withValues(alpha: 0.76),
               ),
             ),
             const SizedBox(height: 30),
@@ -1150,7 +1150,7 @@ class _CallToActionSection extends StatelessWidget {
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withOpacity(0.32)),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.32)),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 28,
                       vertical: 18,
@@ -1181,11 +1181,11 @@ class _LandingFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final bodyStyle = textTheme.bodySmall!.copyWith(
-      color: Colors.white.withOpacity(0.62),
+      color: Colors.white.withValues(alpha: 0.62),
       fontSize: 13,
     );
     final linkStyle = textTheme.labelLarge!.copyWith(
-      color: Colors.white.withOpacity(0.78),
+      color: Colors.white.withValues(alpha: 0.78),
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -1308,9 +1308,9 @@ class _SocialLinkButton extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.18)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
               ),
               child: Center(child: child),
             ),
