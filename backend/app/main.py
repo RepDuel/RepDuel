@@ -77,10 +77,8 @@ _DEFAULT_DEV_ORIGINS = [
 
 _origins.extend(_DEFAULT_DEV_ORIGINS)
 
-_origins.extend([
-    "https://repduel.com",
-    "https://www.repduel.com",
-])
+# Production origin
+_origins.append("https://www.repduel.com")
 
 # Dedupe while preserving order
 ALLOWED_ORIGINS = [origin for origin in dict.fromkeys(_origins) if origin]

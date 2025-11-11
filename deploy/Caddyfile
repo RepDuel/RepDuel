@@ -4,33 +4,12 @@
 }
 
 # =========================
-# API (CORS + reverse proxy)
+# API (reverse proxy only)
 # =========================
 # Frontend is served by Render, backend API only
+# CORS is handled by FastAPI middleware
 api.repduel.com {
     encode zstd gzip
-
-    # Handle OPTIONS preflight requests first
-    @preflight method OPTIONS
-    handle @preflight {
-        header Access-Control-Allow-Origin "{http.request.header.Origin}"
-        header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        header Access-Control-Allow-Headers "Content-Type, Authorization"
-        header Access-Control-Allow-Credentials "true"
-        header Vary Origin
-        respond 204
-    }
-
-    # Set CORS headers for allowed origins
-    @allowedOrigin1 header Origin https://www.repduel.com
-    @allowedOrigin2 header Origin https://repduel.com
-
-    header @allowedOrigin1 Access-Control-Allow-Origin "https://www.repduel.com"
-    header @allowedOrigin2 Access-Control-Allow-Origin "https://repduel.com"
-    header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    header Access-Control-Allow-Headers "Content-Type, Authorization"
-    header Access-Control-Allow-Credentials "true"
-    header Vary Origin
 
     # Static files with caching
     @static {
@@ -46,14 +25,8 @@ api.repduel.com {
         reverse_proxy 127.0.0.1:9999
     }
 
-    # Error handling with CORS
+    # Error handling
     handle_errors {
-        @errorOrigin1 header Origin https://www.repduel.com
-        @errorOrigin2 header Origin https://repduel.com
-        header @errorOrigin1 Access-Control-Allow-Origin "https://www.repduel.com"
-        header @errorOrigin2 Access-Control-Allow-Origin "https://repduel.com"
-        header Access-Control-Allow-Credentials "true"
-        header Vary Origin
         respond "{http.error.status_code} {http.error.status_text}"
     }
 }
