@@ -32,12 +32,12 @@ api.repduel.com {
     }
     handle @static {
         header Cache-Control "public, max-age=31536000, immutable"
-        reverse_proxy 127.0.0.1:8001
+        reverse_proxy 127.0.0.1:9999
     }
 
     # Proxy all other requests to FastAPI on port 8001
     handle {
-        reverse_proxy 127.0.0.1:8001
+        reverse_proxy 127.0.0.1:9999
     }
 
     # Error handling with CORS
