@@ -23,7 +23,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # ---- URL resolution (async for app, sync for Alembic) ----
-raw_url = os.getenv("DATABASE_URL_SYNC") or os.getenv("DATABASE_URL") or str(settings.DATABASE_URL)
+raw_url = os.getenv("DATABASE_URL") or str(settings.DATABASE_URL)
 url = str(raw_url)
 
 def as_sync(u: str) -> str:
