@@ -2,70 +2,82 @@
 # API (CORS + reverse proxy)
 # =========================
 api.repduel.com {
-  encode zstd gzip
+    encode zstd gzip
 
-  # Allow only these browser origins
-  @allowed header Origin https://www.repduel.com https://repduel.com
-
-  # Preflight: 204 (will still carry the header block below because it's matched)
-  @preflight method OPTIONS
-
-  # Echo the requesting Origin and allow credentials
-  header @allowed {
-    Access-Control-Allow-Origin "{header.Origin}"
-    Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    Access-Control-Allow-Headers "Content-Type, Authorization"
-    Access-Control-Allow-Credentials "true"
-    Vary "Origin"
-    defer
-  }
-
-  # Send the preflight response
-  respond @preflight 204
-
-  # Proxy to FastAPI; force HTTP/1 upstream
-  @static path /static/*
-  header @static Cache-Control "public, max-age=31536000, immutable"
-
-  reverse_proxy 127.0.0.1:9999 {
-    transport http {
-      versions h1
+    # Handle OPTIONS preflight requests first
+    @preflight method OPTIONS
+    handle @preflight {
+        header Access-Control-Allow-Origin "{http.request.header.Origin}"
+        header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers "Content-Type, Authorization"
+        header Access-Control-Allow-Credentials "true"
+        header Vary Origin
+        respond 204
     }
-  }
 
-  # Ensure error responses also include CORS for allowed origins
-  handle_errors {
-    header @allowed {
-      Access-Control-Allow-Origin "{header.Origin}"
-      Access-Control-Allow-Credentials "true"
-      Vary "Origin"
-      defer
+    # Set CORS headers for allowed origins
+    @allowedOrigin1 header Origin https://www.repduel.com
+    @allowedOrigin2 header Origin https://repduel.com
+    
+    header @allowedOrigin1 Access-Control-Allow-Origin "https://www.repduel.com"
+    header @allowedOrigin2 Access-Control-Allow-Origin "https://repduel.com"
+    header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization"
+    header Access-Control-Allow-Credentials "true"
+    header Vary Origin
+
+    # Static files with caching - proxy to port 8001
+    @static {
+        path /static/*
     }
-  }
+    handle @static {
+        header Cache-Control "public, max-age=31536000, immutable"
+        reverse_proxy 127.0.0.1:8001
+    }
+
+    # Proxy all other requests to FastAPI on port 8001
+    handle {
+        reverse_proxy 127.0.0.1:8001
+    }
+
+    # Error handling with CORS
+    handle_errors {
+        @errorOrigin1 header Origin https://www.repduel.com
+        @errorOrigin2 header Origin https://repduel.com
+        header @errorOrigin1 Access-Control-Allow-Origin "https://www.repduel.com"
+        header @errorOrigin2 Access-Control-Allow-Origin "https://repduel.com"
+        header Access-Control-Allow-Credentials "true"
+        header Vary Origin
+        respond "{http.error.status_code} {http.error.status_text}"
+    }
 }
 
 # =========================
 # Frontend (Flutter web)
 # =========================
 www.repduel.com, repduel.com {
-  encode zstd gzip
-  root * /var/www/repduel
+    encode zstd gzip
+    root * /var/www/repduel
 
-  @static path /assets/* /flutter.js* /favicon.ico /icons/* /manifest.json /robots.txt /sitemap.xml
-  handle @static {
-    file_server
-  }
+    # Static files
+    @staticFiles {
+        path /assets/* /flutter.js* /favicon.ico /icons/* /manifest.json /robots.txt /sitemap.xml
+    }
+    handle @staticFiles {
+        file_server
+    }
 
-  handle {
-    try_files {path} /index.html
-    file_server
-  }
+    # SPA fallback
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
 
-  # Single-line CSP to avoid multiline quoting bugs
-  header {
-    Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: https://cdn.repduel.com; font-src 'self' data:; connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
-    Referrer-Policy "strict-origin-when-cross-origin"
-    X-Content-Type-Options "nosniff"
-    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-  }
+    # Security headers
+    header {
+        Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://js.stripe.com https://m.stripe.network 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: https://cdn.repduel.com; font-src 'self' data:; connect-src 'self' https://api.repduel.com https://api.stripe.com https://m.stripe.com https://m.stripe.network https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Content-Type-Options "nosniff"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
 }
