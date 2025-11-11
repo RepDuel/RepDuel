@@ -65,8 +65,8 @@ if sudo systemctl is-active --quiet repduel-backend; then
 fi
 
 # Kill any leftover uvicorn processes
-LEFTOVER=$(pgrep -f uvicorn 2>/dev/null | wc -l || echo "0")
-if [[ $LEFTOVER -gt 0 ]]; then
+LEFTOVER=$(pgrep -f uvicorn 2>/dev/null | wc -l | xargs || echo "0")
+if [[ "$LEFTOVER" -gt 0 ]]; then
     echo "  Found $LEFTOVER leftover uvicorn processes, killing them..."
     sudo pkill -f uvicorn || true
     sleep 2

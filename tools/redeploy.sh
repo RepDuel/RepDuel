@@ -28,8 +28,11 @@ sudo caddy validate --config "$CADDY_CONFIG"
 echo "➡️ Reloading Caddy..."
 sudo caddy reload --config "$CADDY_CONFIG"
 
+echo "➡️ Waiting for backend to initialize..."
+sleep 3
+
 echo "➡️ Performing health check..."
-if curl -fsS http://127.0.0.1:9999/health >/dev/null; then
+if curl -fsS http://localhost:9999/health >/dev/null; then
     echo "✅ Backend healthy"
 else
     echo "❌ Backend down"
