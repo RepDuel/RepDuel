@@ -113,15 +113,13 @@ _mount_if_exists("/assets", "assets")
 _mount_if_exists("/canvaskit", "canvaskit")
 _mount_if_exists("/icons", "icons")
 
-static_cors_config = dict(cors_config)
-static_cors_config["allow_methods"] = ["GET", "HEAD", "OPTIONS"]
-
 STATIC_DIR = getattr(settings, "STATIC_STORAGE_DIR", None)
 if not STATIC_DIR:
     raise RuntimeError("STATIC_STORAGE_DIR must be configured")
 os.makedirs(STATIC_DIR, exist_ok=True)
 static_app = StaticFiles(directory=STATIC_DIR)
-app.mount("/static", CORSMiddleware(static_app, **static_cors_config), name="static")
+# CORS is handled by the main app middleware, no need to wrap static files
+app.mount("/static", static_app, name="static")
 
 app.include_router(api_router, prefix="/api/v1")
 from app.api.aasa import router as aasa_router
