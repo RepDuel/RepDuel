@@ -30,3 +30,25 @@ api.repduel.com {
         respond "{http.error.status_code} {http.error.status_text}"
     }
 }
+
+# =========================
+# Main domain (static files)
+# =========================
+repduel.com, www.repduel.com {
+    encode zstd gzip
+
+    # Static files with caching
+    @static {
+        path /static/*
+    }
+    handle @static {
+        root * /var/www/repduel
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+
+    # Error handling
+    handle_errors {
+        respond "{http.error.status_code} {http.error.status_text}"
+    }
+}
