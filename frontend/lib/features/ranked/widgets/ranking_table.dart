@@ -351,7 +351,7 @@ class _RankingTableHeader extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Center(
-              child: Text('Score',
+              child: Text('1RM',
                   style: headerStyle,
                   maxLines: 1,
                   softWrap: false,
