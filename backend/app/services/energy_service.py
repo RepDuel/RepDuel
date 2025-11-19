@@ -228,7 +228,7 @@ async def recompute_for_user(
 
     avg_energy = sum(per_lift_energies) / len(per_lift_energies)
     rounded = round(avg_energy)
-    overall = _overall_rank_from_energy(avg_energy)
+    overall = _overall_rank_from_energy(rounded)
 
     current_user.energy = float(rounded)
     current_user.rank = overall

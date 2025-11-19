@@ -164,7 +164,9 @@ class RankingTable extends ConsumerWidget {
           final key = spec.key;
           final scoreKg = _scoreForKey(key);
           // Convert score to pack/display unit using multiplier
-          final score = scoreKg * weightMultiplier;
+          // Round to 1 decimal place to match display precision (formatKg)
+          // This ensures comparisons use the same value the user sees
+          final score = ((scoreKg * weightMultiplier) * 10).round() / 10;
 
           // Backend already provides thresholds rounded in the chosen unit.
           final entries = liftStandards.entries.toList()
