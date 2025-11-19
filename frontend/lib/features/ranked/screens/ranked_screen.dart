@@ -381,26 +381,39 @@ class _EnergySpiderChart extends StatelessWidget {
 
   final List<_EnergyDataPoint> dataPoints;
 
-  static const double _maxEnergy = 1200.0;
+  static const double _maxEnergy = 1300.0;
 
   List<_RankRing> _buildRings() {
     final sortedRanks = rankEnergy.entries.toList()
       ..sort((a, b) => a.value.compareTo(b.value));
+
+    if (sortedRanks.isEmpty) {
+      return [_RankRing(energy: _maxEnergy, color: Colors.white54)];
+    }
+
+    // Add Unranked as the innermost ring (0 to first rank's threshold)
     final rings = <_RankRing>[
-      for (final entry in sortedRanks)
-        _RankRing(
-          energy: entry.value.toDouble().clamp(0.0, _maxEnergy),
-          color: getRankColor(entry.key),
-        ),
+      _RankRing(
+        energy: sortedRanks.first.value.toDouble(),
+        color: getRankColor('Unranked'),
+      ),
     ];
-    if (rings.isEmpty || rings.last.energy < _maxEnergy) {
+
+    // Each rank's ring extends to the NEXT rank's threshold
+    // This way, at 400 energy (Gold threshold), the point is on the edge
+    // between Silver ring and Gold ring
+    for (int i = 0; i < sortedRanks.length; i++) {
+      final nextEnergy = i < sortedRanks.length - 1
+          ? sortedRanks[i + 1].value.toDouble()
+          : _maxEnergy;
       rings.add(
         _RankRing(
-          energy: _maxEnergy,
-          color: rings.isEmpty ? Colors.white54 : rings.last.color,
+          energy: nextEnergy.clamp(0.0, _maxEnergy),
+          color: getRankColor(sortedRanks[i].key),
         ),
       );
     }
+
     return rings;
   }
 
