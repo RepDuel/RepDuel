@@ -119,32 +119,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     }
   }
 
-  Future<void> _handleRestore() async {
-    if (_isProcessing || !_isIOS) {
-      return;
-    }
-    setState(() => _isProcessing = true);
-    _showSnackbar('Restoring purchases...');
-    try {
-      if (widget.onRestore != null) {
-        await widget.onRestore!();
-      } else {
-        await ref.read(subscriptionProvider.notifier).restorePurchases();
-      }
-      if (!mounted) {
-        return;
-      }
-      _showSnackbar('Purchases restored successfully!');
-      _close(true);
-    } catch (e) {
-      _showSnackbar('Restore failed: $e', isError: true);
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
-    }
-  }
-
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -199,6 +173,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final iosPriceLabel =
         iosPackage != null ? _formatIOSPrice(iosPackage.storeProduct) : '';
     final theme = Theme.of(context);
+    final isSmall = MediaQuery.of(context).size.height < 700;
     final darkTheme = ThemeData.from(
       colorScheme: ColorScheme.dark(
           brightness: Brightness.dark,
@@ -220,102 +195,112 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           value: SystemUiOverlayStyle.light,
           child: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Text('RepDuel Pro',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2)),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: 460,
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                        color: Colors.grey[900],
-                        borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.all(16),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal:
+                          MediaQuery.of(context).size.width < 360 ? 16 : 24,
+                      vertical: 16,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildFeature(theme, 'Unlock progress charts!'),
-                        const SizedBox(height: 12),
-                        _buildFeature(theme, 'Unlock unlimited routines!'),
-                        const SizedBox(height: 12),
-                        _buildFeature(theme, 'Support development!'),
+                        Center(
+                          child: Text('Go Premium',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2)),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: EdgeInsets.all(isSmall ? 12 : 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFeature(theme, 'Unlock progress charts!'),
+                              SizedBox(height: isSmall ? 8 : 12),
+                              _buildFeature(
+                                  theme, 'Unlock unlimited routines!'),
+                              SizedBox(height: isSmall ? 8 : 12),
+                              _buildFeature(theme, 'Support development!'),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: isSmall ? 16 : 24),
+                        Center(
+                          child: Text(
+                              '${_priceLabel(iosPriceLabel)} • Auto-renews monthly. Cancel anytime.',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.grey[500])),
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            children: [
+                              TextButton(
+                                key: const Key('privacy'),
+                                onPressed: () => _launchUrl(
+                                    'https://repduel.github.io/repduel-website/privacy.html'),
+                                child: Text('Privacy Policy',
+                                    style: TextStyle(
+                                        fontSize: 12, color: Colors.grey[500])),
+                              ),
+                              Text('•',
+                                  style: TextStyle(color: Colors.grey[600])),
+                              TextButton(
+                                key: const Key('terms'),
+                                onPressed: () => _launchUrl(
+                                    'https://repduel.github.io/repduel-website/terms.html'),
+                                child: Text('Terms of Use',
+                                    style: TextStyle(
+                                        fontSize: 12, color: Colors.grey[500])),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            key: const Key('cta'),
+                            onPressed: (_isProcessing || isLoadingPrice)
+                                ? null
+                                : _handlePurchase,
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                minimumSize: const Size(double.infinity, 48)),
+                            child: Text(_ctaLabel(iosPriceLabel),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: TextButton(
+                              onPressed: _close,
+                              child: Text('Maybe Later...',
+                                  style: TextStyle(color: Colors.grey[500]))),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: Text(
-                        '${_priceLabel(iosPriceLabel)} • Auto-renews monthly. Cancel anytime.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: Colors.grey[500])),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextButton(
-                        key: const Key('privacy'),
-                        onPressed: () => _launchUrl(
-                            'https://repduel.github.io/repduel-website/privacy.html'),
-                        child: Text('Privacy Policy',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[500])),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('•', style: TextStyle(color: Colors.grey[600])),
-                      const SizedBox(width: 8),
-                      TextButton(
-                        key: const Key('terms'),
-                        onPressed: () => _launchUrl(
-                            'https://repduel.github.io/repduel-website/terms.html'),
-                        child: Text('Terms of Use',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[500])),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    key: const Key('cta'),
-                    onPressed: (_isProcessing || isLoadingPrice)
-                        ? null
-                        : _handlePurchase,
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        minimumSize: const Size(double.infinity, 48)),
-                    child: Text(_ctaLabel(iosPriceLabel),
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: TextButton(
-                        onPressed: _close,
-                        child: Text('Maybe Later...',
-                            style: TextStyle(color: Colors.grey[500]))),
-                  ),
-                  if (_isIOS) ...[
-                    const SizedBox(height: 16),
-                    Center(
-                      child: TextButton(
-                          key: const Key('restore'),
-                          onPressed: (_isProcessing || isLoadingPrice)
-                              ? null
-                              : _handleRestore,
-                          child: Text('Restore purchases',
-                              style: TextStyle(color: Colors.grey[500]))),
-                    )
-                  ],
-                ],
+                ),
               ),
             ),
           ),
