@@ -106,8 +106,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       if (kIsWeb) {
         final client = ref.read(privateHttpClientProvider);
-        final response =
-            await client.post('payments/create-portal-session');
+        final response = await client.post('payments/create-portal-session');
         final portalUrlString = response.data['portal_url'] as String?;
         if (portalUrlString == null || portalUrlString.isEmpty) {
           throw Exception("Could not retrieve subscription portal URL.");
@@ -514,7 +513,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: Text(
                   subscriptionTier == null ||
                           subscriptionTier == SubscriptionTier.free
-                      ? 'Subscribe to RepDuel Gold'
+                      ? 'Subscribe to RepDuel Premium'
                       : subscriptionTier.name.toUpperCase(),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),

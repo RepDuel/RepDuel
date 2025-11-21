@@ -1,5 +1,3 @@
-// frontend/lib/features/premium/screens/subscription_screen.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,110 +31,87 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _isProcessing = false;
-
   bool get _isIOS => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   void _close([bool? result]) {
     if (context.canPop()) {
       context.pop(result);
-      return;
-    }
-
-    final rootNavigator = Navigator.of(context, rootNavigator: true);
-    if (rootNavigator.canPop()) {
-      rootNavigator.pop(result);
-      return;
-    }
-
-    final fallback = widget.fallbackLocation;
-    if (fallback != null && fallback.isNotEmpty) {
-      context.go(fallback);
+    } else if (Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop(result);
     } else {
-      context.go('/routines');
+      context.go(widget.fallbackLocation?.isNotEmpty == true
+          ? widget.fallbackLocation!
+          : '/routines');
     }
   }
 
-  void _showInfoSnackbar(String message) {
+  void _showSnackbar(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-      ),
-    );
-  }
-
-  void _showErrorSnackbar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
+        content: Text(message,
+            style: TextStyle(color: isError ? Colors.white : Colors.black)),
+        backgroundColor: isError ? Colors.red : Colors.white,
       ),
     );
   }
 
   Future<void> _handlePurchase() async {
-    if (_isProcessing) return;
-
+    if (_isProcessing) {
+      return;
+    }
     if (!Env.paymentsEnabled && widget.onSubscribe == null) {
-      _showErrorSnackbar('Subscriptions are temporarily unavailable.');
+      _showSnackbar('Subscriptions are temporarily unavailable.',
+          isError: true);
       return;
     }
 
     setState(() => _isProcessing = true);
-
-    bool shouldShowSuccess = true;
-
     try {
       if (widget.onSubscribe != null) {
         await widget.onSubscribe!();
       } else if (kIsWeb) {
-        var encounteredError = false;
         await ref.read(stripeServiceProvider).subscribeToPlan(
           onDisplayError: (error) {
-            shouldShowSuccess = false;
-            encounteredError = true;
-            _showErrorSnackbar(error);
+            _showSnackbar(error, isError: true);
           },
         );
-        if (!mounted || encounteredError) return;
-        shouldShowSuccess = false;
-        _showInfoSnackbar(
-            'Checkout opened. Complete payment to unlock features.');
+        if (!mounted) {
+          return;
+        }
+        _showSnackbar('Checkout opened. Complete payment to unlock features.');
       } else if (_isIOS) {
         final offerings = await ref.read(offeringsProvider.future);
-        final packageToPurchase =
-            offerings.current?.availablePackages.firstOrNull;
-        if (packageToPurchase == null) {
+        final package = offerings.current?.availablePackages.firstOrNull;
+        if (package == null) {
           throw PlatformException(
               code: 'no_products', message: 'No products found.');
         }
-
-        final purchaseCompleted = await ref
+        final success = await ref
             .read(subscriptionProvider.notifier)
-            .purchasePackage(packageToPurchase);
-        if (!purchaseCompleted) {
-          shouldShowSuccess = false;
+            .purchasePackage(package);
+        if (!success) {
+          setState(() => _isProcessing = false);
+          return;
         }
       } else {
-        shouldShowSuccess = false;
-        _showErrorSnackbar(
-            'In-app purchases are not supported on this platform yet.');
+        _showSnackbar('In-app purchases not supported on this platform.',
+            isError: true);
+        setState(() => _isProcessing = false);
         return;
       }
-
-      if (!mounted || !shouldShowSuccess) return;
-
-      _showInfoSnackbar('Success! Premium features unlocked.');
+      if (!mounted) {
+        return;
+      }
+      _showSnackbar('Success! Premium features unlocked.');
       _close(true);
     } on PlatformException catch (e) {
       if (PurchasesErrorHelper.getErrorCode(e) !=
           PurchasesErrorCode.purchaseCancelledError) {
-        _showErrorSnackbar('Purchase failed: ${e.message}');
+        _showSnackbar('Purchase failed: ${e.message}', isError: true);
       }
     } catch (e) {
-      _showErrorSnackbar('An error occurred: $e');
+      _showSnackbar('An error occurred: $e', isError: true);
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -145,25 +120,24 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Future<void> _handleRestore() async {
-    if (_isProcessing || !_isIOS) return;
-
+    if (_isProcessing || !_isIOS) {
+      return;
+    }
     setState(() => _isProcessing = true);
-
-    _showInfoSnackbar('Restoring purchases...');
-
+    _showSnackbar('Restoring purchases...');
     try {
       if (widget.onRestore != null) {
         await widget.onRestore!();
       } else {
         await ref.read(subscriptionProvider.notifier).restorePurchases();
       }
-
-      if (!mounted) return;
-
-      _showInfoSnackbar('Purchases restored successfully!');
+      if (!mounted) {
+        return;
+      }
+      _showSnackbar('Purchases restored successfully!');
       _close(true);
     } catch (e) {
-      _showErrorSnackbar('Restore failed: $e');
+      _showSnackbar('Restore failed: $e', isError: true);
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -171,284 +145,177 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     }
   }
 
-  Future<void> _openPrivacy() async {
-    if (widget.onViewPrivacy != null) {
-      widget.onViewPrivacy!();
-      return;
-    }
-    await _launchExternalUrl(
-        'https://repduel.github.io/repduel-website/privacy.html');
-  }
-
-  Future<void> _openTerms() async {
-    if (widget.onViewTerms != null) {
-      widget.onViewTerms!();
-      return;
-    }
-    await _launchExternalUrl(
-        'https://repduel.github.io/repduel-website/terms.html');
-  }
-
-  Future<void> _launchExternalUrl(String url) async {
+  Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
-  String _ctaLabel(String iosPriceLabel) {
-    if (_isProcessing) {
-      return 'Processing…';
-    }
-    if (!Env.paymentsEnabled && widget.onSubscribe == null) {
-      return 'Unavailable right now';
-    }
-    if (kIsWeb) {
-      return 'Upgrade now';
-    }
-    if (_isIOS && iosPriceLabel.isNotEmpty) {
-      return 'Upgrade now';
-    }
-    return 'Upgrade now';
-  }
+  String _ctaLabel(String iosPriceLabel) => _isProcessing
+      ? 'Processing…'
+      : !Env.paymentsEnabled && widget.onSubscribe == null
+          ? 'Unavailable right now'
+          : 'Upgrade now';
 
   String _priceLabel(String iosPriceLabel) {
     if (!Env.paymentsEnabled && widget.onSubscribe == null) {
       return 'Temporarily unavailable';
     }
-    if (kIsWeb) {
-      return '${String.fromCharCode(0x0024)}4.99/month';
-    }
-    if (_isIOS && iosPriceLabel.isNotEmpty) {
-      return iosPriceLabel;
-    }
-    return 'Monthly subscription';
+    if (kIsWeb) return '\$0.99/month';
+    return _isIOS && iosPriceLabel.isNotEmpty
+        ? iosPriceLabel
+        : 'Monthly subscription';
   }
 
-  Widget _buildFeature(ThemeData theme, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.check, color: Colors.white, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ],
-    );
+  Widget _buildFeature(ThemeData theme, String text) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+              child: Text(text,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: Colors.white))),
+        ],
+      );
+
+  String _formatIOSPrice(StoreProduct product) {
+    final raw = product.priceString.trim();
+    if (raw.isEmpty) return raw;
+    final lower = raw.toLowerCase();
+    return lower.contains('/month') ||
+            lower.contains('per month') ||
+            lower.contains('monthly')
+        ? raw
+        : '$raw/month';
   }
 
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<Offerings>? offeringsAsync =
-        _isIOS ? ref.watch(offeringsProvider) : null;
-
-    final bool isLoadingIOSPrice = offeringsAsync?.isLoading ?? false;
-    final Package? iosPackage = offeringsAsync?.hasValue ?? false
+    final offeringsAsync = _isIOS ? ref.watch(offeringsProvider) : null;
+    final isLoadingPrice = offeringsAsync?.isLoading ?? false;
+    final iosPackage = offeringsAsync?.hasValue == true
         ? offeringsAsync!.value?.current?.availablePackages.firstOrNull
         : null;
-    final String iosPriceLabel = iosPackage != null
-        ? _formatIOSPriceLabel(iosPackage.storeProduct)
-        : '';
-
+    final iosPriceLabel =
+        iosPackage != null ? _formatIOSPrice(iosPackage.storeProduct) : '';
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme.copyWith(
-      brightness: Brightness.dark,
-      surface: Colors.black,
-      primary: Colors.white,
-      onPrimary: Colors.black,
-      onSurface: Colors.white,
-    );
-
-    final themedata = ThemeData.from(
-      colorScheme: colorScheme,
+    final darkTheme = ThemeData.from(
+      colorScheme: ColorScheme.dark(
+          brightness: Brightness.dark,
+          surface: Colors.black,
+          primary: Colors.white),
       textTheme: theme.textTheme,
       useMaterial3: true,
     ).copyWith(
       scaffoldBackgroundColor: Colors.black,
-      textTheme: theme.textTheme.apply(
-        bodyColor: Colors.white,
-        displayColor: Colors.white,
-      ),
+      textTheme: theme.textTheme
+          .apply(bodyColor: Colors.white, displayColor: Colors.white),
     );
 
-    final priceLabel = _priceLabel(iosPriceLabel);
-
     return Theme(
-      data: themedata,
+      data: darkTheme,
       child: Scaffold(
         backgroundColor: Colors.black,
         body: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light,
           child: SafeArea(
-            child: FocusTraversalGroup(
-              policy: OrderedTraversalPolicy(),
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      onPressed: _close,
-                      style: IconButton.styleFrom(
-                        foregroundColor: Colors.white,
-                      ),
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'RepDuel Gold',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Unlock premium tracking and elite routines.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[400],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      decoration: BoxDecoration(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text('RepDuel Pro',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2)),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
                         color: Colors.grey[900],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Monthly access',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[400],
-                            ),
-                          ),
-                          if (priceLabel.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              priceLabel,
-                              style: theme.textTheme.headlineMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-                          Divider(color: Colors.grey[800], height: 24),
-                          const SizedBox(height: 16),
-                          _buildFeature(
-                            theme,
-                            'Track your score history with real-time progress charts.',
-                          ),
-                          const SizedBox(height: 12),
-                          _buildFeature(
-                            theme,
-                            'Design unlimited custom routines without limits.',
-                          ),
-                          const SizedBox(height: 12),
-                          _buildFeature(
-                            theme,
-                            'Support the future of RepDuel so new features land faster.',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    FocusTraversalOrder(
-                      order: const NumericFocusOrder(1),
-                      child: ElevatedButton(
-                        key: const Key('cta'),
-                        onPressed: (_isProcessing || isLoadingIOSPrice)
-                            ? null
-                            : _handlePurchase,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          minimumSize: const Size(double.infinity, 48),
-                        ),
-                        child: Text(
-                          _ctaLabel(iosPriceLabel),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Auto-renews monthly. Cancel anytime in Settings.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    if (_isIOS) ...[
-                      const SizedBox(height: 16),
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(2),
-                        child: TextButton(
-                          key: const Key('restore'),
-                          onPressed: (_isProcessing || isLoadingIOSPrice)
-                              ? null
-                              : _handleRestore,
-                          child: Text(
-                            'Restore purchases',
-                            style: TextStyle(color: Colors.grey[500]),
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
+                        borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FocusTraversalOrder(
-                          order: const NumericFocusOrder(3),
-                          child: TextButton(
-                            key: const Key('privacy'),
-                            onPressed: _openPrivacy,
-                            child: Text(
-                              'Privacy Policy',
-                              style: TextStyle(color: Colors.grey[500]),
-                            ),
-                          ),
-                        ),
-                        FocusTraversalOrder(
-                          order: const NumericFocusOrder(4),
-                          child: TextButton(
-                            key: const Key('terms'),
-                            onPressed: _openTerms,
-                            child: Text(
-                              'Terms of Use',
-                              style: TextStyle(color: Colors.grey[500]),
-                            ),
-                          ),
-                        ),
+                        _buildFeature(theme, 'Unlock progress charts!'),
+                        const SizedBox(height: 12),
+                        _buildFeature(theme, 'Unlock unlimited routines!'),
+                        const SizedBox(height: 12),
+                        _buildFeature(theme, 'Support development!'),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    Text(
-                      _isIOS
-                          ? 'Subscriptions are billed to your Apple ID and auto-renew unless cancelled at least 24 hours before the end of the period.'
-                          : 'Subscriptions are billed through Stripe and auto-renew monthly unless cancelled at least 24 hours before the end of the period.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[500],
-                        height: 1.5,
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Text(
+                        '${_priceLabel(iosPriceLabel)} • Auto-renews monthly. Cancel anytime.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: Colors.grey[500])),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        key: const Key('privacy'),
+                        onPressed: () => _launchUrl(
+                            'https://repduel.github.io/repduel-website/privacy.html'),
+                        child: Text('Privacy Policy',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[500])),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Text('•', style: TextStyle(color: Colors.grey[600])),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        key: const Key('terms'),
+                        onPressed: () => _launchUrl(
+                            'https://repduel.github.io/repduel-website/terms.html'),
+                        child: Text('Terms of Use',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[500])),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    key: const Key('cta'),
+                    onPressed: (_isProcessing || isLoadingPrice)
+                        ? null
+                        : _handlePurchase,
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        minimumSize: const Size(double.infinity, 48)),
+                    child: Text(_ctaLabel(iosPriceLabel),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: TextButton(
+                        onPressed: _close,
+                        child: Text('Maybe Later...',
+                            style: TextStyle(color: Colors.grey[500]))),
+                  ),
+                  if (_isIOS) ...[
+                    const SizedBox(height: 16),
+                    Center(
+                      child: TextButton(
+                          key: const Key('restore'),
+                          onPressed: (_isProcessing || isLoadingPrice)
+                              ? null
+                              : _handleRestore,
+                          child: Text('Restore purchases',
+                              style: TextStyle(color: Colors.grey[500]))),
+                    )
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -456,23 +323,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       ),
     );
   }
-
-  String _formatIOSPriceLabel(StoreProduct product) {
-    final rawLabel = product.priceString.trim();
-    if (rawLabel.isEmpty) {
-      return rawLabel;
-    }
-
-    final normalized = rawLabel.toLowerCase();
-    if (normalized.contains('/month') ||
-        normalized.contains('per month') ||
-        normalized.contains('monthly')) {
-      return rawLabel;
-    }
-
-    return '$rawLabel/month';
-  }
-
 }
 
 extension<T> on List<T> {

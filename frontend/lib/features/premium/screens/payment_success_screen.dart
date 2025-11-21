@@ -47,7 +47,7 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Welcome to RepDuel Gold!'),
+              content: Text('Welcome to RepDuel Premium!'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
